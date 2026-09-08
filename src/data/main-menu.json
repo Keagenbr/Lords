@@ -19,7 +19,7 @@
             }
           ],
           "takeaway": true,
-          "id": "all-day-breakfast--all-day-breakfast",
+          "id": "all-day-breakfast",
           "categoryId": "all-day-breakfast"
         }
       ],
@@ -73,9 +73,7 @@
             {
               "name": "Chicken livers peri peri",
               "description": "Served with a toasted bun and onion rings",
-              "tags": [
-                "new"
-              ],
+              "tags": ["new"],
               "prices": [
                 {
                   "label": null,
@@ -244,9 +242,7 @@
           "items": [
             {
               "name": "Jalapeño popper chicken fries",
-              "tags": [
-                "new"
-              ],
+              "tags": ["new"],
               "prices": [
                 {
                   "label": null,
@@ -260,9 +256,7 @@
             },
             {
               "name": "Eisbein bits, mustard mayo and cheese fries",
-              "tags": [
-                "new"
-              ],
+              "tags": ["new"],
               "prices": [
                 {
                   "label": null,
@@ -347,9 +341,7 @@
         {
           "name": "Cowboy burger",
           "description": "Topped with cheese, fried onions and sweet BBQ cheese sauce",
-          "tags": [
-            "new"
-          ],
+          "tags": ["new"],
           "prices": [
             {
               "label": null,
@@ -505,9 +497,7 @@
         {
           "name": "Grilled chicken stack",
           "description": "With bacon bits and feta smothered in a cheese sauce & a side dish",
-          "tags": [
-            "new"
-          ],
+          "tags": ["new"],
           "prices": [
             {
               "label": null,
@@ -641,9 +631,7 @@
         {
           "name": "Crispy chicken fingers, bacon & cheese wrap",
           "description": "Served with mild jalapeño mayo",
-          "tags": [
-            "new"
-          ],
+          "tags": ["new"],
           "prices": [
             {
               "label": null,
@@ -656,9 +644,7 @@
         },
         {
           "name": "Sweet chilli chicken & cheese wrap",
-          "tags": [
-            "new"
-          ],
+          "tags": ["new"],
           "prices": [
             {
               "label": null,
@@ -813,9 +799,7 @@
         {
           "name": "Chef's Pie of the day",
           "description": "Ask your waitron",
-          "tags": [
-            "new"
-          ],
+          "tags": ["new"],
           "prices": [
             {
               "label": null,
