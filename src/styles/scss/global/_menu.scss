@@ -1,0 +1,44 @@
+@use "colours";
+@use "font";
+
+.hidden {
+    display: none;
+}
+.tab-btn.active {
+    font-weight: bold;
+    border-bottom: 2px solid #000;
+}
+.menu-group {
+    margin-top: 20px;
+}
+.menu-item {
+    margin-bottom: 15px;
+    border-bottom: 1px dashed #ccc;
+    padding-bottom: 10px;
+}
+.item {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    justify-items: start;
+    margin: 0 auto;
+    &-price {
+        &__info {
+            display: flex;
+            justify-content: space-evenly;
+
+            & p {
+                padding: 0.5em;
+            }
+        }
+    }
+}
+.tag {
+    background: #eee;
+    padding: 2px 6px;
+    font-size: 0.8rem;
+    border-radius: 4px;
+}
+.category-note {
+    color: #666;
+    font-size: 0.9rem;
+}

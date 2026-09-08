@@ -1,0 +1,1297 @@
+{
+  "meta": {
+    "title": "Main Menu",
+    "slug": "main-menu",
+    "currency": "ZAR",
+    "updated": "2026-09-08"
+  },
+  "categories": [
+    {
+      "name": "All Day Breakfast",
+      "items": [
+        {
+          "name": "All Day Breakfast",
+          "description": "2 Eggs, bacon, tomato, chips and toast",
+          "prices": [
+            {
+              "label": null,
+              "price": 63
+            }
+          ],
+          "takeaway": true,
+          "id": "all-day-breakfast--all-day-breakfast",
+          "categoryId": "all-day-breakfast"
+        }
+      ],
+      "id": "all-day-breakfast"
+    },
+    {
+      "name": "Starters & Snacks",
+      "subcategories": [
+        {
+          "name": "Salads & Starters",
+          "items": [
+            {
+              "name": "Honey and mustard chicken salad",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 110
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--salads-and-starters--honey-and-mustard-chicken-salad",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--salads-and-starters"
+            },
+            {
+              "name": "Chicken, bacon and feta salad",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 110
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--salads-and-starters--chicken-bacon-and-feta-salad",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--salads-and-starters"
+            },
+            {
+              "name": "Cheesy garlic roll",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 58
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--salads-and-starters--cheesy-garlic-roll",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--salads-and-starters"
+            },
+            {
+              "name": "Chicken livers peri peri",
+              "description": "Served with a toasted bun and onion rings",
+              "tags": [
+                "new"
+              ],
+              "prices": [
+                {
+                  "label": null,
+                  "price": 68
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--salads-and-starters--chicken-livers-peri-peri",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--salads-and-starters"
+            }
+          ],
+          "id": "starters-and-snacks--salads-and-starters"
+        },
+        {
+          "name": "Finger Snacks",
+          "items": [
+            {
+              "name": "Riblets 150g",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 65
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--finger-snacks--riblets-150g",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--finger-snacks"
+            },
+            {
+              "name": "4 Chicken cheese pops",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 55
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--finger-snacks--4-chicken-cheese-pops",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--finger-snacks"
+            },
+            {
+              "name": "BBQ eisbein bits",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 55
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--finger-snacks--bbq-eisbein-bits",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--finger-snacks"
+            },
+            {
+              "name": "Crumbed mushrooms",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 48
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--finger-snacks--crumbed-mushrooms",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--finger-snacks"
+            },
+            {
+              "name": "Chicken wings",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 57
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--finger-snacks--chicken-wings",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--finger-snacks"
+            },
+            {
+              "name": "3 Jalapeño Poppers",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 56
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--finger-snacks--3-jalape-o-poppers",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--finger-snacks"
+            },
+            {
+              "name": "Chicken fingers",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 56
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--finger-snacks--chicken-fingers",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--finger-snacks"
+            },
+            {
+              "name": "4 Mince samoosas",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 49
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--finger-snacks--4-mince-samoosas",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--finger-snacks"
+            },
+            {
+              "name": "4 Potato samoosas",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 49
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--finger-snacks--4-potato-samoosas",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--finger-snacks"
+            },
+            {
+              "name": "Deep fried calamari rings",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 56
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--finger-snacks--deep-fried-calamari-rings",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--finger-snacks"
+            },
+            {
+              "name": "Chips and a dipping sauce",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 40
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--finger-snacks--chips-and-a-dipping-sauce",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--finger-snacks"
+            }
+          ],
+          "id": "starters-and-snacks--finger-snacks"
+        },
+        {
+          "name": "Loaded Fries",
+          "items": [
+            {
+              "name": "Jalapeño popper chicken fries",
+              "tags": [
+                "new"
+              ],
+              "prices": [
+                {
+                  "label": null,
+                  "price": 84
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--loaded-fries--jalape-o-popper-chicken-fries",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--loaded-fries"
+            },
+            {
+              "name": "Eisbein bits, mustard mayo and cheese fries",
+              "tags": [
+                "new"
+              ],
+              "prices": [
+                {
+                  "label": null,
+                  "price": 84
+                }
+              ],
+              "takeaway": true,
+              "id": "starters-and-snacks--loaded-fries--eisbein-bits-mustard-mayo-and-cheese-fries",
+              "categoryId": "starters-and-snacks",
+              "subcategoryId": "starters-and-snacks--loaded-fries"
+            }
+          ],
+          "id": "starters-and-snacks--loaded-fries"
+        }
+      ],
+      "id": "starters-and-snacks"
+    },
+    {
+      "name": "Smash Burgers",
+      "items": [
+        {
+          "name": "Beef burger",
+          "prices": [
+            {
+              "label": null,
+              "price": 115
+            }
+          ],
+          "takeaway": true,
+          "id": "smash-burgers--beef-burger",
+          "categoryId": "smash-burgers"
+        },
+        {
+          "name": "Chicken burger",
+          "description": "Grilled or fried",
+          "prices": [
+            {
+              "label": null,
+              "price": 110
+            }
+          ],
+          "takeaway": true,
+          "id": "smash-burgers--chicken-burger",
+          "categoryId": "smash-burgers"
+        },
+        {
+          "name": "Cheese burger",
+          "prices": [
+            {
+              "label": null,
+              "price": 125
+            }
+          ],
+          "takeaway": true,
+          "id": "smash-burgers--cheese-burger",
+          "categoryId": "smash-burgers"
+        },
+        {
+          "name": "Bacon & cheese burger",
+          "prices": [
+            {
+              "label": null,
+              "price": 132
+            }
+          ],
+          "takeaway": true,
+          "id": "smash-burgers--bacon-and-cheese-burger",
+          "categoryId": "smash-burgers"
+        },
+        {
+          "name": "Jalapeño, bacon & cheese burger",
+          "prices": [
+            {
+              "label": null,
+              "price": 137
+            }
+          ],
+          "takeaway": true,
+          "id": "smash-burgers--jalape-o-bacon-and-cheese-burger",
+          "categoryId": "smash-burgers"
+        },
+        {
+          "name": "Cowboy burger",
+          "description": "Topped with cheese, fried onions and sweet BBQ cheese sauce",
+          "tags": [
+            "new"
+          ],
+          "prices": [
+            {
+              "label": null,
+              "price": 140
+            }
+          ],
+          "takeaway": true,
+          "id": "smash-burgers--cowboy-burger",
+          "categoryId": "smash-burgers"
+        },
+        {
+          "name": "Sweet chilli, bacon & cheese burger",
+          "description": "Topped with fried onions",
+          "prices": [
+            {
+              "label": null,
+              "price": 140
+            }
+          ],
+          "takeaway": true,
+          "id": "smash-burgers--sweet-chilli-bacon-and-cheese-burger",
+          "categoryId": "smash-burgers"
+        }
+      ],
+      "id": "smash-burgers"
+    },
+    {
+      "name": "Lord's Favourites",
+      "items": [
+        {
+          "name": "Eisbein",
+          "prices": [
+            {
+              "label": null,
+              "price": 172
+            }
+          ],
+          "takeaway": true,
+          "id": "lords-favourites--eisbein",
+          "categoryId": "lords-favourites"
+        },
+        {
+          "name": "Ribs 400g",
+          "prices": [
+            {
+              "label": null,
+              "price": 178
+            }
+          ],
+          "takeaway": true,
+          "id": "lords-favourites--ribs-400g",
+          "categoryId": "lords-favourites"
+        },
+        {
+          "name": "Mexican Poppers",
+          "prices": [
+            {
+              "label": null,
+              "price": 142
+            }
+          ],
+          "takeaway": true,
+          "id": "lords-favourites--mexican-poppers",
+          "categoryId": "lords-favourites"
+        },
+        {
+          "name": "Lords Popper",
+          "description": "Spinach, feta & bacon",
+          "prices": [
+            {
+              "label": null,
+              "price": 142
+            }
+          ],
+          "takeaway": true,
+          "id": "lords-favourites--lords-popper",
+          "categoryId": "lords-favourites"
+        },
+        {
+          "name": "Cordon Bleu Poppers",
+          "prices": [
+            {
+              "label": null,
+              "price": 142
+            }
+          ],
+          "takeaway": true,
+          "id": "lords-favourites--cordon-bleu-poppers",
+          "categoryId": "lords-favourites"
+        },
+        {
+          "name": "Rump steak",
+          "prices": [
+            {
+              "label": "200g",
+              "price": 152
+            },
+            {
+              "label": "300g",
+              "price": 180
+            }
+          ],
+          "takeaway": true,
+          "id": "lords-favourites--rump-steak",
+          "categoryId": "lords-favourites"
+        }
+      ],
+      "id": "lords-favourites"
+    },
+    {
+      "name": "Loaded Rump Steaks",
+      "items": [
+        {
+          "name": "Rump steak",
+          "description": "Topped with feta, jalapeño's and cheese sauce",
+          "prices": [
+            {
+              "label": "200g",
+              "price": 180
+            },
+            {
+              "label": "300g",
+              "price": 198
+            }
+          ],
+          "takeaway": true,
+          "id": "loaded-rump-steaks--rump-steak",
+          "categoryId": "loaded-rump-steaks"
+        },
+        {
+          "name": "Rump steak",
+          "description": "Seafood steak topped with cheezy white wine and prawn sauce",
+          "prices": [
+            {
+              "label": "200g",
+              "price": 185
+            },
+            {
+              "label": "300g",
+              "price": 205
+            }
+          ],
+          "takeaway": true,
+          "id": "loaded-rump-steaks--rump-steak-2",
+          "categoryId": "loaded-rump-steaks"
+        }
+      ],
+      "id": "loaded-rump-steaks"
+    },
+    {
+      "name": "Fowl Favourites",
+      "items": [
+        {
+          "name": "Grilled chicken stack",
+          "description": "With bacon bits and feta smothered in a cheese sauce & a side dish",
+          "tags": [
+            "new"
+          ],
+          "prices": [
+            {
+              "label": null,
+              "price": 140
+            }
+          ],
+          "takeaway": true,
+          "id": "fowl-favourites--grilled-chicken-stack",
+          "categoryId": "fowl-favourites"
+        },
+        {
+          "name": "Grilled chicken stack",
+          "description": "Spinach, bacon & feta smothered in cheese sauce",
+          "prices": [
+            {
+              "label": null,
+              "price": 140
+            }
+          ],
+          "takeaway": true,
+          "id": "fowl-favourites--grilled-chicken-stack-2",
+          "categoryId": "fowl-favourites"
+        },
+        {
+          "name": "Saucy chicken schnitzel",
+          "prices": [
+            {
+              "label": null,
+              "price": 135
+            }
+          ],
+          "addons": [
+            {
+              "description": "Add jalapeño, bacon, or feta",
+              "price": 22
+            }
+          ],
+          "takeaway": true,
+          "id": "fowl-favourites--saucy-chicken-schnitzel",
+          "categoryId": "fowl-favourites"
+        },
+        {
+          "name": "Chicken fingers",
+          "prices": [
+            {
+              "label": "Full",
+              "price": 127
+            },
+            {
+              "label": "Half",
+              "price": 99
+            }
+          ],
+          "takeaway": true,
+          "id": "fowl-favourites--chicken-fingers",
+          "categoryId": "fowl-favourites"
+        },
+        {
+          "name": "Chip n cheese roti",
+          "prices": [
+            {
+              "label": null,
+              "price": 95
+            }
+          ],
+          "addons": [
+            {
+              "description": "Add chicken strips",
+              "price": 40
+            }
+          ],
+          "takeaway": true,
+          "id": "fowl-favourites--chip-n-cheese-roti",
+          "categoryId": "fowl-favourites"
+        },
+        {
+          "name": "Beer battered hake",
+          "prices": [
+            {
+              "label": null,
+              "price": 120
+            }
+          ],
+          "takeaway": true,
+          "id": "fowl-favourites--beer-battered-hake",
+          "categoryId": "fowl-favourites"
+        },
+        {
+          "name": "Calamari rings grilled or fried",
+          "description": "Served with a side dish & sauce",
+          "prices": [
+            {
+              "label": null,
+              "price": 135
+            }
+          ],
+          "takeaway": true,
+          "id": "fowl-favourites--calamari-rings-grilled-or-fried",
+          "categoryId": "fowl-favourites"
+        },
+        {
+          "name": "200g Rump, egg and chips",
+          "prices": [
+            {
+              "label": null,
+              "price": 150
+            }
+          ],
+          "takeaway": true,
+          "id": "fowl-favourites--200g-rump-egg-and-chips",
+          "categoryId": "fowl-favourites"
+        }
+      ],
+      "id": "fowl-favourites"
+    },
+    {
+      "name": "Wraps & Loaded Spuds",
+      "items": [
+        {
+          "name": "Chicken, bacon, feta with honey mustard mayo wrap",
+          "prices": [
+            {
+              "label": null,
+              "price": 115
+            }
+          ],
+          "takeaway": true,
+          "id": "wraps-and-loaded-spuds--chicken-bacon-feta-with-honey-mustard-mayo-wrap",
+          "categoryId": "wraps-and-loaded-spuds"
+        },
+        {
+          "name": "Crispy chicken fingers, bacon & cheese wrap",
+          "description": "Served with mild jalapeño mayo",
+          "tags": [
+            "new"
+          ],
+          "prices": [
+            {
+              "label": null,
+              "price": 115
+            }
+          ],
+          "takeaway": true,
+          "id": "wraps-and-loaded-spuds--crispy-chicken-fingers-bacon-and-cheese-wrap",
+          "categoryId": "wraps-and-loaded-spuds"
+        },
+        {
+          "name": "Sweet chilli chicken & cheese wrap",
+          "tags": [
+            "new"
+          ],
+          "prices": [
+            {
+              "label": null,
+              "price": 115
+            }
+          ],
+          "takeaway": true,
+          "id": "wraps-and-loaded-spuds--sweet-chilli-chicken-and-cheese-wrap",
+          "categoryId": "wraps-and-loaded-spuds"
+        },
+        {
+          "name": "Grilled chicken, bacon and feta spud with cheese sauce",
+          "prices": [
+            {
+              "label": null,
+              "price": 115
+            }
+          ],
+          "takeaway": true,
+          "id": "wraps-and-loaded-spuds--grilled-chicken-bacon-and-feta-spud-with-cheese-sauce",
+          "categoryId": "wraps-and-loaded-spuds"
+        },
+        {
+          "name": "Crispy BBQ eisbein bits with cheesy jalapeño sauce",
+          "prices": [
+            {
+              "label": null,
+              "price": 115
+            }
+          ],
+          "takeaway": true,
+          "id": "wraps-and-loaded-spuds--crispy-bbq-eisbein-bits-with-cheesy-jalape-o-sauce",
+          "categoryId": "wraps-and-loaded-spuds"
+        },
+        {
+          "name": "Creamed spinach, bacon & mushroom spud with cheese sauce",
+          "description": "Leave out bacon for vegetarian",
+          "prices": [
+            {
+              "label": null,
+              "price": 115
+            }
+          ],
+          "takeaway": true,
+          "id": "wraps-and-loaded-spuds--creamed-spinach-bacon-and-mushroom-spud-with-cheese-sauce",
+          "categoryId": "wraps-and-loaded-spuds"
+        }
+      ],
+      "id": "wraps-and-loaded-spuds"
+    },
+    {
+      "name": "Pub Grub",
+      "items": [
+        {
+          "name": "Original mac 'n cheese",
+          "prices": [
+            {
+              "label": null,
+              "price": 80
+            }
+          ],
+          "takeaway": true,
+          "id": "pub-grub--original-mac-n-cheese",
+          "categoryId": "pub-grub"
+        },
+        {
+          "name": "Bacon mac 'n cheese",
+          "prices": [
+            {
+              "label": null,
+              "price": 99
+            }
+          ],
+          "takeaway": true,
+          "id": "pub-grub--bacon-mac-n-cheese",
+          "categoryId": "pub-grub"
+        },
+        {
+          "name": "Spicy chicken nachos",
+          "description": "Served with our cream and guacamole",
+          "prices": [
+            {
+              "label": null,
+              "price": 125
+            }
+          ],
+          "takeaway": true,
+          "id": "pub-grub--spicy-chicken-nachos",
+          "categoryId": "pub-grub"
+        },
+        {
+          "name": "Spicy eisbein nachos",
+          "description": "Served with our cream and guacamole",
+          "prices": [
+            {
+              "label": null,
+              "price": 130
+            }
+          ],
+          "takeaway": true,
+          "id": "pub-grub--spicy-eisbein-nachos",
+          "categoryId": "pub-grub"
+        },
+        {
+          "name": "Beef lasagne & salad",
+          "prices": [
+            {
+              "label": null,
+              "price": 140
+            }
+          ],
+          "takeaway": true,
+          "id": "pub-grub--beef-lasagne-and-salad",
+          "categoryId": "pub-grub"
+        },
+        {
+          "name": "Hake and calamari combo",
+          "prices": [
+            {
+              "label": null,
+              "price": 155
+            }
+          ],
+          "takeaway": true,
+          "id": "pub-grub--hake-and-calamari-combo",
+          "categoryId": "pub-grub"
+        },
+        {
+          "name": "Lamb Curry",
+          "prices": [
+            {
+              "label": null,
+              "price": 152
+            }
+          ],
+          "takeaway": true,
+          "id": "pub-grub--lamb-curry",
+          "categoryId": "pub-grub"
+        },
+        {
+          "name": "Prawn 'n chicken curry",
+          "prices": [
+            {
+              "label": null,
+              "price": 150
+            }
+          ],
+          "takeaway": true,
+          "id": "pub-grub--prawn-n-chicken-curry",
+          "categoryId": "pub-grub"
+        },
+        {
+          "name": "Chef's Pie of the day",
+          "description": "Ask your waitron",
+          "tags": [
+            "new"
+          ],
+          "prices": [
+            {
+              "label": null,
+              "price": 130
+            }
+          ],
+          "takeaway": true,
+          "id": "pub-grub--chefs-pie-of-the-day",
+          "categoryId": "pub-grub"
+        }
+      ],
+      "id": "pub-grub"
+    },
+    {
+      "name": "Sauces",
+      "items": [
+        {
+          "name": "Choice of sauce",
+          "description": "Creamy peri peri, BBQ, rattlesnake, mushroom, cheese, garlic, pepper, or cheesy jalapeño",
+          "prices": [
+            {
+              "label": null,
+              "price": 30
+            }
+          ],
+          "takeaway": true,
+          "id": "sauces--choice-of-sauce",
+          "categoryId": "sauces"
+        }
+      ],
+      "id": "sauces"
+    },
+    {
+      "name": "Desserts",
+      "note": "Selection of Irish coffee's and Dom Pedro's also available - ask your waitron",
+      "items": [
+        {
+          "name": "Waffle with cream or ice cream",
+          "prices": [
+            {
+              "label": null,
+              "price": 52
+            }
+          ],
+          "takeaway": true,
+          "id": "desserts--waffle-with-cream-or-ice-cream",
+          "categoryId": "desserts"
+        },
+        {
+          "name": "Lords cheese cake",
+          "prices": [
+            {
+              "label": null,
+              "price": 56
+            }
+          ],
+          "takeaway": true,
+          "id": "desserts--lords-cheese-cake",
+          "categoryId": "desserts"
+        },
+        {
+          "name": "Ice cream and bar-one sauce",
+          "prices": [
+            {
+              "label": null,
+              "price": 42
+            }
+          ],
+          "takeaway": true,
+          "id": "desserts--ice-cream-and-bar-one-sauce",
+          "categoryId": "desserts"
+        }
+      ],
+      "id": "desserts"
+    },
+    {
+      "name": "Lite Lunch",
+      "note": "Served Monday - Friday, 10:30am - 4:00pm. Not available on public holidays and school holidays.",
+      "items": [
+        {
+          "name": "Crumbed chicken fingers",
+          "description": "Served with a sauce of your choice and a side dish",
+          "prices": [
+            {
+              "label": null,
+              "price": 85
+            }
+          ],
+          "takeaway": false,
+          "id": "lite-lunch--crumbed-chicken-fingers",
+          "categoryId": "lite-lunch"
+        },
+        {
+          "name": "Chicken schnitzel",
+          "description": "Served with a sauce of your choice and a side dish",
+          "prices": [
+            {
+              "label": null,
+              "price": 85
+            }
+          ],
+          "takeaway": false,
+          "id": "lite-lunch--chicken-schnitzel",
+          "categoryId": "lite-lunch"
+        },
+        {
+          "name": "Steak, egg and chips",
+          "prices": [
+            {
+              "label": null,
+              "price": 95
+            }
+          ],
+          "takeaway": false,
+          "id": "lite-lunch--steak-egg-and-chips",
+          "categoryId": "lite-lunch"
+        },
+        {
+          "name": "Deep fried calamari rings",
+          "description": "Served with a sauce of your choice and a side dish",
+          "prices": [
+            {
+              "label": null,
+              "price": 90
+            }
+          ],
+          "takeaway": false,
+          "id": "lite-lunch--deep-fried-calamari-rings",
+          "categoryId": "lite-lunch"
+        },
+        {
+          "name": "Beer battered hake",
+          "description": "Served with a sauce of your choice and a side dish",
+          "prices": [
+            {
+              "label": null,
+              "price": 95
+            }
+          ],
+          "takeaway": false,
+          "id": "lite-lunch--beer-battered-hake",
+          "categoryId": "lite-lunch"
+        },
+        {
+          "name": "Beef or chicken burger",
+          "description": "Served with a side dish",
+          "prices": [
+            {
+              "label": null,
+              "price": 92
+            }
+          ],
+          "takeaway": false,
+          "id": "lite-lunch--beef-or-chicken-burger",
+          "categoryId": "lite-lunch"
+        },
+        {
+          "name": "Mac & cheese with side salad",
+          "prices": [
+            {
+              "label": null,
+              "price": 72
+            }
+          ],
+          "takeaway": false,
+          "id": "lite-lunch--mac-and-cheese-with-side-salad",
+          "categoryId": "lite-lunch"
+        },
+        {
+          "name": "Honey and mustard chicken salad",
+          "prices": [
+            {
+              "label": null,
+              "price": 86
+            }
+          ],
+          "takeaway": false,
+          "id": "lite-lunch--honey-and-mustard-chicken-salad",
+          "categoryId": "lite-lunch"
+        }
+      ],
+      "id": "lite-lunch"
+    },
+    {
+      "name": "Kids Menu",
+      "subcategories": [
+        {
+          "name": "Kids Meals",
+          "note": "For kids 12 and under.",
+          "items": [
+            {
+              "name": "Chicken Schnitzel & chips",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 62
+                }
+              ],
+              "takeaway": true,
+              "id": "kids-menu--kids-meals--chicken-schnitzel-and-chips",
+              "categoryId": "kids-menu",
+              "subcategoryId": "kids-menu--kids-meals"
+            },
+            {
+              "name": "Beef burger & chips",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 72
+                }
+              ],
+              "takeaway": true,
+              "id": "kids-menu--kids-meals--beef-burger-and-chips",
+              "categoryId": "kids-menu",
+              "subcategoryId": "kids-menu--kids-meals"
+            },
+            {
+              "name": "Grilled chicken burger",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 65
+                }
+              ],
+              "takeaway": true,
+              "id": "kids-menu--kids-meals--grilled-chicken-burger",
+              "categoryId": "kids-menu",
+              "subcategoryId": "kids-menu--kids-meals"
+            },
+            {
+              "name": "Fried chicken fingers & chips",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 62
+                }
+              ],
+              "takeaway": true,
+              "id": "kids-menu--kids-meals--fried-chicken-fingers-and-chips",
+              "categoryId": "kids-menu",
+              "subcategoryId": "kids-menu--kids-meals"
+            },
+            {
+              "name": "Mac 'n cheese",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 60
+                }
+              ],
+              "takeaway": true,
+              "id": "kids-menu--kids-meals--mac-n-cheese",
+              "categoryId": "kids-menu",
+              "subcategoryId": "kids-menu--kids-meals"
+            },
+            {
+              "name": "Toasted cheese sandwich & chips",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 50
+                }
+              ],
+              "takeaway": true,
+              "id": "kids-menu--kids-meals--toasted-cheese-sandwich-and-chips",
+              "categoryId": "kids-menu",
+              "subcategoryId": "kids-menu--kids-meals"
+            },
+            {
+              "name": "Chicken cheese pops & chips",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 62
+                }
+              ],
+              "takeaway": true,
+              "id": "kids-menu--kids-meals--chicken-cheese-pops-and-chips",
+              "categoryId": "kids-menu",
+              "subcategoryId": "kids-menu--kids-meals"
+            },
+            {
+              "name": "Fried fish fingers & chips",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 58
+                }
+              ],
+              "takeaway": true,
+              "id": "kids-menu--kids-meals--fried-fish-fingers-and-chips",
+              "categoryId": "kids-menu",
+              "subcategoryId": "kids-menu--kids-meals"
+            }
+          ],
+          "id": "kids-menu--kids-meals"
+        },
+        {
+          "name": "Kids Drinks",
+          "note": "For kids 12 and under.",
+          "items": [
+            {
+              "name": "Kids Milkshake",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 38
+                }
+              ],
+              "takeaway": true,
+              "id": "kids-menu--kids-drinks--kids-milkshake",
+              "categoryId": "kids-menu",
+              "subcategoryId": "kids-menu--kids-drinks"
+            },
+            {
+              "name": "Coo-ee Soda",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 20
+                }
+              ],
+              "takeaway": true,
+              "id": "kids-menu--kids-drinks--coo-ee-soda",
+              "categoryId": "kids-menu",
+              "subcategoryId": "kids-menu--kids-drinks"
+            },
+            {
+              "name": "Fruit Juice",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 26
+                }
+              ],
+              "takeaway": true,
+              "id": "kids-menu--kids-drinks--fruit-juice",
+              "categoryId": "kids-menu",
+              "subcategoryId": "kids-menu--kids-drinks"
+            }
+          ],
+          "id": "kids-menu--kids-drinks"
+        },
+        {
+          "name": "Kids Desserts",
+          "note": "For kids 12 and under.",
+          "items": [
+            {
+              "name": "Waffle and ice cream",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 42
+                }
+              ],
+              "takeaway": true,
+              "id": "kids-menu--kids-desserts--waffle-and-ice-cream",
+              "categoryId": "kids-menu",
+              "subcategoryId": "kids-menu--kids-desserts"
+            },
+            {
+              "name": "Ice cream and bar-one sauce",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 36
+                }
+              ],
+              "takeaway": true,
+              "id": "kids-menu--kids-desserts--ice-cream-and-bar-one-sauce",
+              "categoryId": "kids-menu",
+              "subcategoryId": "kids-menu--kids-desserts"
+            },
+            {
+              "name": "Ice cream cone",
+              "prices": [
+                {
+                  "label": null,
+                  "price": 20
+                }
+              ],
+              "takeaway": true,
+              "id": "kids-menu--kids-desserts--ice-cream-cone",
+              "categoryId": "kids-menu",
+              "subcategoryId": "kids-menu--kids-desserts"
+            }
+          ],
+          "id": "kids-menu--kids-desserts"
+        }
+      ],
+      "id": "kids-menu"
+    },
+    {
+      "name": "Snack Platters",
+      "note": "Each full platter caters for approximately 10-12 people. 2 days notice required.",
+      "items": [
+        {
+          "name": "Sandwich Platter",
+          "description": "Cocktail sandwiches with a combination of fillings",
+          "prices": [
+            {
+              "label": null,
+              "price": 470
+            }
+          ],
+          "takeaway": true,
+          "id": "snack-platters--sandwich-platter",
+          "categoryId": "snack-platters"
+        },
+        {
+          "name": "Cocktail Platter",
+          "description": "Sausage rolls, samosas, spring rolls",
+          "prices": [
+            {
+              "label": null,
+              "price": 530
+            }
+          ],
+          "takeaway": true,
+          "id": "snack-platters--cocktail-platter",
+          "categoryId": "snack-platters"
+        },
+        {
+          "name": "Vegetable Platter",
+          "description": "Crumbed mushrooms, veg pizza, chilli bites, potato samosas, sweetcorn samosa, cocktail spring rolls and dipping sauce",
+          "prices": [
+            {
+              "label": null,
+              "price": 490
+            }
+          ],
+          "takeaway": true,
+          "id": "snack-platters--vegetable-platter",
+          "categoryId": "snack-platters"
+        },
+        {
+          "name": "Chicken Platter",
+          "description": "Mini kebabs, chicken wings, chicken bites, dipping sauce",
+          "prices": [
+            {
+              "label": null,
+              "price": 550
+            }
+          ],
+          "takeaway": true,
+          "id": "snack-platters--chicken-platter",
+          "categoryId": "snack-platters"
+        },
+        {
+          "name": "Mixed Platter",
+          "description": "Part meat, part chicken, part cocktail, dipping sauce",
+          "prices": [
+            {
+              "label": null,
+              "price": 595
+            }
+          ],
+          "takeaway": true,
+          "id": "snack-platters--mixed-platter",
+          "categoryId": "snack-platters"
+        },
+        {
+          "name": "Kiddies Platter",
+          "description": "Mini hot dogs, chicken fingers, fish nuggets, dipping sauce",
+          "prices": [
+            {
+              "label": null,
+              "price": 390
+            }
+          ],
+          "takeaway": true,
+          "id": "snack-platters--kiddies-platter",
+          "categoryId": "snack-platters"
+        }
+      ],
+      "id": "snack-platters"
+    }
+  ]
+}

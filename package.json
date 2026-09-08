@@ -1,0 +1,24 @@
+{
+  "name": "lords",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "sass": "sass --watch --poll --no-source-map src/styles/scss/main.scss:src/styles/style.css",
+    "dev": "astro dev ",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/ts-plugin": "^1.10.11",
+    "astro": "^7.2.0",
+    "sass": "^1.102.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "@parcel/watcher@2.6.0": true
+  }
+}

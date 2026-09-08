@@ -1,0 +1,24 @@
+@use "global";
+
+/* Home Header Styles */
+.home-header {
+  /* display and alignment */
+  margin: 5%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: scroll;
+  // min-height: 100%;
+  height: 200%;
+  max-width: 100%;
+
+  /* basic styling */
+  background-color: var(--primary-bg-color-dark);
+  color: var(--$menu-txt-color-dark);
+  // color: red;
+
+  div {
+    height: 200vh;
+    width: 50%;
+  }
+}
