@@ -1,0 +1,655 @@
+{
+  "2026": {
+    "August": {
+      "SISEKELO": {
+        "sales": {
+          "totalSales": 11068,
+          "netCash": 772,
+          "totalDeductions": 111.62,
+          "cashPaid": 0,
+          "averageDailySales": 2767,
+          "averageNetCash": 193,
+          "averageDeductions": 27.91,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-08-04",
+            "totalSales": 2767,
+            "netCash": 193,
+            "totalDeductions": 27.905,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-05",
+            "totalSales": 2767,
+            "netCash": 193,
+            "totalDeductions": 27.905,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-06",
+            "totalSales": 2767,
+            "netCash": 193,
+            "totalDeductions": 27.905,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-07",
+            "totalSales": 2767,
+            "netCash": 193,
+            "totalDeductions": 27.905,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      },
+      "NOSIPHO": {
+        "sales": {
+          "totalSales": 9468,
+          "netCash": 0,
+          "totalDeductions": 1114.32,
+          "cashPaid": 0,
+          "averageDailySales": 2367,
+          "averageNetCash": 0,
+          "averageDeductions": 278.58,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-08-04",
+            "totalSales": 2367,
+            "netCash": 0,
+            "totalDeductions": 278.58,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-05",
+            "totalSales": 2367,
+            "netCash": 0,
+            "totalDeductions": 278.58,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-06",
+            "totalSales": 2367,
+            "netCash": 0,
+            "totalDeductions": 278.58,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-07",
+            "totalSales": 2367,
+            "netCash": 0,
+            "totalDeductions": 278.58,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      },
+      "FANA": {
+        "sales": {
+          "totalSales": 13824,
+          "netCash": 2628,
+          "totalDeductions": 1698.66,
+          "cashPaid": 0,
+          "averageDailySales": 3456,
+          "averageNetCash": 657,
+          "averageDeductions": 424.67,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-08-04",
+            "totalSales": 3456,
+            "netCash": 657,
+            "totalDeductions": 424.665,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-05",
+            "totalSales": 3456,
+            "netCash": 657,
+            "totalDeductions": 424.665,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-06",
+            "totalSales": 3456,
+            "netCash": 657,
+            "totalDeductions": 424.665,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-07",
+            "totalSales": 3456,
+            "netCash": 657,
+            "totalDeductions": 424.665,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      },
+      "THANDEKA": {
+        "sales": {
+          "totalSales": 8896,
+          "netCash": 0,
+          "totalDeductions": 718.3399999999999,
+          "cashPaid": 0,
+          "averageDailySales": 2224,
+          "averageNetCash": 0,
+          "averageDeductions": 179.58,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-08-04",
+            "totalSales": 2224,
+            "netCash": 0,
+            "totalDeductions": 179.58499999999998,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-05",
+            "totalSales": 2224,
+            "netCash": 0,
+            "totalDeductions": 179.58499999999998,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-06",
+            "totalSales": 2224,
+            "netCash": 0,
+            "totalDeductions": 179.58499999999998,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-07",
+            "totalSales": 2224,
+            "netCash": 0,
+            "totalDeductions": 179.58499999999998,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      },
+      "PENNY": {
+        "sales": {
+          "totalSales": 35016,
+          "netCash": 396,
+          "totalDeductions": 2902.44,
+          "cashPaid": 0,
+          "averageDailySales": 8754,
+          "averageNetCash": 99,
+          "averageDeductions": 725.61,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-08-04",
+            "totalSales": 8754,
+            "netCash": 99,
+            "totalDeductions": 725.61,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-05",
+            "totalSales": 8754,
+            "netCash": 99,
+            "totalDeductions": 725.61,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-06",
+            "totalSales": 8754,
+            "netCash": 99,
+            "totalDeductions": 725.61,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-08-07",
+            "totalSales": 8754,
+            "netCash": 99,
+            "totalDeductions": 725.61,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      }
+    },
+    "July": {
+      "SISEKELO": {
+        "sales": {
+          "totalSales": 11068,
+          "netCash": 772,
+          "totalDeductions": 111.62,
+          "cashPaid": 0,
+          "averageDailySales": 2767,
+          "averageNetCash": 193,
+          "averageDeductions": 27.91,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-07-04",
+            "totalSales": 2767,
+            "netCash": 193,
+            "totalDeductions": 27.905,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-06",
+            "totalSales": 2767,
+            "netCash": 193,
+            "totalDeductions": 27.905,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-07",
+            "totalSales": 2767,
+            "netCash": 193,
+            "totalDeductions": 27.905,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-08",
+            "totalSales": 2767,
+            "netCash": 193,
+            "totalDeductions": 27.905,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      },
+      "NOSIPHO": {
+        "sales": {
+          "totalSales": 9468,
+          "netCash": 0,
+          "totalDeductions": 1114.32,
+          "cashPaid": 0,
+          "averageDailySales": 2367,
+          "averageNetCash": 0,
+          "averageDeductions": 278.58,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-07-04",
+            "totalSales": 2367,
+            "netCash": 0,
+            "totalDeductions": 278.58,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-06",
+            "totalSales": 2367,
+            "netCash": 0,
+            "totalDeductions": 278.58,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-07",
+            "totalSales": 2367,
+            "netCash": 0,
+            "totalDeductions": 278.58,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-08",
+            "totalSales": 2367,
+            "netCash": 0,
+            "totalDeductions": 278.58,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      },
+      "FANA": {
+        "sales": {
+          "totalSales": 13824,
+          "netCash": 2628,
+          "totalDeductions": 1698.66,
+          "cashPaid": 0,
+          "averageDailySales": 3456,
+          "averageNetCash": 657,
+          "averageDeductions": 424.67,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-07-04",
+            "totalSales": 3456,
+            "netCash": 657,
+            "totalDeductions": 424.665,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-06",
+            "totalSales": 3456,
+            "netCash": 657,
+            "totalDeductions": 424.665,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-07",
+            "totalSales": 3456,
+            "netCash": 657,
+            "totalDeductions": 424.665,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-08",
+            "totalSales": 3456,
+            "netCash": 657,
+            "totalDeductions": 424.665,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      },
+      "THANDEKA": {
+        "sales": {
+          "totalSales": 8896,
+          "netCash": 0,
+          "totalDeductions": 718.3399999999999,
+          "cashPaid": 0,
+          "averageDailySales": 2224,
+          "averageNetCash": 0,
+          "averageDeductions": 179.58,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-07-04",
+            "totalSales": 2224,
+            "netCash": 0,
+            "totalDeductions": 179.58499999999998,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-06",
+            "totalSales": 2224,
+            "netCash": 0,
+            "totalDeductions": 179.58499999999998,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-07",
+            "totalSales": 2224,
+            "netCash": 0,
+            "totalDeductions": 179.58499999999998,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-08",
+            "totalSales": 2224,
+            "netCash": 0,
+            "totalDeductions": 179.58499999999998,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      },
+      "PENNY": {
+        "sales": {
+          "totalSales": 35016,
+          "netCash": 396,
+          "totalDeductions": 2902.44,
+          "cashPaid": 0,
+          "averageDailySales": 8754,
+          "averageNetCash": 99,
+          "averageDeductions": 725.61,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-07-04",
+            "totalSales": 8754,
+            "netCash": 99,
+            "totalDeductions": 725.61,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-06",
+            "totalSales": 8754,
+            "netCash": 99,
+            "totalDeductions": 725.61,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-07",
+            "totalSales": 8754,
+            "netCash": 99,
+            "totalDeductions": 725.61,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-07-08",
+            "totalSales": 8754,
+            "netCash": 99,
+            "totalDeductions": 725.61,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      }
+    },
+    "September": {
+      "SISEKELO": {
+        "sales": {
+          "totalSales": 11068,
+          "netCash": 772,
+          "totalDeductions": 111.62,
+          "cashPaid": 0,
+          "averageDailySales": 2767,
+          "averageNetCash": 193,
+          "averageDeductions": 27.91,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-09-04",
+            "totalSales": 2767,
+            "netCash": 193,
+            "totalDeductions": 27.905,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-05",
+            "totalSales": 2767,
+            "netCash": 193,
+            "totalDeductions": 27.905,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-06",
+            "totalSales": 2767,
+            "netCash": 193,
+            "totalDeductions": 27.905,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-07",
+            "totalSales": 2767,
+            "netCash": 193,
+            "totalDeductions": 27.905,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      },
+      "NOSIPHO": {
+        "sales": {
+          "totalSales": 9468,
+          "netCash": 0,
+          "totalDeductions": 1114.32,
+          "cashPaid": 0,
+          "averageDailySales": 2367,
+          "averageNetCash": 0,
+          "averageDeductions": 278.58,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-09-04",
+            "totalSales": 2367,
+            "netCash": 0,
+            "totalDeductions": 278.58,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-05",
+            "totalSales": 2367,
+            "netCash": 0,
+            "totalDeductions": 278.58,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-06",
+            "totalSales": 2367,
+            "netCash": 0,
+            "totalDeductions": 278.58,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-07",
+            "totalSales": 2367,
+            "netCash": 0,
+            "totalDeductions": 278.58,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      },
+      "FANA": {
+        "sales": {
+          "totalSales": 13824,
+          "netCash": 2628,
+          "totalDeductions": 1698.66,
+          "cashPaid": 0,
+          "averageDailySales": 3456,
+          "averageNetCash": 657,
+          "averageDeductions": 424.67,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-09-04",
+            "totalSales": 3456,
+            "netCash": 657,
+            "totalDeductions": 424.665,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-05",
+            "totalSales": 3456,
+            "netCash": 657,
+            "totalDeductions": 424.665,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-06",
+            "totalSales": 3456,
+            "netCash": 657,
+            "totalDeductions": 424.665,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-07",
+            "totalSales": 3456,
+            "netCash": 657,
+            "totalDeductions": 424.665,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      },
+      "THANDEKA": {
+        "sales": {
+          "totalSales": 8896,
+          "netCash": 0,
+          "totalDeductions": 718.3399999999999,
+          "cashPaid": 0,
+          "averageDailySales": 2224,
+          "averageNetCash": 0,
+          "averageDeductions": 179.58,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-09-04",
+            "totalSales": 2224,
+            "netCash": 0,
+            "totalDeductions": 179.58499999999998,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-05",
+            "totalSales": 2224,
+            "netCash": 0,
+            "totalDeductions": 179.58499999999998,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-06",
+            "totalSales": 2224,
+            "netCash": 0,
+            "totalDeductions": 179.58499999999998,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-07",
+            "totalSales": 2224,
+            "netCash": 0,
+            "totalDeductions": 179.58499999999998,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      },
+      "PENNY": {
+        "sales": {
+          "totalSales": 35016,
+          "netCash": 396,
+          "totalDeductions": 2902.44,
+          "cashPaid": 0,
+          "averageDailySales": 8754,
+          "averageNetCash": 99,
+          "averageDeductions": 725.61,
+          "averageCashPaid": 0
+        },
+        "daily_records": [
+          {
+            "date": "2026-09-04",
+            "totalSales": 8754,
+            "netCash": 99,
+            "totalDeductions": 725.61,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-05",
+            "totalSales": 8754,
+            "netCash": 99,
+            "totalDeductions": 725.61,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-06",
+            "totalSales": 8754,
+            "netCash": 99,
+            "totalDeductions": 725.61,
+            "cashPaid": 0
+          },
+          {
+            "date": "2026-09-07",
+            "totalSales": 8754,
+            "netCash": 99,
+            "totalDeductions": 725.61,
+            "cashPaid": 0
+          }
+        ],
+        "days_worked": 4
+      }
+    }
+  }
+}
