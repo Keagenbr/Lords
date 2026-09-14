@@ -1,7 +1,9 @@
 ---
-// import "../styles/scss/style.scss";
+import "../styles/scss/global/_index.scss";
 // import "../lib/nav.js";
-const { title } = Astro.props;
+
+import Nav from "../components/Nav"; // Import the navigation component
+const { title = "Lords and Legends" } = Astro.props;
 ---
 
 <!doctype html>
@@ -38,11 +40,12 @@ const { title } = Astro.props;
         <!-- <link rel="stylesheet" href="dist/styles/style.css" /> -->
 
         <!-- <meta name="generator" content={Astro.generator} /> -->
-        <title>{title || "Lords and Legends"}</title>
+        <title>{title}</title>
         <!-- <script is:inline src="../lib/nav.js"></script> -->
     </head>
     <body>
-        <slot name="nav" />
+        <Nav />
+
         <slot />
     </body>
 </html>
