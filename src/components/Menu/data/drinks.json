@@ -1,1530 +1,231 @@
 {
-  "meta": {
-    "title": "Drinks Menu",
-    "slug": "drinks",
-    "currency": "ZAR",
-    "updated": "2026-09-08"
-  },
-  "categories": [
+  "beer": [
+    { "name": "Castle", "price": "R31", "description": "" },
+    { "name": "Castle Lite", "price": "R33", "description": "" },
+    { "name": "Castle Milk Stout", "price": "R33", "description": "" },
+    { "name": "Amstel", "price": "R27", "description": "" },
+    { "name": "Black Label", "price": "R33", "description": "" },
+    { "name": "Hansa", "price": "R32", "description": "" },
+    { "name": "Windhoek Dr Bottle", "price": "R40", "description": "" },
+    { "name": "Flying Fish Lemon", "price": "R39", "description": "" },
+    { "name": "Guinness Can", "price": "R50", "description": "" },
+    { "name": "Heineken", "price": "R37", "description": "" },
+    { "name": "Heineken Zero", "price": "R37", "description": "" },
+    { "name": "Lion Can", "price": "R35", "description": "" },
+    { "name": "Corona", "price": "R37", "description": "" }
+  ],
+  "ciders": [
+    { "name": "Savanna Dry", "price": "R33", "description": "" },
+    { "name": "Savanna Light", "price": "R33", "description": "" },
+    { "name": "Savanna Zero", "price": "R33", "description": "" },
+    { "name": "Hunter Gold", "price": "R39", "description": "" },
+    { "name": "Hunter Dry", "price": "R39", "description": "" },
+    { "name": "Brutal Fruits", "price": "R39", "description": "" },
+    { "name": "Smirnoff Pine Twist Can", "price": "R46", "description": "" },
+    { "name": "Smirnoff Berry Twist Can", "price": "R46", "description": "" },
+    { "name": "Tipo Tino Can", "price": "R45", "description": "" },
+    { "name": "Red Square", "price": "R48", "description": "" },
+    { "name": "Bernini", "price": "R36", "description": "" }
+  ],
+  "cooldrinks": [
+    { "name": "Coke", "price": "R23", "description": "" },
+    { "name": "Coke Zero", "price": "R23", "description": "" },
+    { "name": "Sprite", "price": "R23", "description": "" },
+    { "name": "Fanta Orange", "price": "R23", "description": "" },
+    { "name": "Creme Soda", "price": "R23", "description": "" },
+    { "name": "Grapetiser", "price": "R33", "description": "" },
+    { "name": "Appletiser", "price": "R33", "description": "" },
+    { "name": "Ice Tea", "price": "R33", "description": "" },
+    { "name": "Dry Lemon", "price": "R23", "description": "" },
+    { "name": "Cranberry Cooler", "price": "R23", "description": "" },
+    { "name": "Soda Water", "price": "R23", "description": "" },
+    { "name": "Tonic Water", "price": "R23", "description": "" },
+    { "name": "Ginger Ale", "price": "R23", "description": "" },
+    { "name": "Pink Tonic Water", "price": "R23", "description": "" }
+  ],
+  "water": [
+    { "name": "Still Water", "price": "R20", "description": "" },
+    { "name": "Sparkling Water", "price": "R20", "description": "" }
+  ],
+  "energy_drinks": [
+    { "name": "Powerade", "price": "R28", "description": "" },
+    { "name": "Redbull", "price": "R45", "description": "" },
+    { "name": "Super C", "price": "R27", "description": "" }
+  ],
+  "wine_by_glass": [
+    { "name": "Mimosa - Robertson Winery", "price": "R170", "description": "" },
     {
-      "name": "Beer",
-      "subcategories": [
-        {
-          "name": "Bottled",
-          "items": [
-            {
-              "name": "Castle",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 31
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--castle",
-              "categoryId": "beer",
-              "subcategoryId": "beer--bottle"
-            },
-            {
-              "name": "Castle Lite",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 33
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--castle-lite",
-              "categoryId": "beer",
-              "subcategoryId": "beer--bottle"
-            },
-            {
-              "name": "Castle Milk Stout",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 34
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--castle-milk-stout",
-              "categoryId": "beer",
-              "subcategoryId": "beer--bottle"
-            },
-            {
-              "name": "Amstel",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 37
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--amstel",
-              "categoryId": "beer",
-              "subcategoryId": "beer--bottle"
-            },
-            {
-              "name": "Black Label",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 33
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--black-label",
-              "categoryId": "beer",
-              "subcategoryId": "beer--bottle"
-            },
-            {
-              "name": "Hansa",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 32
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--hansa",
-              "categoryId": "beer",
-              "subcategoryId": "beer--bottle"
-            },
-            {
-              "name": "Windhoek Draught Bottle",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 40
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--windhoek-draught-bottle",
-              "categoryId": "beer",
-              "subcategoryId": "beer--bottle"
-            },
-            {
-              "name": "Flying Fish Lemon",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 39
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--flying-fish-lemon",
-              "categoryId": "beer",
-              "subcategoryId": "beer--bottle"
-            },
-            {
-              "name": "Guinness Can",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 50
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--guinness-can",
-              "categoryId": "beer",
-              "subcategoryId": "beer--can"
-            },
-            {
-              "name": "Heineken",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 37
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--heineken",
-              "categoryId": "beer",
-              "subcategoryId": "beer--bottle"
-            },
-            {
-              "name": "Heineken Zero",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 37
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--heineken-zero",
-              "categoryId": "beer",
-              "subcategoryId": "beer--bottle"
-            },
-            {
-              "name": "Lion Can",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 35
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--lion-can",
-              "categoryId": "beer",
-              "subcategoryId": "beer--can"
-            },
-            {
-              "name": "Corona",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 37
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--corona",
-              "categoryId": "beer",
-              "subcategoryId": "beer--bottle"
-            }
-          ],
-          "id": "beer--bottled-and-canned"
-        },
-        {
-          "name": "Draught",
-          "items": [
-            {
-              "name": "Hansa Draught ",
-              "prices": [
-                {
-                  "label": "300ml",
-                  "price": 34
-                },
-                {
-                  "label": "500ml",
-                  "price": 39
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--draught--hansa-draught-500ml",
-              "categoryId": "beer",
-              "subcategoryId": "beer--draught"
-            },
-            {
-              "name": "Castle Lite Draught 500ml",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 40
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--draught--castle-lite-draught-500ml",
-              "categoryId": "beer",
-              "subcategoryId": "beer--draught"
-            },
-            {
-              "name": "Black Label Draught 500ml",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 40
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--draught--black-label-draught-500ml",
-              "categoryId": "beer",
-              "subcategoryId": "beer--draught"
-            },
-            {
-              "name": "Windhoek Draught 500ml",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 39
-                }
-              ],
-              "takeaway": true,
-              "id": "beer--draught--windhoek-draught-500ml",
-              "categoryId": "beer",
-              "subcategoryId": "beer--draught"
-            }
-          ],
-          "id": "beer--draught"
-        }
-      ],
-      "id": "beer"
+      "name": "Porcupine Ridge Sauvignon Blanc",
+      "price": "R150",
+      "description": ""
+    },
+    { "name": "Nederburg Stein", "price": "R150", "description": "" },
+    { "name": "Nederburg Rosé", "price": "R155", "description": "" },
+    {
+      "name": "Robertson Light Pinotage Rosé",
+      "price": "R140",
+      "description": ""
     },
     {
-      "name": "Ciders",
-      "items": [
-        {
-          "name": "Savanna Dry",
-          "prices": [
-            {
-              "label": null,
-              "price": 43
-            }
-          ],
-          "takeaway": true,
-          "id": "ciders--savanna-dry",
-          "categoryId": "ciders"
-        },
-        {
-          "name": "Savanna Light",
-          "prices": [
-            {
-              "label": null,
-              "price": 43
-            }
-          ],
-          "takeaway": true,
-          "id": "ciders--savanna-light",
-          "categoryId": "ciders"
-        },
-        {
-          "name": "Savanna Zero",
-          "prices": [
-            {
-              "label": null,
-              "price": 43
-            }
-          ],
-          "takeaway": true,
-          "id": "ciders--savanna-zero",
-          "categoryId": "ciders"
-        },
-        {
-          "name": "Hunter's Gold",
-          "prices": [
-            {
-              "label": null,
-              "price": 39
-            }
-          ],
-          "takeaway": true,
-          "id": "ciders--hunters-gold",
-          "categoryId": "ciders"
-        },
-        {
-          "name": "Hunter's Dry",
-          "prices": [
-            {
-              "label": null,
-              "price": 39
-            }
-          ],
-          "takeaway": true,
-          "id": "ciders--hunters-dry",
-          "categoryId": "ciders"
-        },
-        {
-          "name": "Brutal Fruit",
-          "prices": [
-            {
-              "label": null,
-              "price": 39
-            }
-          ],
-          "takeaway": true,
-          "id": "ciders--brutal-fruit",
-          "categoryId": "ciders"
-        },
-        {
-          "name": "Smirnoff Pine Twist Can",
-          "prices": [
-            {
-              "label": null,
-              "price": 46
-            }
-          ],
-          "takeaway": true,
-          "id": "ciders--smirnoff-pine-twist-can",
-          "categoryId": "ciders"
-        },
-        {
-          "name": "Smirnoff Berry Twist Can",
-          "prices": [
-            {
-              "label": null,
-              "price": 46
-            }
-          ],
-          "takeaway": true,
-          "id": "ciders--smirnoff-berry-twist-can",
-          "categoryId": "ciders"
-        },
-        {
-          "name": "Tipo Tinto Can",
-          "prices": [
-            {
-              "label": null,
-              "price": 45
-            }
-          ],
-          "takeaway": true,
-          "id": "ciders--tipo-tinto-can",
-          "categoryId": "ciders"
-        },
-        {
-          "name": "Red Square",
-          "prices": [
-            {
-              "label": null,
-              "price": 48
-            }
-          ],
-          "takeaway": true,
-          "id": "ciders--red-square",
-          "categoryId": "ciders"
-        },
-        {
-          "name": "Bernini",
-          "prices": [
-            {
-              "label": null,
-              "price": 36
-            }
-          ],
-          "takeaway": true,
-          "id": "ciders--bernini",
-          "categoryId": "ciders"
-        }
-      ],
-      "id": "ciders"
+      "name": "Two Oceans Sauvignon Blanc",
+      "price": "R150",
+      "description": ""
+    },
+    { "name": "Robertson Sauvignon Blanc", "price": "R150", "description": "" },
+    {
+      "name": "Two Oceans Cabernet Sauvignon",
+      "price": "R155",
+      "description": ""
+    },
+    { "name": "Merlot", "price": "R155", "description": "" },
+    { "name": "Nederburg Baronne", "price": "R155", "description": "" },
+    { "name": "Robertson Winery Merlot", "price": "R155", "description": "" },
+    { "name": "Sparkling Wine", "price": "R160", "description": "" }
+  ],
+  "wine_by_carafe": [
+    {
+      "name": "Robertson Winery Sauvignon Blanc",
+      "price_250ml": "R37",
+      "price_500ml": "R64",
+      "description": ""
     },
     {
-      "name": "Soft Drinks",
-      "subcategories": [
-        {
-          "name": "Cooldrinks",
-          "items": [
-            {
-              "name": "Coke",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 23
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--coke",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            },
-            {
-              "name": "Coke Zero",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 23
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--coke-zero",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            },
-            {
-              "name": "Sprite",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 23
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--sprite",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            },
-            {
-              "name": "Sprite Zero",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 23
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--sprite-zero",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            },
-            {
-              "name": "Fanta Orange",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 23
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--fanta-orange",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            },
-            {
-              "name": "Creme Soda",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 23
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--creme-soda",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            },
-            {
-              "name": "Grapetiser",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 33
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--grapetiser",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            },
-            {
-              "name": "Appletiser",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 33
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--appletiser",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            },
-            {
-              "name": "Ice Tea",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 23
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--ice-tea",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            },
-            {
-              "name": "Dry Lemon",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 23
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--dry-lemon",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            },
-            {
-              "name": "Cranberry Cooler",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 23
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--cranberry-cooler",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            },
-            {
-              "name": "Soda Water",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 23
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--soda-water",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            },
-            {
-              "name": "Tonic Water",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 23
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--tonic-water",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            },
-            {
-              "name": "Ginger Ale",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 23
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--ginger-ale",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            },
-            {
-              "name": "Pink Tonic Water",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 23
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--cooldrinks--pink-tonic-water",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--cooldrinks"
-            }
-          ],
-          "id": "soft-drinks--cooldrinks"
-        },
-        {
-          "name": "Fruit Juice",
-          "items": [
-            {
-              "name": "Orange Juice 500ml",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 30
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--fruit-juice--orange-juice-500ml",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--fruit-juice"
-            },
-            {
-              "name": "Cranberry Juice 500ml",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 30
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--fruit-juice--cranberry-juice-500ml",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--fruit-juice"
-            },
-            {
-              "name": "Granadilla Juice 500ml",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 30
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--fruit-juice--granadilla-juice-500ml",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--fruit-juice"
-            },
-            {
-              "name": "Purejoy",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 24
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--fruit-juice--purejoy",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--fruit-juice"
-            }
-          ],
-          "id": "soft-drinks--fruit-juice"
-        },
-        {
-          "name": "Water",
-          "items": [
-            {
-              "name": "Still Water",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 20
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--water--still-water",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--water"
-            },
-            {
-              "name": "Sparkling Water",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 20
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--water--sparkling-water",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--water"
-            }
-          ],
-          "id": "soft-drinks--water"
-        },
-        {
-          "name": "Energy Drinks",
-          "items": [
-            {
-              "name": "Powerade",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 29
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--energy-drinks--powerade",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--energy-drinks"
-            },
-            {
-              "name": "Redbull",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 45
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--energy-drinks--redbull",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--energy-drinks"
-            },
-            {
-              "name": "Super C",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 27
-                }
-              ],
-              "takeaway": true,
-              "id": "soft-drinks--energy-drinks--super-c",
-              "categoryId": "soft-drinks",
-              "subcategoryId": "soft-drinks--energy-drinks"
-            }
-          ],
-          "id": "soft-drinks--energy-drinks"
-        }
-      ],
-      "id": "soft-drinks"
+      "name": "Robertson Winery Merlot",
+      "price_250ml": "R37",
+      "price_500ml": "R67",
+      "description": ""
     },
     {
-      "name": "Wine",
-      "subcategories": [
-        {
-          "name": "Wine List",
-          "items": [
-            {
-              "name": "Mimosa - Robertson Winery",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 170
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-list--mimosa-robertson-winery",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-list"
-            },
-            {
-              "name": "Porcupine Ridge Sauvignon Blanc",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 150
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-list--porcupine-ridge-sauvignon-blanc",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-list"
-            },
-            {
-              "name": "Nederburg Stein",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 150
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-list--nederburg-stein",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-list"
-            },
-            {
-              "name": "Nederburg Rosé",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 155
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-list--nederburg-ros",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-list"
-            },
-            {
-              "name": "Robertson Light Pinotage Rosé",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 140
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-list--robertson-light-pinotage-ros",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-list"
-            },
-            {
-              "name": "Two Oceans Sauvignon Blanc",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 150
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-list--two-oceans-sauvignon-blanc",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-list"
-            },
-            {
-              "name": "Robertson Sauvignon Blanc",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 150
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-list--robertson-sauvignon-blanc",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-list"
-            },
-            {
-              "name": "Two Oceans Cabernet Sauvignon Merlot",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 155
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-list--two-oceans-cabernet-sauvignon-merlot",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-list"
-            },
-            {
-              "name": "Nederburg Baronne",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 155
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-list--nederburg-baronne",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-list"
-            },
-            {
-              "name": "Robertson Winery Merlot",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 155
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-list--robertson-winery-merlot",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-list"
-            },
-            {
-              "name": "Sparkling Wine",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 160
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-list--sparkling-wine",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-list"
-            }
-          ],
-          "id": "wine--wine-list"
-        },
-        {
-          "name": "Wine by the Carafe",
-          "items": [
-            {
-              "name": "Robertson Winery Sauvignon Blanc",
-              "prices": [
-                {
-                  "label": "250ml",
-                  "price": 37
-                },
-                {
-                  "label": "500ml",
-                  "price": 64
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-by-the-carafe--robertson-winery-sauvignon-blanc",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-by-the-carafe"
-            },
-            {
-              "name": "Robertson Winery Merlot",
-              "prices": [
-                {
-                  "label": "250ml",
-                  "price": 37
-                },
-                {
-                  "label": "500ml",
-                  "price": 67
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-by-the-carafe--robertson-winery-merlot",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-by-the-carafe"
-            },
-            {
-              "name": "Robertson Winery Extra Light",
-              "prices": [
-                {
-                  "label": "250ml",
-                  "price": 37
-                },
-                {
-                  "label": "500ml",
-                  "price": 64
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-by-the-carafe--robertson-winery-extra-light",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-by-the-carafe"
-            },
-            {
-              "name": "Robertson Winery Rosé",
-              "prices": [
-                {
-                  "label": "250ml",
-                  "price": 37
-                },
-                {
-                  "label": "500ml",
-                  "price": 64
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-by-the-carafe--robertson-winery-ros",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-by-the-carafe"
-            },
-            {
-              "name": "Robertson Winery Sweet White",
-              "prices": [
-                {
-                  "label": "250ml",
-                  "price": 37
-                },
-                {
-                  "label": "500ml",
-                  "price": 64
-                }
-              ],
-              "takeaway": true,
-              "id": "wine--wine-by-the-carafe--robertson-winery-sweet-white",
-              "categoryId": "wine",
-              "subcategoryId": "wine--wine-by-the-carafe"
-            }
-          ],
-          "id": "wine--wine-by-the-carafe"
-        }
-      ],
-      "id": "wine"
+      "name": "Robertson Winery Extra Light",
+      "price_250ml": "R37",
+      "price_500ml": "R64",
+      "description": ""
     },
     {
-      "name": "Cocktails",
-      "items": [
-        {
-          "name": "Cheeky Cranberry",
-          "description": "Rose syrup, Menta cabana syrup, Cranberry cooler, Count Pushkin",
-          "prices": [
-            {
-              "label": null,
-              "price": 58
-            }
-          ],
-          "takeaway": true,
-          "id": "cocktails--cheeky-cranberry",
-          "categoryId": "cocktails"
-        },
-        {
-          "name": "Mango Daiquiri",
-          "description": "Mango fruit syrup, Count Pushkin",
-          "prices": [
-            {
-              "label": null,
-              "price": 58
-            }
-          ],
-          "takeaway": true,
-          "id": "cocktails--mango-daiquiri",
-          "categoryId": "cocktails"
-        },
-        {
-          "name": "Mojito",
-          "description": "Count Pushkin, Menta Cubano syrup, Lemonade base syrup, soda water",
-          "prices": [
-            {
-              "label": null,
-              "price": 64
-            }
-          ],
-          "takeaway": true,
-          "id": "cocktails--mojito",
-          "categoryId": "cocktails"
-        },
-        {
-          "name": "Blue Lagoon",
-          "description": "Count Pushkin, Blue oceans syrup, Lemonade base syrup, Sprite",
-          "prices": [
-            {
-              "label": null,
-              "price": 64
-            }
-          ],
-          "takeaway": true,
-          "id": "cocktails--blue-lagoon",
-          "categoryId": "cocktails"
-        },
-        {
-          "name": "Lords Special",
-          "description": "Count Pushkin, Fanta orange, Peach tea",
-          "prices": [
-            {
-              "label": null,
-              "price": 58
-            }
-          ],
-          "takeaway": true,
-          "id": "cocktails--lords-special",
-          "categoryId": "cocktails"
-        },
-        {
-          "name": "Mixed Berry Bliss",
-          "description": "Mixed berry fruit, Count Pushkin, Fitch & Leeds ginger ale",
-          "prices": [
-            {
-              "label": null,
-              "price": 64
-            }
-          ],
-          "takeaway": true,
-          "id": "cocktails--mixed-berry-bliss",
-          "categoryId": "cocktails"
-        },
-        {
-          "name": "Strawberry Daiquiri",
-          "description": "Strawberry fruit, Count Pushkin",
-          "prices": [
-            {
-              "label": null,
-              "price": 58
-            }
-          ],
-          "takeaway": true,
-          "id": "cocktails--strawberry-daiquiri",
-          "categoryId": "cocktails"
-        },
-        {
-          "name": "Pina Colada",
-          "description": "Pina colada syrup, Count Pushkin, Malibu, Frappease powder",
-          "prices": [
-            {
-              "label": null,
-              "price": 64
-            }
-          ],
-          "takeaway": true,
-          "id": "cocktails--pina-colada",
-          "categoryId": "cocktails"
-        },
-        {
-          "name": "Margarita",
-          "description": "Dry bitter orange syrup, Lemonade syrup, Jose Cuervo Silver tequila",
-          "prices": [
-            {
-              "label": null,
-              "price": 58
-            }
-          ],
-          "takeaway": true,
-          "id": "cocktails--margarita",
-          "categoryId": "cocktails"
-        }
-      ],
-      "id": "cocktails"
+      "name": "Robertson Winery Rosé",
+      "price_250ml": "R37",
+      "price_500ml": "R64",
+      "description": ""
     },
     {
-      "name": "Shooters",
-      "subcategories": [
-        {
-          "name": "Mixed Shooters",
-          "items": [
-            {
-              "name": "B52",
-              "description": "Tequila Silver, Kahlúa",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 28
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--mixed-shooters--b52",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--mixed-shooters"
-            },
-            {
-              "name": "Baby Angel",
-              "description": "Tequila Silver, Po-10-C",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 28
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--mixed-shooters--baby-angel",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--mixed-shooters"
-            },
-            {
-              "name": "Black Ninja",
-              "description": "Stroh Rum, Zappa Black",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 28
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--mixed-shooters--black-ninja",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--mixed-shooters"
-            },
-            {
-              "name": "Hazelnut Caffe Latte",
-              "description": "Frangelico, Amarula, Kahlúa",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 28
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--mixed-shooters--hazelnut-caffe-latte",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--mixed-shooters"
-            },
-            {
-              "name": "Oyster",
-              "description": "Tabasco, El Bravo",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 26
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--mixed-shooters--oyster",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--mixed-shooters"
-            },
-            {
-              "name": "Banana Split",
-              "description": "Amarula, Butlers Banana",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 27
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--mixed-shooters--banana-split",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--mixed-shooters"
-            },
-            {
-              "name": "Springbok",
-              "description": "Amarula, Butlers Peppermint",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 22
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--mixed-shooters--springbok",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--mixed-shooters"
-            },
-            {
-              "name": "Blowjob",
-              "description": "Amarula, Ponchos Tequila",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 27
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--mixed-shooters--blowjob",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--mixed-shooters"
-            }
-          ],
-          "id": "shooters--mixed-shooters"
-        },
-        {
-          "name": "Single Shooters",
-          "items": [
-            {
-              "name": "Jägermeister",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 28
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--single-shooters--j-germeister",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--single-shooters"
-            },
-            {
-              "name": "Black Widow",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 29
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--single-shooters--black-widow",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--single-shooters"
-            },
-            {
-              "name": "Tequila Gold",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 29
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--single-shooters--tequila-gold",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--single-shooters"
-            },
-            {
-              "name": "Tequila Silver",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 29
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--single-shooters--tequila-silver",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--single-shooters"
-            },
-            {
-              "name": "Ponchos Tequila",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 30
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--single-shooters--ponchos-tequila",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--single-shooters"
-            },
-            {
-              "name": "El Bravo",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 20
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--single-shooters--el-bravo",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--single-shooters"
-            },
-            {
-              "name": "Po-10-C",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 20
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--single-shooters--po-10-c",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--single-shooters"
-            },
-            {
-              "name": "Strawberry Lips",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 22
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--single-shooters--strawberry-lips",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--single-shooters"
-            },
-            {
-              "name": "Zappa Black",
-              "prices": [
-                {
-                  "label": null,
-                  "price": 22
-                }
-              ],
-              "takeaway": true,
-              "id": "shooters--single-shooters--zappa-black",
-              "categoryId": "shooters",
-              "subcategoryId": "shooters--single-shooters"
-            }
-          ],
-          "id": "shooters--single-shooters"
-        }
-      ],
-      "id": "shooters"
-    },
-    {
-      "name": "Hot Drinks",
-      "items": [
-        {
-          "name": "Cappuccino",
-          "description": "With cream or froth",
-          "prices": [
-            {
-              "label": null,
-              "price": 37
-            }
-          ],
-          "takeaway": true,
-          "id": "hot-drinks--cappuccino",
-          "categoryId": "hot-drinks"
-        },
-        {
-          "name": "Double Espresso",
-          "prices": [
-            {
-              "label": null,
-              "price": 42
-            }
-          ],
-          "takeaway": true,
-          "id": "hot-drinks--double-espresso",
-          "categoryId": "hot-drinks"
-        },
-        {
-          "name": "Americano",
-          "prices": [
-            {
-              "label": null,
-              "price": 34
-            }
-          ],
-          "takeaway": true,
-          "id": "hot-drinks--americano",
-          "categoryId": "hot-drinks"
-        },
-        {
-          "name": "Latte",
-          "prices": [
-            {
-              "label": null,
-              "price": 38
-            }
-          ],
-          "takeaway": true,
-          "id": "hot-drinks--latte",
-          "categoryId": "hot-drinks"
-        },
-        {
-          "name": "Chai Latte",
-          "prices": [
-            {
-              "label": null,
-              "price": 40
-            }
-          ],
-          "takeaway": true,
-          "id": "hot-drinks--chai-latte",
-          "categoryId": "hot-drinks"
-        },
-        {
-          "name": "Hot Chocolate",
-          "prices": [
-            {
-              "label": null,
-              "price": 42
-            }
-          ],
-          "takeaway": true,
-          "id": "hot-drinks--hot-chocolate",
-          "categoryId": "hot-drinks"
-        },
-        {
-          "name": "Milo",
-          "prices": [
-            {
-              "label": null,
-              "price": 42
-            }
-          ],
-          "takeaway": true,
-          "id": "hot-drinks--milo",
-          "categoryId": "hot-drinks"
-        },
-        {
-          "name": "Irish Coffee",
-          "prices": [
-            {
-              "label": null,
-              "price": 42
-            }
-          ],
-          "takeaway": true,
-          "id": "hot-drinks--irish-coffee",
-          "categoryId": "hot-drinks"
-        },
-        {
-          "name": "Five Roses Tea",
-          "prices": [
-            {
-              "label": null,
-              "price": 15
-            }
-          ],
-          "takeaway": true,
-          "id": "hot-drinks--five-roses-tea",
-          "categoryId": "hot-drinks"
-        },
-        {
-          "name": "Rooibos Tea",
-          "prices": [
-            {
-              "label": null,
-              "price": 15
-            }
-          ],
-          "takeaway": true,
-          "id": "hot-drinks--rooibos-tea",
-          "categoryId": "hot-drinks"
-        },
-        {
-          "name": "Iced Coffee",
-          "prices": [
-            {
-              "label": null,
-              "price": 34
-            }
-          ],
-          "takeaway": true,
-          "id": "hot-drinks--iced-coffee",
-          "categoryId": "hot-drinks"
-        },
-        {
-          "name": "Iced Chai Latte",
-          "prices": [
-            {
-              "label": null,
-              "price": 40
-            }
-          ],
-          "takeaway": true,
-          "id": "hot-drinks--iced-chai-latte",
-          "categoryId": "hot-drinks"
-        }
-      ],
-      "id": "hot-drinks"
-    },
-    {
-      "name": "Other",
-      "items": [
-        {
-          "name": "Old Brown Sherry",
-          "prices": [
-            {
-              "label": null,
-              "price": 25
-            }
-          ],
-          "takeaway": true,
-          "id": "other--old-brown-sherry",
-          "categoryId": "other"
-        },
-        {
-          "name": "Corkage Fee",
-          "prices": [
-            {
-              "label": null,
-              "price": 45
-            }
-          ],
-          "takeaway": true,
-          "id": "other--corkage-fee",
-          "categoryId": "other"
-        }
-      ],
-      "id": "other"
+      "name": "Robertson Winery Sweet White",
+      "price_250ml": "R37",
+      "price_500ml": "R64",
+      "description": ""
     }
+  ],
+  "other_wine": [
+    { "name": "Old Brown Sherry", "price": "R25", "description": "" },
+    { "name": "Corkage Fee", "price": "R45", "description": "" }
+  ],
+  "cocktails": [
+    {
+      "name": "Cheeky Cranberry",
+      "price": "R58",
+      "description": "Rose syrup, Menta cabana syrup, Cranberry cooler, Count Pushkin"
+    },
+    {
+      "name": "Mango Daiquiri",
+      "price": "R58",
+      "description": "Mango fruit syrup, Count Pushkin"
+    },
+    {
+      "name": "Mojito",
+      "price": "R64",
+      "description": "Count Pushkin, Menta Cubano syrup, Lemonade base syrup, soda water"
+    },
+    {
+      "name": "Blue Lagoon",
+      "price": "R64",
+      "description": "Count Pushkin, Blue oceans syrup, Lemonade base syrup, Sprite"
+    },
+    {
+      "name": "Lords Special",
+      "price": "R58",
+      "description": "Count Pushkin, Fanta orange, Peach tea"
+    },
+    {
+      "name": "Mixed Berry Bliss",
+      "price": "R64",
+      "description": "Mixed berry fruit, Count Pushkin, Fitch & Leeds ginger ale"
+    },
+    {
+      "name": "Strawberry Daiquiri",
+      "price": "R58",
+      "description": "Strawberry fruit, Count Pushkin"
+    },
+    {
+      "name": "Pina Colada",
+      "price": "R64",
+      "description": "Pina colada syrup, Count Pushkin, Malibu, Frappese powder"
+    },
+    {
+      "name": "Margarita",
+      "price": "R58",
+      "description": "Dry bitter orange syrup, Lemonade syrup, Jose Cuervo Silver tequila"
+    }
+  ],
+  "shooters_mixed": [
+    { "name": "B52", "price": "R28", "description": "Tequila Silver, Kahlúa" },
+    {
+      "name": "Baby Angel",
+      "price": "R28",
+      "description": "Tequila Silver, Po-10-C"
+    },
+    {
+      "name": "Black Ninja",
+      "price": "R28",
+      "description": "Stroh Rum, Zappa Black"
+    },
+    {
+      "name": "Hazelnut Caffe Latte",
+      "price": "R28",
+      "description": "Frangelico, Amarula, Kahlúa"
+    },
+    { "name": "Oyster", "price": "R26", "description": "Tabasco, El Bravo" },
+    {
+      "name": "Banana Split",
+      "price": "R27",
+      "description": "Amarula, Butlers Banana"
+    },
+    {
+      "name": "Springbok",
+      "price": "R22",
+      "description": "Amarula, Butlers Peppermint"
+    },
+    {
+      "name": "Blowjob",
+      "price": "R27",
+      "description": "Amarula, Ponchos Tequila"
+    }
+  ],
+  "shooters_single": [
+    { "name": "Jägermeister", "price": "R28", "description": "" },
+    { "name": "Tequila Silver", "price": "R29", "description": "" },
+    { "name": "Po-10-C", "price": "R20", "description": "" },
+    { "name": "Black Widow", "price": "R29", "description": "" },
+    { "name": "Ponchos Tequila", "price": "R30", "description": "" },
+    { "name": "Strawberry Lips", "price": "R22", "description": "" },
+    { "name": "Tequila Gold", "price": "R29", "description": "" },
+    { "name": "El Bravo", "price": "R20", "description": "" },
+    { "name": "Zappa Black", "price": "R22", "description": "" }
+  ],
+  "hot_drinks": [
+    {
+      "name": "Cappuccino",
+      "price": "R37",
+      "description": "With cream or froth"
+    },
+    { "name": "Double Espresso", "price": "R42", "description": "" },
+    { "name": "Americano", "price": "R34", "description": "" },
+    { "name": "Latte", "price": "R38", "description": "" },
+    { "name": "Chai Latte", "price": "R40", "description": "" },
+    { "name": "Hot Chocolate", "price": "R42", "description": "" },
+    { "name": "Milo", "price": "R42", "description": "" },
+    { "name": "Irish Coffee", "price": "R42", "description": "" },
+    { "name": "Five Roses Tea", "price": "R15", "description": "" },
+    { "name": "Rooibos Tea", "price": "R15", "description": "" },
+    { "name": "Iced Coffee", "price": "R34", "description": "" },
+    { "name": "Iced Chai Latte", "price": "R40", "description": "" }
   ]
 }
