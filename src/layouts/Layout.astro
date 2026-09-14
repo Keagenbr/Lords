@@ -2,7 +2,6 @@
 import "../styles/scss/global/_index.scss";
 // import "../lib/nav.js";
 
-import Nav from "../components/Nav"; // Import the navigation component
 const { title = "Lords and Legends" } = Astro.props;
 ---
 
@@ -44,8 +43,6 @@ const { title = "Lords and Legends" } = Astro.props;
         <!-- <script is:inline src="../lib/nav.js"></script> -->
     </head>
     <body>
-        <Nav />
-
         <slot />
     </body>
 </html>

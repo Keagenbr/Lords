@@ -1,5 +1,7 @@
 ---
 import Layout from "../../layouts/Layout.astro";
+import Nav from "../../components/Nav"; // Import the navigation component
+
 import staffData from "../../lib/staffSales/sales_by_staff.json";
 
 // Calculate stats for all staff
@@ -23,6 +25,7 @@ const staffList = Object.values(staffData)
 const totalAllStaff = staffList.reduce((sum, s) => sum + s.totalSales, 0);
 ---
 
+<Nav />
 <Layout title="Staff Dashboard">
     <main class="container">
         <h1>Staff Performance Dashboard</h1>
