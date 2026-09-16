@@ -1,12 +1,55 @@
 ---
 import Layout from "../layouts/Layout.astro"; // Import the main layout part
 
+// import headerImg from "../../src/assets/headerImg.jpg";
+
 const { title } = Astro.props;
 ---
 
 <Layout title="Home">
     <header class="home-header">
-        <h1>Welcome to Lords and Legends {title}</h1>
-        <div></div>
+        <main>
+            <!-- <img
+                src="../../src/assets/headerImg.jpg"
+                width="100%"
+                alt="Header Image"
+                class="home-header-img"
+            /> -->
+            <h1>Welcome to Lords and Legends</h1>
+        </main>
     </header>
+
+    <style lang="scss">
+        .home-header {
+            top: var(--nav-header);
+            color: var(--text-color);
+            position: relative;
+            min-height: calc(100vh - var(--nav-header));
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background:
+                linear-gradient(
+                    to bottom,
+                    hsla(183 85.4% 2.3%/ 0.8),
+                    transparent
+                ),
+                url("../../src/assets/headerImg.jpg") no-repeat center center;
+            background-size: cover;
+            background-attachment: fixed;
+            display: flex;
+            position: relative;
+            align-items: center;
+            justify-content: center;
+        }
+        @media (max-width: 768px) {
+            .home-header {
+                top: var(--nav-headerM);
+                display: flex;
+                position: relative;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+    </style>
 </Layout>
