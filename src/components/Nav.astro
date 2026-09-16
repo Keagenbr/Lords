@@ -1,16 +1,20 @@
 ---
 // Navigation.astro - Responsive Navigation with Animated Hamburger Menu
 // Place in: src/components/Navigation.astro
+//
+
+import LogoSrcMobile from "../../src/assets/L&LmobileLogo.svg";
+import LogoSrcDesktop from "../../src/assets/LordsLogo.svg";
 
 interface Props {
     logoSrc?: string;
     logoAlt?: string;
 }
 
-const {
-    logoSrc = "../../src/assets/LordsLogo.png",
-    logoAlt = "Restaurant Logo",
-} = Astro.props;
+// const {
+//     logoSrcDesktop = "../../src/assets/LordsLogo.png",
+//     logoAlt = "Restaurant Logo",
+// } = Astro.props;
 
 const navItems = [
     { label: "Home", href: "/", icon: "home" },
@@ -20,7 +24,7 @@ const navItems = [
 ];
 ---
 
-<header
+<div
     class="nav-header"
     x-data="{
   mobileMenuOpen: false,
@@ -41,7 +45,8 @@ const navItems = [
     <nav class="nav-container">
         <!-- Logo -->
         <a href="/" class="nav-logo" @click="closeMobileMenu()">
-            <img src={logoSrc} alt={logoAlt} class="logo-img" />
+            <LogoSrcDesktop class="logo-img" />
+            <LogoSrcMobile class="logo-img-mobile" />
         </a>
 
         <!-- Desktop Navigation -->
@@ -87,7 +92,7 @@ const navItems = [
                     class="mobile-nav-link"
                     style={`animation-delay: ${index * 50}ms`}
                 >
-                    <span class="mobile-link-text">{item.label}</span>
+                    <span class="mobile-nav-link-text">{item.label}</span>
                 </a>
             ))}
         </div>
@@ -105,17 +110,17 @@ const navItems = [
         x-transition:leave-start="opacity-50"
         x-transition:leave-end="opacity-0"
     ></div>
-</header>
+</div>
 
-<style>
+<style lang="scss">
     /* Header & Navigation Container */
     .nav-header {
-        position: fixed;
+        position: absolute;
         top: 0;
         left: 0;
         right: 0;
         z-index: 1000;
-        background: var(--host-card, #ffffff);
+        background: var(--nav-bg);
         border-bottom: 1px solid var(--host-border, #e5e7eb);
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
@@ -138,9 +143,12 @@ const navItems = [
     }
 
     .logo-img {
-        height: 48px;
+        height: 6em;
         width: auto;
-        object-fit: contain;
+        object-fit: cover;
+        &-mobile {
+            display: none;
+        }
     }
 
     /* Desktop Navigation */
@@ -198,7 +206,7 @@ const navItems = [
         border: none;
         padding: 0.5rem;
         cursor: pointer;
-        z-index: 1001;
+        z-index: 1101;
     }
 
     .hamburger-lines {
@@ -238,25 +246,26 @@ const navItems = [
     .mobile-menu {
         display: none;
         position: fixed;
-        top: 80px;
+        top: 0;
         left: 0;
         right: 0;
         background: var(--host-card, #ffffff);
         border-bottom: 1px solid var(--host-border, #e5e7eb);
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-        z-index: 999;
-        max-height: calc(100vh - 80px);
+        z-index: 1100;
+        // max-height: calc(100vh - 80px);
         overflow-y: auto;
     }
 
     .mobile-menu-content {
+        margin-top: 20%;
         padding: 1rem;
     }
 
     .mobile-nav-link {
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: center;
         padding: 1rem 1.25rem;
         margin-bottom: 0.5rem;
         color: var(--host-fg, #1f2937);
@@ -293,8 +302,8 @@ const navItems = [
         display: none;
         position: fixed;
         inset: 0;
-        background: #000;
-        z-index: 998;
+        background: hsla(183 85.4% 42.9% / 0.38);
+        z-index: 1000;
     }
 
     /* Responsive Styles */
@@ -316,7 +325,11 @@ const navItems = [
         }
 
         .logo-img {
-            height: 40px;
+            display: none;
+            &-mobile {
+                display: block;
+                height: 3.5em;
+            }
         }
 
         .nav-container {

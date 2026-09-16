@@ -6,7 +6,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "sass": "sass --watch --poll --no-source-map src/styles/scss/main.scss:src/styles/style.css",
+    "sass": "sass --watch --poll --no-source-map src/styles/scss/index.scss:src/style.css",
     "dev": "astro dev ",
     "build": "astro build",
     "preview": "astro preview",

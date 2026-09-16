@@ -5,11 +5,11 @@ import react from "@astrojs/react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  // vite: {
-  //   css: {
-  //     transformer: "postcss",
-  //   },
-  // },
+  vite: {
+    css: {
+      transformer: "postcss",
+    },
+  },
   integrations: [react()],
 
   vite: {

@@ -1,21 +1,21 @@
 :root {
-  --primary-bg-color-light: hsl(30, 50%, 99%);
-  --primary-bg-color-dark: hsl(20, 100%, 5%);
+    --primary-bg-color-light: hsl(30, 50%, 99%);
+    --primary-bg-color-dark: hsl(20, 100%, 5%);
 
-  --nav-bg-color: hsl(17, 10%, 86%);
+    --nav-bg: hsl(17, 10%, 86%);
 
-  --primary-text-color: hsl(30, 50%, 99%);
-  --menu-txt-color-light: hsl(20, 100%, 5%);
-  --menu-txt-color-dark: hsl(30, 50%, 99%);
+    --primary-text-color: hsl(30, 50%, 99%);
+    --menu-txt-color-light: hsl(20, 100%, 5%);
+    --menu-txt-color-dark: hsl(30, 50%, 99%);
 
-  --active-text-color: hsl(16, 37%, 57%);
+    --active-text-color: hsl(16, 37%, 57%);
 
-  --MenuColor: hsl(173.8deg 74.19% 51.37%);
+    --MenuColor: hsl(173.8deg 74.19% 51.37%);
 
-  --primary-bg-color: var.(--primary-bg-color-light);
-  --txt-color: var.(--menu-txt-color-light);
+    --primary-bg-color: var.(--primary-bg-color-light);
+    --txt-color: var.(--menu-txt-color-light);
 
-  @media (prefers-color-scheme: dark) {
-    --txt-color: var.(--menu-txt-color-dark);
-  }
+    @media (prefers-color-scheme: dark) {
+        --txt-color: var.(--menu-txt-color-dark);
+    }
 }

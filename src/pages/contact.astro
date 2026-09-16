@@ -1,11 +1,9 @@
 ---
 import Layout from "../layouts/Layout.astro"; // Import the main layout part
-import Nav from "../components/Nav.astro"; // Import the navigation component
 
-const { title } = Astro.props;
+const { title = "Contact Us" } = Astro.props;
 ---
 
-<Nav />
 <Layout>
     <h1>Welcome to Lords and Legends {title}</h1>
 </Layout>
