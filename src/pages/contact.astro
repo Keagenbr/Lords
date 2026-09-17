@@ -1,8 +1,27 @@
 ---
 import Layout from "../layouts/Layout.astro"; // Import the main layout part
-const { title } = Astro.props;
+
+const { title = "Contact Us" } = Astro.props;
 ---
 
 <Layout>
-  <h1>Welcome to Lords and Legends {title}</h1>
+    <main class="contact">
+        <h1>Welcome to Lords and Legends {title}</h1>
+    </main>
 </Layout>
+<style lang="scss">
+    .contact {
+        top: var(--nav-header);
+        position: relative;
+        // min-height: calc(50em - var(--nav-header));
+        // max-width: 1080px;
+        // max-height: 1080px;
+        margin: 0 10%;
+    }
+
+    @media (max-width: 768px) {
+        .contact {
+            top: var(--nav-headerM);
+        }
+    }
+</style>

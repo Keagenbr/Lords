@@ -1,0 +1,231 @@
+{
+  "beer": [
+    { "name": "Castle", "price": "R31", "description": "" },
+    { "name": "Castle Lite", "price": "R33", "description": "" },
+    { "name": "Castle Milk Stout", "price": "R33", "description": "" },
+    { "name": "Amstel", "price": "R27", "description": "" },
+    { "name": "Black Label", "price": "R33", "description": "" },
+    { "name": "Hansa", "price": "R32", "description": "" },
+    { "name": "Windhoek Dr Bottle", "price": "R40", "description": "" },
+    { "name": "Flying Fish Lemon", "price": "R39", "description": "" },
+    { "name": "Guinness Can", "price": "R50", "description": "" },
+    { "name": "Heineken", "price": "R37", "description": "" },
+    { "name": "Heineken Zero", "price": "R37", "description": "" },
+    { "name": "Lion Can", "price": "R35", "description": "" },
+    { "name": "Corona", "price": "R37", "description": "" }
+  ],
+  "ciders": [
+    { "name": "Savanna Dry", "price": "R33", "description": "" },
+    { "name": "Savanna Light", "price": "R33", "description": "" },
+    { "name": "Savanna Zero", "price": "R33", "description": "" },
+    { "name": "Hunter Gold", "price": "R39", "description": "" },
+    { "name": "Hunter Dry", "price": "R39", "description": "" },
+    { "name": "Brutal Fruits", "price": "R39", "description": "" },
+    { "name": "Smirnoff Pine Twist Can", "price": "R46", "description": "" },
+    { "name": "Smirnoff Berry Twist Can", "price": "R46", "description": "" },
+    { "name": "Tipo Tino Can", "price": "R45", "description": "" },
+    { "name": "Red Square", "price": "R48", "description": "" },
+    { "name": "Bernini", "price": "R36", "description": "" }
+  ],
+  "cooldrinks": [
+    { "name": "Coke", "price": "R23", "description": "" },
+    { "name": "Coke Zero", "price": "R23", "description": "" },
+    { "name": "Sprite", "price": "R23", "description": "" },
+    { "name": "Fanta Orange", "price": "R23", "description": "" },
+    { "name": "Creme Soda", "price": "R23", "description": "" },
+    { "name": "Grapetiser", "price": "R33", "description": "" },
+    { "name": "Appletiser", "price": "R33", "description": "" },
+    { "name": "Ice Tea", "price": "R33", "description": "" },
+    { "name": "Dry Lemon", "price": "R23", "description": "" },
+    { "name": "Cranberry Cooler", "price": "R23", "description": "" },
+    { "name": "Soda Water", "price": "R23", "description": "" },
+    { "name": "Tonic Water", "price": "R23", "description": "" },
+    { "name": "Ginger Ale", "price": "R23", "description": "" },
+    { "name": "Pink Tonic Water", "price": "R23", "description": "" }
+  ],
+  "water": [
+    { "name": "Still Water", "price": "R20", "description": "" },
+    { "name": "Sparkling Water", "price": "R20", "description": "" }
+  ],
+  "energy_drinks": [
+    { "name": "Powerade", "price": "R28", "description": "" },
+    { "name": "Redbull", "price": "R45", "description": "" },
+    { "name": "Super C", "price": "R27", "description": "" }
+  ],
+  "wine_by_glass": [
+    { "name": "Mimosa - Robertson Winery", "price": "R170", "description": "" },
+    {
+      "name": "Porcupine Ridge Sauvignon Blanc",
+      "price": "R150",
+      "description": ""
+    },
+    { "name": "Nederburg Stein", "price": "R150", "description": "" },
+    { "name": "Nederburg Rosé", "price": "R155", "description": "" },
+    {
+      "name": "Robertson Light Pinotage Rosé",
+      "price": "R140",
+      "description": ""
+    },
+    {
+      "name": "Two Oceans Sauvignon Blanc",
+      "price": "R150",
+      "description": ""
+    },
+    { "name": "Robertson Sauvignon Blanc", "price": "R150", "description": "" },
+    {
+      "name": "Two Oceans Cabernet Sauvignon",
+      "price": "R155",
+      "description": ""
+    },
+    { "name": "Merlot", "price": "R155", "description": "" },
+    { "name": "Nederburg Baronne", "price": "R155", "description": "" },
+    { "name": "Robertson Winery Merlot", "price": "R155", "description": "" },
+    { "name": "Sparkling Wine", "price": "R160", "description": "" }
+  ],
+  "wine_by_carafe": [
+    {
+      "name": "Robertson Winery Sauvignon Blanc",
+      "price_250ml": "R37",
+      "price_500ml": "R64",
+      "description": ""
+    },
+    {
+      "name": "Robertson Winery Merlot",
+      "price_250ml": "R37",
+      "price_500ml": "R67",
+      "description": ""
+    },
+    {
+      "name": "Robertson Winery Extra Light",
+      "price_250ml": "R37",
+      "price_500ml": "R64",
+      "description": ""
+    },
+    {
+      "name": "Robertson Winery Rosé",
+      "price_250ml": "R37",
+      "price_500ml": "R64",
+      "description": ""
+    },
+    {
+      "name": "Robertson Winery Sweet White",
+      "price_250ml": "R37",
+      "price_500ml": "R64",
+      "description": ""
+    }
+  ],
+  "other_wine": [
+    { "name": "Old Brown Sherry", "price": "R25", "description": "" },
+    { "name": "Corkage Fee", "price": "R45", "description": "" }
+  ],
+  "cocktails": [
+    {
+      "name": "Cheeky Cranberry",
+      "price": "R58",
+      "description": "Rose syrup, Menta cabana syrup, Cranberry cooler, Count Pushkin"
+    },
+    {
+      "name": "Mango Daiquiri",
+      "price": "R58",
+      "description": "Mango fruit syrup, Count Pushkin"
+    },
+    {
+      "name": "Mojito",
+      "price": "R64",
+      "description": "Count Pushkin, Menta Cubano syrup, Lemonade base syrup, soda water"
+    },
+    {
+      "name": "Blue Lagoon",
+      "price": "R64",
+      "description": "Count Pushkin, Blue oceans syrup, Lemonade base syrup, Sprite"
+    },
+    {
+      "name": "Lords Special",
+      "price": "R58",
+      "description": "Count Pushkin, Fanta orange, Peach tea"
+    },
+    {
+      "name": "Mixed Berry Bliss",
+      "price": "R64",
+      "description": "Mixed berry fruit, Count Pushkin, Fitch & Leeds ginger ale"
+    },
+    {
+      "name": "Strawberry Daiquiri",
+      "price": "R58",
+      "description": "Strawberry fruit, Count Pushkin"
+    },
+    {
+      "name": "Pina Colada",
+      "price": "R64",
+      "description": "Pina colada syrup, Count Pushkin, Malibu, Frappese powder"
+    },
+    {
+      "name": "Margarita",
+      "price": "R58",
+      "description": "Dry bitter orange syrup, Lemonade syrup, Jose Cuervo Silver tequila"
+    }
+  ],
+  "shooters_mixed": [
+    { "name": "B52", "price": "R28", "description": "Tequila Silver, Kahlúa" },
+    {
+      "name": "Baby Angel",
+      "price": "R28",
+      "description": "Tequila Silver, Po-10-C"
+    },
+    {
+      "name": "Black Ninja",
+      "price": "R28",
+      "description": "Stroh Rum, Zappa Black"
+    },
+    {
+      "name": "Hazelnut Caffe Latte",
+      "price": "R28",
+      "description": "Frangelico, Amarula, Kahlúa"
+    },
+    { "name": "Oyster", "price": "R26", "description": "Tabasco, El Bravo" },
+    {
+      "name": "Banana Split",
+      "price": "R27",
+      "description": "Amarula, Butlers Banana"
+    },
+    {
+      "name": "Springbok",
+      "price": "R22",
+      "description": "Amarula, Butlers Peppermint"
+    },
+    {
+      "name": "Blowjob",
+      "price": "R27",
+      "description": "Amarula, Ponchos Tequila"
+    }
+  ],
+  "shooters_single": [
+    { "name": "Jägermeister", "price": "R28", "description": "" },
+    { "name": "Tequila Silver", "price": "R29", "description": "" },
+    { "name": "Po-10-C", "price": "R20", "description": "" },
+    { "name": "Black Widow", "price": "R29", "description": "" },
+    { "name": "Ponchos Tequila", "price": "R30", "description": "" },
+    { "name": "Strawberry Lips", "price": "R22", "description": "" },
+    { "name": "Tequila Gold", "price": "R29", "description": "" },
+    { "name": "El Bravo", "price": "R20", "description": "" },
+    { "name": "Zappa Black", "price": "R22", "description": "" }
+  ],
+  "hot_drinks": [
+    {
+      "name": "Cappuccino",
+      "price": "R37",
+      "description": "With cream or froth"
+    },
+    { "name": "Double Espresso", "price": "R42", "description": "" },
+    { "name": "Americano", "price": "R34", "description": "" },
+    { "name": "Latte", "price": "R38", "description": "" },
+    { "name": "Chai Latte", "price": "R40", "description": "" },
+    { "name": "Hot Chocolate", "price": "R42", "description": "" },
+    { "name": "Milo", "price": "R42", "description": "" },
+    { "name": "Irish Coffee", "price": "R42", "description": "" },
+    { "name": "Five Roses Tea", "price": "R15", "description": "" },
+    { "name": "Rooibos Tea", "price": "R15", "description": "" },
+    { "name": "Iced Coffee", "price": "R34", "description": "" },
+    { "name": "Iced Chai Latte", "price": "R40", "description": "" }
+  ]
+}

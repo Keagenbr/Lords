@@ -1,7 +1,10 @@
 ---
-import "../styles/scss/style.scss";
+// import "../../src/style.css";
+import Nav from "../components/Nav.astro"; // Import the navigation component
+
 // import "../lib/nav.js";
-const { title } = Astro.props;
+
+const { title = "Lords and Legends" } = Astro.props;
 ---
 
 <!doctype html>
@@ -13,36 +16,82 @@ const { title } = Astro.props;
         <link
             rel="apple-touch-icon"
             sizes="180x180"
-            href="src/assets/favicon/apple-touch-icon.png"
+            href="../src/assets/favicon/apple-touch-icon.png"
         />
         <link
             rel="icon"
             type="image/png"
             sizes="32x32"
-            href="src/assets/favicon/favicon-32x32.png"
+            href="../src/assets/favicon/favicon-32x32.png"
         />
         <link
             rel="icon"
             type="image/png"
             sizes="16x16"
-            href="src/assets/favicon/favicon-16x16.png"
+            href="../src/assets/favicon/favicon-16x16.png"
         />
-        <link rel="manifest" href="src/assets/favicon/site.webmanifest" />
+        <link rel="manifest" href="../src/assets/favicon/site.webmanifest" />
         <link
             rel="icon"
             type="image/svg+xml"
-            href="src/assets/favicon/favicon.svg"
+            href="../src/assets/favicon/favicon.svg"
         />
-        <link rel="icon" href="src/assets/favicon/favicon.ico" />
+        <link rel="icon" href="../src/assets/favicon/favicon.ico" />
         <!-- style sheets -->
         <!-- <link rel="stylesheet" href="dist/styles/style.css" /> -->
 
         <!-- <meta name="generator" content={Astro.generator} /> -->
-        <title>{title || "Lords and Legends"}</title>
+        <title>{title}</title>
+        <script
+            is:inline
+            defer
+            src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+        ></script>
         <!-- <script is:inline src="../lib/nav.js"></script> -->
     </head>
+
     <body>
-        <slot name="nav" />
+        <Nav />
         <slot />
+        <style lang="scss">
+            body {
+                height: 200vh;
+                overflow-x: hidden;
+                top: var(--nav-header);
+                position: relative;
+            }
+            :root {
+                --bg-color-light: hsl(30, 50%, 99%);
+                --bg-color-dark: hsl(20, 100%, 5%);
+
+                --ham-color: hsl(215 30% 10%);
+
+                --nav-bg: hsl(17, 10%, 86%);
+                --nav-bg-highlight: hsl(17 30% 85.5%);
+                --nav-bg-shadow: hsl(226 99.6% 7%);
+                --nav-bg-shadowA: hsla(226 99.6% 7%/0.5);
+                --nav-header: 8em;
+                --nav-headerM: 5em;
+
+                --text-color: hsl(30, 50%, 99%);
+                --text-color-light: hsl(20, 100%, 5%);
+                --text-color-dark: hsl(30, 50%, 99%);
+
+                --text-color-hover: hsl(16, 45%, 30%);
+
+                --MenuColor: hsl(185 85% 40%);
+                --MenuColorA: hsla(185 85% 5% / 0.9);
+
+                --img-overlay: hsla(183 85.4% 2.3%/0.8);
+
+                --bg-color: var.(--bg-color-light);
+                --txt-color: var.(--text-color-light);
+
+                @media (prefers-color-scheme: dark) {
+                    --txt-color: var.(--text-color-dark);
+                    --bg-color: var.(--bg-color-dark);
+                }
+            }
+        </style>
     </body>
 </html>

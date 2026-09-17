@@ -1,0 +1,359 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import staffData from "../../lib/staffSales/sales_by_staff.json";
+
+export function getStaticPaths() {
+    return Object.keys(staffData).map((name) => ({
+        params: { name: name.toLowerCase().replace(/\s+/g, "-") },
+        props: { staffName: name, data: staffData[name] },
+    }));
+}
+
+const { staffName, data } = Astro.props;
+const { name, years, allTime } = data;
+
+// Calculate monthly breakdown
+const monthlyData = [];
+for (const year in years) {
+    for (const month in years[year]) {
+        const monthInfo = years[year][month];
+        monthlyData.push({
+            year,
+            month,
+            ...monthInfo.sales,
+            days_worked: monthInfo.days_worked,
+            daily_records: monthInfo.daily_records,
+        });
+    }
+}
+
+// Sort by date (newest first)
+monthlyData.sort((a, b) => {
+    const monthOrder = [
+        "December",
+        "November",
+        "October",
+        "September",
+        "August",
+        "July",
+        "June",
+        "May",
+        "April",
+        "March",
+        "February",
+        "January",
+    ];
+    if (a.year !== b.year) return b.year - a.year;
+    return monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month);
+});
+
+// Calculate weekly stats (group by week)
+const weeklyData = [];
+for (const month of monthlyData) {
+    const weeks = {};
+    for (const day of month.daily_records) {
+        const weekNum = getWeekNumber(new Date(day.date));
+        if (!weeks[weekNum]) weeks[weekNum] = { sales: 0, days: 0 };
+        weeks[weekNum].sales += day.totalSales;
+        weeks[weekNum].days++;
+    }
+
+    for (const [week, info] of Object.entries(weeks)) {
+        weeklyData.push({
+            year: month.year,
+            month: month.month,
+            week,
+            totalSales: info.sales,
+            days: info.days,
+            average: Math.round(info.sales / info.days),
+        });
+    }
+}
+
+function getWeekNumber(date) {
+    const d = new Date(
+        Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+    );
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+}
+---
+
+<Layout title={`${name} - Staff Details`}>
+    <main class="container">
+        <a href="/staff" class="back-link">
+            ← Back to Staff Dashboard
+        </a>
+
+        <header class="staff-header">
+            <h1>{name}</h1>
+            <p class="subtitle">Performance Overview</p>
+        </header>
+
+        <!-- All-Time Stats -->
+        <section class="all-time-stats">
+            <h2>All-Time Performance</h2>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <span class="stat-label">Total Sales</span>
+                    <span class="stat-value">
+                        R{allTime.totalSales.toLocaleString()}
+                    </span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Days Worked</span>
+                    <span class="stat-value">{allTime.daysWorked}</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Daily Average</span>
+                    <span class="stat-value">
+                        R{(allTime.averageDailySales || 0).toLocaleString()}
+                    </span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Net Cash</span>
+                    <span class="stat-value">
+                        R{allTime.netCash.toLocaleString()}
+                    </span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Total Deductions</span>
+                    <span class="stat-value">
+                        R{allTime.totalDeductions.toLocaleString()}
+                    </span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Cash Paid</span>
+                    <span class="stat-value">
+                        R{allTime.cashPaid.toLocaleString()}
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Monthly Breakdown -->
+        <section class="monthly-section">
+            <h2>Monthly Performance</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Year</th>
+                            <th>Month</th>
+                            <th>Days</th>
+                            <th>Total Sales</th>
+                            <th>Daily Avg</th>
+                            <th>Net Cash</th>
+                            <th>Cash Paid</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {monthlyData.map((month) => (
+                            <tr>
+                                <td>{month.year}</td>
+                                <td>{month.month}</td>
+                                <td>{month.days_worked}</td>
+                                <td>R{month.totalSales.toLocaleString()}</td>
+                                <td>
+                                    R
+                                    {Math.round(
+                                        month.totalSales / month.days_worked,
+                                    ).toLocaleString()}
+                                </td>
+                                <td>R{month.netCash.toLocaleString()}</td>
+                                <td>R{month.cashPaid.toLocaleString()}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Weekly Breakdown -->
+        {weeklyData.length > 0 && (
+            <section class="weekly-section">
+                <h2>Weekly Performance</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Year</th>
+                                <th>Month</th>
+                                <th>Week</th>
+                                <th>Days</th>
+                                <th>Total Sales</th>
+                                <th>Daily Avg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {weeklyData.slice(0, 10).map((week) => (
+                                <tr>
+                                    <td>{week.year}</td>
+                                    <td>{week.month}</td>
+                                    <td>Week {week.week}</td>
+                                    <td>{week.days}</td>
+                                    <td>R{week.totalSales.toLocaleString()}</td>
+                                    <td>R{week.average.toLocaleString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        )}
+
+        <!-- Daily Records -->
+        <section class="daily-section">
+            <h2>Daily Records</h2>
+            {monthlyData.slice(0, 3).map((month) => (
+                <details class="month-details">
+                    <summary>
+                        {month.month} {month.year} ({month.days_worked} days)
+                    </summary>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Sales</th>
+                                <th>Net Cash</th>
+                                <th>Deductions</th>
+                                <th>Cash Paid</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {month.daily_records.map((day) => (
+                                <tr>
+                                    <td>{day.date}</td>
+                                    <td>R{day.totalSales.toLocaleString()}</td>
+                                    <td>R{day.netCash.toLocaleString()}</td>
+                                    <td>
+                                        R{day.totalDeductions.toLocaleString()}
+                                    </td>
+                                    <td>R{day.cashPaid.toLocaleString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </details>
+            ))}
+        </section>
+    </main>
+</Layout>
+
+<style>
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #00d4aa;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+    .staff-header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding-bottom: 20px;
+        border-bottom: 3px solid #00d4aa;
+    }
+
+    .staff-header h1 {
+        margin: 0;
+        font-size: 2.5em;
+    }
+
+    .subtitle {
+        color: #666;
+        margin-top: 10px;
+    }
+
+    section {
+        margin-bottom: 40px;
+    }
+
+    h2 {
+        border-left: 4px solid #00d4aa;
+        padding-left: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+    }
+
+    .stat-box {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        border: 2px solid #e9ecef;
+    }
+
+    .stat-label {
+        display: block;
+        color: #666;
+        font-size: 0.9em;
+        margin-bottom: 8px;
+    }
+
+    .stat-value {
+        display: block;
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #00d4aa;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+    }
+
+    th,
+    td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+
+    th {
+        background: #00d4aa;
+        color: white;
+        font-weight: bold;
+    }
+
+    tr:hover {
+        background: #f5f5f5;
+    }
+
+    .month-details {
+        margin: 10px 0;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .month-details summary {
+        cursor: pointer;
+        font-weight: bold;
+        padding: 10px;
+    }
+
+    .month-details table {
+        margin-top: 10px;
+        font-size: 0.9em;
+    }
+</style>

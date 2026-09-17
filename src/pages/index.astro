@@ -1,13 +1,57 @@
 ---
 import Layout from "../layouts/Layout.astro"; // Import the main layout part
-import Nav from "../components/Nav.astro"; // Import the navigation component
+
+// import headerImg from "../../src/assets/headerImg.jpg";
+
 const { title } = Astro.props;
 ---
 
-<Layout title="Lords And Legends">
-  <Nav />
-  <header class="home-header">
-    <h1>Welcome to Lords and Legends {title}</h1>
-    <div></div>
-  </header>
+<Layout title="Home">
+    <main class="home-header">
+        <!-- <img
+            src="../../src/assets/headerImg.jpg"
+            width="1024px"
+            alt="Header Image"
+            class="home-header-img"
+        /> -->
+        <h1>
+            <span>Welcome to</span>Lords and Legends
+        </h1>
+    </main>
+
+    <style lang="scss">
+        .home-header {
+            // top: var(--nav-header);
+            color: var(--text-color);
+            position: relative;
+            min-height: calc(50em - var(--nav-header));
+            // min-height: ;
+            max-width: 1080px;
+            max-height: 1080px;
+            margin: 0 10%;
+            padding: 0;
+            background:
+                linear-gradient(to bottom, var(--img-overlay), transparent),
+                url("../../src/assets/headerImg.jpg") no-repeat center center;
+            background-size: cover;
+            // background-attachment: fixed;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        @media (max-width: 768px) {
+            .home-header {
+                // top: var(--nav-headerM);
+                display: flex;
+                position: relative;
+                align-items: center;
+                justify-content: center;
+                background:
+                    linear-gradient(to bottom, var(--img-overlay), transparent),
+                    url("../../src/assets/headerImgM.jpg") no-repeat center
+                        center;
+                background-size: contain;
+            }
+        }
+    </style>
 </Layout>

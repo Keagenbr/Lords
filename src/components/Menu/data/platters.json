@@ -1,0 +1,41 @@
+{
+  "note": "Each full platter caters for approximately 10-12 people. 2 days notice required.",
+  "platters": [
+    {
+      "name": "Sandwich Platter",
+      "price": "R470",
+      "description": "Cocktail sandwiches with a combination of fillings",
+      "serves": "10-12 people"
+    },
+    {
+      "name": "Cocktail Platter",
+      "price": "R530",
+      "description": "Sausage rolls, samoosas, spring rolls",
+      "serves": "10-12 people"
+    },
+    {
+      "name": "Vegetable Platter",
+      "price": "R490",
+      "description": "Crumbed mushrooms, veg pizza, chilli bites, potato samoosas, sweetcorn samosa, cocktail spring rolls and dipping sauce",
+      "serves": "10-12 people"
+    },
+    {
+      "name": "Chicken Platter",
+      "price": "R550",
+      "description": "Mini kebabs, chicken wings, chicken bites, dipping sauce",
+      "serves": "10-12 people"
+    },
+    {
+      "name": "Mixed Platter",
+      "price": "R595",
+      "description": "Part meat, part chicken, part cocktail, dipping sauce",
+      "serves": "10-12 people"
+    },
+    {
+      "name": "Kiddies Platter",
+      "price": "R390",
+      "description": "Mini hot dogs, chicken fingers, fish nuggets, dipping sauce",
+      "serves": "10-12 people"
+    }
+  ]
+}

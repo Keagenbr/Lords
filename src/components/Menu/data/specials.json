@@ -1,0 +1,94 @@
+{
+  "drinks_specials": [
+    {
+      "name": "2 x Double Richelieu and a Mix",
+      "price": "R78",
+      "description": ""
+    },
+    {
+      "name": "2 x Double Klipdrift and a Mix",
+      "price": "R78",
+      "description": ""
+    },
+    { "name": "Double Harriers Whisky", "price": "R34", "description": "" },
+    {
+      "name": "Double Old Buck Gin with a Mix",
+      "price": "R50",
+      "description": ""
+    }
+  ],
+  "one_five_o_deals": {
+    "price": "R150",
+    "days": "Monday to Thursday",
+    "note": "No Take-away",
+    "items": [
+      {
+        "name": "2 x Chicken Schnitzels Deal",
+        "price": "R150",
+        "description": "2 x Chicken schnitzels, side dish & sauce"
+      },
+      {
+        "name": "400g BBQ Pork Spare Ribs Deal",
+        "price": "R150",
+        "description": "1 x 400g BBQ pork spare ribs & side dish"
+      },
+      {
+        "name": "2 x Chicken Fingers Deal",
+        "price": "R150",
+        "description": "2 x Chicken fingers, side dish and sauce"
+      },
+      {
+        "name": "Eisbein Deal",
+        "price": "R150",
+        "description": "1 x Eisbein & side dish"
+      },
+      {
+        "name": "200g Rump Deal",
+        "price": "R150",
+        "description": "1 x 200g rump with a side dish"
+      },
+      {
+        "name": "2 x Pork Fillet Schnitzels Deal",
+        "price": "R150",
+        "description": "2 x Pork fillet schnitzels, side dish & cheesy pepper sauce"
+      },
+      {
+        "name": "Hake and Calamari Combo Deal",
+        "price": "R150",
+        "description": "1 x Hake and calamari combo with a side dish"
+      },
+      {
+        "name": "2 x Grilled Chicken Wraps Deal",
+        "price": "R150",
+        "description": "2 x Grilled chicken with honey and mustard mayo wraps served with a side dish"
+      },
+      {
+        "name": "2 x Grilled Chicken Breast Deal",
+        "price": "R150",
+        "description": "2 x Grilled chicken breast with bacon bits and feta, smothered in cheese sauce and a side dish"
+      },
+      {
+        "name": "2 x Creamed Spinach Spuds Deal",
+        "price": "R150",
+        "description": "2 x Creamed spinach, mushroom & 3 cheese spuds and a side dish"
+      },
+      {
+        "name": "2 x Chef's Pies Deal",
+        "price": "R150",
+        "description": "2 x Chef's Pies of the day with a side dish"
+      }
+    ]
+  },
+  "monday_poppers": {
+    "name": "Monday Poppers - Buy TWO Deal",
+    "description": "Buy two Jalapeño Poppers deal"
+  },
+  "tuesday_take_away": {
+    "name": "Tuesday Take-Away Special",
+    "description": "Buy one full chicken fingers, get one free"
+  },
+  "fridays_all_in": {
+    "name": "Fridays All In",
+    "description": "Enjoy any of the weekday specials (Excluding R150 Deals)"
+  }
+}
