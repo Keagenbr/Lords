@@ -54,6 +54,12 @@ const { title = "Lords and Legends" } = Astro.props;
         <Nav />
         <slot />
         <style lang="scss">
+            body {
+                height: 200vh;
+                overflow-x: hidden;
+                top: var(--nav-header);
+                position: relative;
+            }
             :root {
                 --bg-color-light: hsl(30, 50%, 99%);
                 --bg-color-dark: hsl(20, 100%, 5%);
@@ -64,6 +70,8 @@ const { title = "Lords and Legends" } = Astro.props;
                 --nav-bg-highlight: hsl(17 30% 85.5%);
                 --nav-bg-shadow: hsl(226 99.6% 7%);
                 --nav-bg-shadowA: hsla(226 99.6% 7%/0.5);
+                --nav-header: 8em;
+                --nav-headerM: 5em;
 
                 --text-color: hsl(30, 50%, 99%);
                 --text-color-light: hsl(20, 100%, 5%);
@@ -74,11 +82,11 @@ const { title = "Lords and Legends" } = Astro.props;
                 --MenuColor: hsl(185 85% 40%);
                 --MenuColorA: hsla(185 85% 5% / 0.9);
 
+                --img-overlay: hsla(183 85.4% 2.3%/0.8);
+
                 --bg-color: var.(--bg-color-light);
                 --txt-color: var.(--text-color-light);
 
-                --nav-header: 8em;
-                --nav-headerM: 5em;
                 @media (prefers-color-scheme: dark) {
                     --txt-color: var.(--text-color-dark);
                     --bg-color: var.(--bg-color-dark);
