@@ -1,0 +1,692 @@
+---
+// ExcelUploader.astro - Drag and drop component for staff page
+---
+
+<div id="excel-uploader" class="uploader-container">
+    <div class="drop-zone" id="drop-zone">
+        <div class="drop-zone-content">
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="64"
+                height="64"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+            >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <h3>Drop Excel Files Here</h3>
+            <p>
+                or <span class="browse-link">browse</span> to upload
+            </p>
+            <p class="file-types">Supports: .xlsx, .xls (CASH UP files)</p>
+        </div>
+        <input
+            type="file"
+            id="file-input"
+            accept=".xlsx,.xls"
+            multiple
+            hidden
+        />
+    </div>
+
+    <div id="upload-status" class="status-container" style="display: none;">
+        <h4>Processing Files...</h4>
+        <div id="file-list"></div>
+    </div>
+
+    <div id="results" class="results-container" style="display: none;">
+        <h4>Upload Complete</h4>
+        <div id="results-content"></div>
+        <button id="refresh-btn" class="refresh-button" style="display: none;">
+            Refresh Page to See Updates
+        </button>
+    </div>
+</div>
+
+<script is:inline>
+    // XLSX library will be loaded dynamically
+    const XLSX_URL =
+        "https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js";
+
+    class ExcelUploader {
+        constructor() {
+            this.dropZone = document.getElementById("drop-zone");
+            this.fileInput = document.getElementById("file-input");
+            this.statusContainer = document.getElementById("upload-status");
+            this.fileList = document.getElementById("file-list");
+            this.resultsContainer = document.getElementById("results");
+            this.resultsContent = document.getElementById("results-content");
+            this.refreshBtn = document.getElementById("refresh-btn");
+            this.processedData = { byMonth: {}, byStaff: {}, raw: [] };
+
+            this.init();
+        }
+
+        async init() {
+            // Load XLSX library
+            await this.loadScript(XLSX_URL);
+
+            this.setupEventListeners();
+        }
+
+        loadScript(url) {
+            return new Promise((resolve, reject) => {
+                if (window.XLSX) {
+                    resolve();
+                    return;
+                }
+                const script = document.createElement("script");
+                script.src = url;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        setupEventListeners() {
+            // Drag and drop events
+            this.dropZone.addEventListener("dragover", (e) => {
+                e.preventDefault();
+                this.dropZone.classList.add("drag-over");
+            });
+
+            this.dropZone.addEventListener("dragleave", () => {
+                this.dropZone.classList.remove("drag-over");
+            });
+
+            this.dropZone.addEventListener("drop", (e) => {
+                e.preventDefault();
+                this.dropZone.classList.remove("drag-over");
+                this.handleFiles(e.dataTransfer.files);
+            });
+
+            // Click to browse
+            this.dropZone.addEventListener("click", () => {
+                this.fileInput.click();
+            });
+
+            this.fileInput.addEventListener("change", (e) => {
+                this.handleFiles(e.target.files);
+            });
+
+            // Refresh button
+            this.refreshBtn.addEventListener("click", () => {
+                window.location.reload();
+            });
+        }
+
+        handleFiles(files) {
+            const excelFiles = Array.from(files).filter(
+                (f) => f.name.endsWith(".xlsx") || f.name.endsWith(".xls"),
+            );
+
+            if (excelFiles.length === 0) {
+                alert("Please upload Excel files (.xlsx or .xls)");
+                return;
+            }
+
+            this.statusContainer.style.display = "block";
+            this.fileList.innerHTML = "";
+
+            excelFiles.forEach((file, index) => {
+                this.addFileStatus(file.name, "processing", index);
+            });
+
+            this.processFiles(excelFiles);
+        }
+
+        addFileStatus(filename, status, index) {
+            const div = document.createElement("div");
+            div.className = `file-status ${status}`;
+            div.id = `file-${index}`;
+            div.innerHTML = `
+        <span class="filename">${filename}</span>
+        <span class="status-icon">${status === "processing" ? "⏳" : status === "done" ? "✅" : "❌"}</span>
+      `;
+            this.fileList.appendChild(div);
+        }
+
+        updateFileStatus(index, status, message = "") {
+            const div = document.getElementById(`file-${index}`);
+            if (div) {
+                div.className = `file-status ${status}`;
+                div.querySelector(".status-icon").textContent =
+                    status === "processing"
+                        ? "⏳"
+                        : status === "done"
+                          ? "✅"
+                          : "❌";
+                if (message) {
+                    div.innerHTML += `<span class="status-msg">${message}</span>`;
+                }
+            }
+        }
+
+        async processFiles(files) {
+            for (let i = 0; i < files.length; i++) {
+                try {
+                    const records = await this.parseExcelFile(files[i]);
+                    this.processedData.raw.push(...records);
+                    this.updateFileStatus(
+                        i,
+                        "done",
+                        `${records.length} records`,
+                    );
+                } catch (error) {
+                    console.error("Error processing file:", error);
+                    this.updateFileStatus(i, "error", error.message);
+                }
+            }
+
+            // Build structured data
+            this.buildStructuredData();
+
+            // Send to server
+            await this.saveToServer();
+        }
+
+        parseExcelFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = window.XLSX.read(data, {
+                            type: "array",
+                        });
+
+                        if (!workbook.SheetNames.includes("MASTER")) {
+                            reject(new Error("MASTER sheet not found"));
+                            return;
+                        }
+
+                        const worksheet = workbook.Sheets["MASTER"];
+                        const jsonData = window.XLSX.utils.sheet_to_json(
+                            worksheet,
+                            {
+                                header: 1,
+                                range: 2,
+                                defval: null,
+                            },
+                        );
+
+                        // Extract date from filename
+                        const dateMatch = file.name.match(
+                            /(\d{2})\.(\d{2})\.(\d{4})/,
+                        );
+                        if (!dateMatch) {
+                            reject(
+                                new Error(
+                                    "Could not extract date from filename",
+                                ),
+                            );
+                            return;
+                        }
+
+                        const [, day, month, year] = dateMatch;
+                        const date = `${year}-${month}-${day}`;
+                        const monthName = this.getMonthName(month);
+
+                        const records = [];
+                        const headers =
+                            jsonData[0]?.map((h) =>
+                                h ? String(h).trim().toUpperCase() : "",
+                            ) || [];
+
+                        for (let i = 1; i < jsonData.length; i++) {
+                            const row = jsonData[i];
+                            const staffName = row[0];
+
+                            if (!this.isValidStaffName(staffName)) continue;
+
+                            const record = {
+                                staff_name: String(staffName)
+                                    .trim()
+                                    .toUpperCase(),
+                                date: date,
+                                year: year,
+                                month: month,
+                                month_name: monthName,
+                                manager: "JUSTIN",
+                                source_file: file.name,
+                                sales_data: {},
+                                summary: {
+                                    total_sales: 0,
+                                    net_cash: 0,
+                                    total_deductions: 0,
+                                    cash_paid: 0,
+                                },
+                            };
+
+                            // Extract numeric values
+                            for (let col = 1; col < row.length; col++) {
+                                const value = this.cleanNumericValue(row[col]);
+                                if (value !== 0) {
+                                    const colName = (
+                                        headers[col] || `col_${col}`
+                                    )
+                                        .toLowerCase()
+                                        .replace(/\s+/g, "_");
+                                    record.sales_data[colName] = value;
+                                }
+                            }
+
+                            // Calculate summary
+                            const sd = record.sales_data;
+                            record.summary.total_sales =
+                                sd.total_sales || sd.total || sd.sales || 0;
+                            record.summary.net_cash =
+                                sd.net_cash || sd.netcash || 0;
+                            record.summary.total_deductions =
+                                sd.total_deductions || sd.deductions || 0;
+                            record.summary.cash_paid =
+                                sd.cash_paid || sd.cashpaid || 0;
+
+                            records.push(record);
+                        }
+
+                        resolve(records);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+
+                reader.onerror = () => reject(new Error("Failed to read file"));
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        getMonthName(monthNum) {
+            const months = [
+                "",
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+            ];
+            return months[parseInt(monthNum)] || "Unknown";
+        }
+
+        isValidStaffName(name) {
+            if (!name || typeof name !== "string") return false;
+            const cleanName = name.trim().toUpperCase();
+            if (["", "NAN", "NONE", "WAITRESS NAME"].includes(cleanName))
+                return false;
+
+            const skipKeywords = [
+                "TOTAL",
+                "T O T A L",
+                "SUB TOTAL",
+                "GRAND",
+                "LORDS BAR",
+                "CASH BACKS",
+                "MANAGEMENT",
+                "CROSSBAR",
+                "SIDEBAR",
+            ];
+            for (const keyword of skipKeywords) {
+                if (cleanName.includes(keyword)) return false;
+            }
+            return /^[A-Z\s]+$/.test(cleanName);
+        }
+
+        cleanNumericValue(value) {
+            if (value === null || value === undefined) return 0;
+            if (typeof value === "number") return value;
+            if (typeof value === "string") {
+                const cleanStr = value.trim();
+                if (["#REF!", "#VALUE!", "#N/A", "#DIV/0!"].includes(cleanStr))
+                    return 0;
+                const numMatch = cleanStr.match(/[\d.]+/);
+                return numMatch ? parseFloat(numMatch[0]) || 0 : 0;
+            }
+            return 0;
+        }
+
+        buildStructuredData() {
+            // Build by month structure
+            for (const record of this.processedData.raw) {
+                const { year, month_name, staff_name, summary, date } = record;
+
+                if (!this.processedData.byMonth[year]) {
+                    this.processedData.byMonth[year] = {};
+                }
+                if (!this.processedData.byMonth[year][month_name]) {
+                    this.processedData.byMonth[year][month_name] = {};
+                }
+                if (!this.processedData.byMonth[year][month_name][staff_name]) {
+                    this.processedData.byMonth[year][month_name][staff_name] = {
+                        sales: {
+                            totalSales: 0,
+                            netCash: 0,
+                            totalDeductions: 0,
+                            cashPaid: 0,
+                        },
+                        daily_records: [],
+                        days_worked: 0,
+                    };
+                }
+
+                const staffData =
+                    this.processedData.byMonth[year][month_name][staff_name];
+                staffData.sales.totalSales += summary.total_sales;
+                staffData.sales.netCash += summary.net_cash;
+                staffData.sales.totalDeductions += summary.total_deductions;
+                staffData.sales.cashPaid += summary.cash_paid;
+                staffData.daily_records.push({
+                    date,
+                    totalSales: summary.total_sales,
+                    netCash: summary.net_cash,
+                    totalDeductions: summary.total_deductions,
+                    cashPaid: summary.cash_paid,
+                });
+                staffData.days_worked++;
+            }
+
+            // Calculate averages
+            for (const year in this.processedData.byMonth) {
+                for (const month in this.processedData.byMonth[year]) {
+                    for (const staff in this.processedData.byMonth[year][
+                        month
+                    ]) {
+                        const data =
+                            this.processedData.byMonth[year][month][staff];
+                        const days = data.days_worked;
+                        if (days > 0) {
+                            data.sales.averageDailySales =
+                                Math.round(
+                                    (data.sales.totalSales / days) * 100,
+                                ) / 100;
+                            data.sales.averageNetCash =
+                                Math.round((data.sales.netCash / days) * 100) /
+                                100;
+                        }
+                    }
+                }
+            }
+
+            // Build by staff structure
+            for (const record of this.processedData.raw) {
+                const { staff_name, year, month_name, summary, date } = record;
+
+                if (!this.processedData.byStaff[staff_name]) {
+                    this.processedData.byStaff[staff_name] = {
+                        name: staff_name,
+                        years: {},
+                        allTime: {
+                            totalSales: 0,
+                            netCash: 0,
+                            totalDeductions: 0,
+                            cashPaid: 0,
+                            daysWorked: 0,
+                        },
+                    };
+                }
+
+                if (!this.processedData.byStaff[staff_name].years[year]) {
+                    this.processedData.byStaff[staff_name].years[year] = {};
+                }
+
+                if (
+                    !this.processedData.byStaff[staff_name].years[year][
+                        month_name
+                    ]
+                ) {
+                    this.processedData.byStaff[staff_name].years[year][
+                        month_name
+                    ] = {
+                        sales: {
+                            totalSales: 0,
+                            netCash: 0,
+                            totalDeductions: 0,
+                            cashPaid: 0,
+                        },
+                        daily_records: [],
+                        days_worked: 0,
+                    };
+                }
+
+                const monthData =
+                    this.processedData.byStaff[staff_name].years[year][
+                        month_name
+                    ];
+                monthData.sales.totalSales += summary.total_sales;
+                monthData.sales.netCash += summary.net_cash;
+                monthData.sales.totalDeductions += summary.total_deductions;
+                monthData.sales.cashPaid += summary.cash_paid;
+                monthData.daily_records.push({ date, ...summary });
+                monthData.days_worked++;
+
+                // Update all-time
+                const at = this.processedData.byStaff[staff_name].allTime;
+                at.totalSales += summary.total_sales;
+                at.netCash += summary.net_cash;
+                at.totalDeductions += summary.total_deductions;
+                at.cashPaid += summary.cash_paid;
+                at.daysWorked++;
+            }
+
+            // Calculate all-time averages
+            for (const staff in this.processedData.byStaff) {
+                const at = this.processedData.byStaff[staff].allTime;
+                if (at.daysWorked > 0) {
+                    at.averageDailySales =
+                        Math.round((at.totalSales / at.daysWorked) * 100) / 100;
+                    at.averageNetCash =
+                        Math.round((at.netCash / at.daysWorked) * 100) / 100;
+                }
+            }
+        }
+
+        async saveToServer() {
+            this.resultsContainer.style.display = "block";
+            this.resultsContent.innerHTML = "<p>Saving to server...</p>";
+
+            try {
+                const response = await fetch("/api/update-sales", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        byMonth: this.processedData.byMonth,
+                        byStaff: this.processedData.byStaff,
+                        raw: this.processedData.raw,
+                    }),
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    this.resultsContent.innerHTML = `
+            <div class="success-message">
+              <p>✅ Successfully updated sales data!</p>
+              <ul>
+                <li>${this.processedData.raw.length} records processed</li>
+                <li>${Object.keys(this.processedData.byStaff).length} staff members</li>
+              </ul>
+            </div>
+          `;
+                    this.refreshBtn.style.display = "block";
+                } else {
+                    throw new Error(result.message || "Server error");
+                }
+            } catch (error) {
+                this.resultsContent.innerHTML = `
+          <div class="error-message">
+            <p>❌ Error saving data: ${error.message}</p>
+            <p>Make sure the API endpoint is configured correctly.</p>
+          </div>
+        `;
+            }
+        }
+    }
+
+    // Initialize when DOM is ready
+    document.addEventListener("DOMContentLoaded", () => {
+        new ExcelUploader();
+    });
+</script>
+
+<style>
+    .uploader-container {
+        margin: 20px 0;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 12px;
+    }
+
+    .drop-zone {
+        border: 3px dashed #ccc;
+        border-radius: 12px;
+        padding: 40px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: white;
+    }
+
+    .drop-zone:hover {
+        border-color: #00d4aa;
+        background: #f0fdf4;
+    }
+
+    .drop-zone.drag-over {
+        border-color: #00d4aa;
+        background: #dcfce7;
+        transform: scale(1.02);
+    }
+
+    .drop-zone-content svg {
+        color: #666;
+        margin-bottom: 16px;
+    }
+
+    .drop-zone:hover .drop-zone-content svg {
+        color: #00d4aa;
+    }
+
+    .drop-zone-content h3 {
+        margin: 0 0 8px 0;
+        color: #333;
+    }
+
+    .drop-zone-content p {
+        margin: 0;
+        color: #666;
+    }
+
+    .browse-link {
+        color: #00d4aa;
+        text-decoration: underline;
+        cursor: pointer;
+    }
+
+    .file-types {
+        font-size: 0.85em;
+        margin-top: 8px !important;
+        color: #999 !important;
+    }
+
+    .status-container {
+        margin-top: 20px;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+    }
+
+    .status-container h4 {
+        margin-top: 0;
+        color: #333;
+    }
+
+    .file-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px;
+        margin: 8px 0;
+        background: #f5f5f5;
+        border-radius: 6px;
+        border-left: 4px solid #ccc;
+    }
+
+    .file-status.processing {
+        border-left-color: #f39c12;
+        background: #fffbeb;
+    }
+
+    .file-status.done {
+        border-left-color: #27ae60;
+        background: #f0fdf4;
+    }
+
+    .file-status.error {
+        border-left-color: #e74c3c;
+        background: #fef2f2;
+    }
+
+    .filename {
+        font-weight: 500;
+    }
+
+    .status-msg {
+        font-size: 0.85em;
+        color: #666;
+        margin-left: 10px;
+    }
+
+    .results-container {
+        margin-top: 20px;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        border: 2px solid #00d4aa;
+    }
+
+    .results-container h4 {
+        margin-top: 0;
+        color: #00d4aa;
+    }
+
+    .success-message {
+        color: #27ae60;
+    }
+
+    .success-message ul {
+        margin: 10px 0;
+        padding-left: 20px;
+    }
+
+    .error-message {
+        color: #e74c3c;
+    }
+
+    .refresh-button {
+        margin-top: 15px;
+        padding: 12px 24px;
+        background: #00d4aa;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 1em;
+        font-weight: 500;
+    }
+
+    .refresh-button:hover {
+        background: #00b894;
+    }
+</style>
