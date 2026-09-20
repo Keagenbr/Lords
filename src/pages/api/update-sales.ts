@@ -1,210 +1,120 @@
 import type { APIRoute } from "astro";
-import fs from "fs";
-import path from "path";
+import { read } from "xlsx";
+import { timingSafeEqual } from "node:crypto";
+import {
+  extractRows,
+  mergeRows,
+  buildAll,
+  UploadError,
+  type RawRow,
+  type Sheet,
+} from "../../lib/staffSales/cashUp";
+import {
+  loadRaw,
+  saveJsonFiles,
+  env,
+  isDev,
+} from "../../lib/staffSales/storage";
+
+export const prerender = false; // runs on the server, on demand
+
+const MAX_TOTAL_BYTES = 4 * 1024 * 1024; // stays under Vercel's ~4.5 MB request limit
+const MAX_FILES = 31;
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+
+function keyMatches(given: string | null, expected: string) {
+  const a = Buffer.from(given ?? "");
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 export const POST: APIRoute = async ({ request }) => {
+  // This endpoint overwrites business data, so it stays closed in production unless a key is set.
+  const key = env("STAFF_UPLOAD_TOKEN");
+  if (!key && !isDev)
+    return json(
+      {
+        error:
+          "Uploads are disabled: STAFF_UPLOAD_TOKEN is not set on the server.",
+      },
+      503,
+    );
+  if (key && !keyMatches(request.headers.get("x-upload-key"), key))
+    return json({ error: "Wrong upload key." }, 401);
+
+  let files: File[];
   try {
-    const data = await request.json();
-    const { byMonth, byStaff, raw } = data;
+    files = (await request.formData())
+      .getAll("file")
+      .filter((f): f is File => f instanceof File);
+  } catch {
+    return json({ error: "Expected a file upload." }, 400);
+  }
+  if (!files.length) return json({ error: "No files received." }, 400);
+  if (files.length > MAX_FILES)
+    return json({ error: `Upload at most ${MAX_FILES} files at a time.` }, 400);
+  if (files.reduce((s, f) => s + f.size, 0) > MAX_TOTAL_BYTES)
+    return json({ error: "Files are larger than 4 MB in total." }, 400);
 
-    // Path to save JSON files (adjust based on your structure)
-    const outputDir = path.join(process.cwd(), "src", "lib", "staffSales");
+  try {
+    const incoming: RawRow[] = [];
+    const summary: { name: string; date: string; staff: number }[] = [];
+    const dates = new Set<string>();
 
-    // Ensure directory exists
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
+    for (const file of files) {
+      if (!/\.(xlsx|xls)$/i.test(file.name))
+        throw new UploadError(
+          `${file.name}: only .xlsx or .xls files are accepted.`,
+        );
+      let sheet: Sheet;
+      try {
+        const wb = read(Buffer.from(await file.arrayBuffer()), {
+          type: "buffer",
+        });
+        sheet = (wb.Sheets["MASTER"] ??
+          wb.Sheets[wb.SheetNames[0]]) as unknown as Sheet;
+      } catch {
+        throw new UploadError(
+          `${file.name}: could not be read as an Excel workbook.`,
+        );
+      }
+      if (!sheet)
+        throw new UploadError(`${file.name}: the workbook has no sheets.`);
+      const rows = extractRows(sheet, file.name);
+      if (dates.has(rows[0].date))
+        throw new UploadError(
+          `${file.name}: another file in this upload is for the same date (${rows[0].date}).`,
+        );
+      dates.add(rows[0].date);
+      incoming.push(...rows);
+      summary.push({ name: file.name, date: rows[0].date, staff: rows.length });
     }
 
-    // Merge with existing data (if any)
-    let existingByMonth = {};
-    let existingByStaff = {};
-    let existingRaw = [];
-
-    try {
-      existingByMonth = JSON.parse(
-        fs.readFileSync(path.join(outputDir, "sales_by_month.json"), "utf-8"),
-      );
-    } catch {}
-    try {
-      existingByStaff = JSON.parse(
-        fs.readFileSync(path.join(outputDir, "sales_by_staff.json"), "utf-8"),
-      );
-    } catch {}
-    try {
-      existingRaw = JSON.parse(
-        fs.readFileSync(path.join(outputDir, "sales_raw.json"), "utf-8"),
-      );
-    } catch {}
-
-    // Merge function for byMonth data
-    const mergeByMonth = (existing: any, incoming: any) => {
-      const merged = { ...existing };
-      for (const year in incoming) {
-        if (!merged[year]) merged[year] = {};
-        for (const month in incoming[year]) {
-          if (!merged[year][month]) merged[year][month] = {};
-          for (const staff in incoming[year][month]) {
-            // If staff exists, merge data
-            if (merged[year][month][staff]) {
-              const existing = merged[year][month][staff];
-              const incoming = incoming[year][month][staff];
-
-              // Merge sales totals
-              existing.sales.totalSales += incoming.sales.totalSales;
-              existing.sales.netCash += incoming.sales.netCash;
-              existing.sales.totalDeductions += incoming.sales.totalDeductions;
-              existing.sales.cashPaid += incoming.sales.cashPaid;
-              existing.days_worked += incoming.days_worked;
-
-              // Merge daily records (avoid duplicates)
-              const existingDates = new Set(
-                existing.daily_records.map((r: any) => r.date),
-              );
-              for (const record of incoming.daily_records) {
-                if (!existingDates.has(record.date)) {
-                  existing.daily_records.push(record);
-                }
-              }
-
-              // Recalculate averages
-              if (existing.days_worked > 0) {
-                existing.sales.averageDailySales =
-                  Math.round(
-                    (existing.sales.totalSales / existing.days_worked) * 100,
-                  ) / 100;
-                existing.sales.averageNetCash =
-                  Math.round(
-                    (existing.sales.netCash / existing.days_worked) * 100,
-                  ) / 100;
-              }
-            } else {
-              merged[year][month][staff] = incoming[year][month][staff];
-            }
-          }
-        }
-      }
-      return merged;
-    };
-
-    // Merge function for byStaff data
-    const mergeByStaff = (existing: any, incoming: any) => {
-      const merged = { ...existing };
-      for (const staffName in incoming) {
-        if (!merged[staffName]) {
-          merged[staffName] = incoming[staffName];
-        } else {
-          // Merge years
-          for (const year in incoming[staffName].years) {
-            if (!merged[staffName].years[year]) {
-              merged[staffName].years[year] = incoming[staffName].years[year];
-            } else {
-              // Merge months
-              for (const month in incoming[staffName].years[year]) {
-                if (!merged[staffName].years[year][month]) {
-                  merged[staffName].years[year][month] =
-                    incoming[staffName].years[year][month];
-                } else {
-                  // Merge month data
-                  const existing = merged[staffName].years[year][month];
-                  const incoming = incoming[staffName].years[year][month];
-
-                  existing.sales.totalSales += incoming.sales.totalSales;
-                  existing.sales.netCash += incoming.sales.netCash;
-                  existing.sales.totalDeductions +=
-                    incoming.sales.totalDeductions;
-                  existing.sales.cashPaid += incoming.sales.cashPaid;
-                  existing.days_worked += incoming.days_worked;
-
-                  // Merge records
-                  const existingDates = new Set(
-                    existing.daily_records.map((r: any) => r.date),
-                  );
-                  for (const record of incoming.daily_records) {
-                    if (!existingDates.has(record.date)) {
-                      existing.daily_records.push(record);
-                    }
-                  }
-                }
-              }
-            }
-          }
-
-          // Update all-time stats
-          const at = merged[staffName].allTime;
-          const incomingAt = incoming[staffName].allTime;
-          at.totalSales += incomingAt.totalSales;
-          at.netCash += incomingAt.netCash;
-          at.totalDeductions += incomingAt.totalDeductions;
-          at.cashPaid += incomingAt.cashPaid;
-          at.daysWorked += incomingAt.daysWorked;
-          if (at.daysWorked > 0) {
-            at.averageDailySales =
-              Math.round((at.totalSales / at.daysWorked) * 100) / 100;
-            at.averageNetCash =
-              Math.round((at.netCash / at.daysWorked) * 100) / 100;
-          }
-        }
-      }
-      return merged;
-    };
-
-    // Merge raw data (avoid duplicates by date+staff)
-    const mergeRaw = (existing: any[], incoming: any[]) => {
-      const seen = new Set(existing.map((r) => `${r.date}-${r.staff_name}`));
-      const merged = [...existing];
-      for (const record of incoming) {
-        const key = `${record.date}-${record.staff_name}`;
-        if (!seen.has(key)) {
-          merged.push(record);
-          seen.add(key);
-        }
-      }
-      return merged;
-    };
-
-    const finalByMonth = mergeByMonth(existingByMonth, byMonth);
-    const finalByStaff = mergeByStaff(existingByStaff, byStaff);
-    const finalRaw = mergeRaw(existingRaw, raw);
-
-    // Save files
-    fs.writeFileSync(
-      path.join(outputDir, "sales_by_month.json"),
-      JSON.stringify(finalByMonth, null, 2),
-    );
-    fs.writeFileSync(
-      path.join(outputDir, "sales_by_staff.json"),
-      JSON.stringify(finalByStaff, null, 2),
-    );
-    fs.writeFileSync(
-      path.join(outputDir, "sales_raw.json"),
-      JSON.stringify(finalRaw, null, 2),
-    );
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Data saved successfully",
-        stats: {
-          recordsProcessed: raw.length,
-          staffCount: Object.keys(byStaff).length,
-        },
-      }),
+    // Add to the existing data (re-uploading a date replaces that date), then rebuild all three files.
+    const { rows, replaced } = mergeRows(await loadRaw(), incoming);
+    const saved = await saveJsonFiles(buildAll(rows));
+    return json({
+      ok: true,
+      files: summary,
+      replaced,
+      target: saved.target,
+      detail: saved.detail,
+    });
+  } catch (err) {
+    if (err instanceof UploadError)
+      return json({ error: `Nothing was saved. ${err.message}` }, 400);
+    console.error("[update-sales]", err);
+    return json(
       {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
+        error:
+          "Saving failed on the server. Nothing was changed; check the server logs.",
       },
-    );
-  } catch (error) {
-    console.error("API Error:", error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: error.message,
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
+      500,
     );
   }
 };
