@@ -1,15 +1,18 @@
 ---
 import Layout from "../../layouts/Layout.astro";
-import staffData from "../../lib/staffSales/sales_by_staff.json";
+import { getByStaff } from "../../lib/staffSales/storage";
 
-export function getStaticPaths() {
-    return Object.keys(staffData).map((name) => ({
-        params: { name: name.toLowerCase().replace(/\s+/g, "-") },
-        props: { staffName: name, data: staffData[name] },
-    }));
-}
+export const prerender = false; // one page per staff member, looked up on each request
 
-const { staffName, data } = Astro.props;
+// Same slug rule as the links on the staff overview page.
+const slugOf = (name: string) => name.toLowerCase().replace(/\s+/g, "-");
+
+const staffData = await getByStaff();
+const data = Object.values(staffData).find(
+    (staff) => slugOf(staff.name) === Astro.params.name,
+);
+if (!data) return new Response(null, { status: 404, statusText: "Not found" });
+
 const { name, years, allTime } = data;
 
 // Calculate monthly breakdown

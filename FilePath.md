@@ -5,12 +5,7 @@ Directory structure:
 ├── package.json
 ├── tsconfig.json
 └── src/
-├── style.css
 ├── assets/
-│ ├── favicon/
-│ │ └── site.webmanifest
-│ └── favicon-bgg/
-│ └── site.webmanifest
 ├── components/
 │ ├── ExcelUploader.astro
 │ ├── Fonts.astro
@@ -25,11 +20,12 @@ Directory structure:
 ├── layouts/
 │ └── Layout.astro
 ├── lib/
-│ ├── nav.ts
 │ └── staffSales/
+│ ├── cashUp.ts
 │ ├── sales_by_month.json
 │ ├── sales_by_staff.json
-│ └── sales_raw.json
+│ ├── sales_raw.json
+│ └── storage.ts
 ├── pages/
 │ ├── contact.astro
 │ ├── index.astro

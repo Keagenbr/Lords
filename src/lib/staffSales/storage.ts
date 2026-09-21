@@ -1,123 +1,93 @@
-// Where the staff JSON lives.
-//  - "filesystem": reads/writes src/lib/staffSales/ (local `astro dev`).
-//  - "github":     reads the current file from the repo and writes ONE commit with all three files;
-//                  Vercel (or any host connected to the repo) then rebuilds from that commit.
-// Vercel functions can't write to your source files, so production has to use "github".
-import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
-import path from "node:path";
-import type { RawRow } from "./cashUp";
+// Staff sales storage, backed by the Supabase table `cash_up_rows` (see supabase/schema.sql).
+// Server-side only: it uses the secret key, which must never reach the browser.
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  buildByStaff,
+  dbToRaw,
+  rowToDb,
+  type DbRow,
+  type RawRow,
+} from "./cashUp";
 
-const DIR = "src/lib/staffSales";
-const RAW = "sales_raw.json";
+const TABLE = "cash_up_rows";
+const COLUMNS =
+  "date,staff_name,manager,source_file,sales,tabbs,c_c_tips,net_cash,tips,deductions,paid";
+const PAGE_SIZE = 1000; // Supabase returns at most 1,000 rows per request by default
 
-const meta: Record<string, any> = (import.meta as any).env ?? {};
-export const env = (name: string): string | undefined =>
-  process.env[name] ?? meta[name];
-export const isDev = Boolean(meta.DEV);
+/** An error whose message is safe to show to the person uploading (it never contains a key). */
+export class StorageError extends Error {}
 
-const target = () =>
-  env("STAFF_UPLOAD_TARGET") ?? (isDev ? "filesystem" : "github");
+export const isDev = Boolean(import.meta.env.DEV);
 
-export type SaveResult = { target: "filesystem" | "github"; detail: string };
+// Direct import.meta.env access is what Astro documents for server-only variables;
+// process.env covers hosts that provide variables at runtime.
+export const uploadKey = (): string | undefined =>
+  import.meta.env.STAFF_UPLOAD_TOKEN ?? process.env.STAFF_UPLOAD_TOKEN;
 
-function github() {
-  const token = env("STAFF_GITHUB_TOKEN");
-  const repo = env("STAFF_GITHUB_REPO"); // "owner/name"
-  const branch = env("STAFF_GITHUB_BRANCH") ?? "main";
-  if (!token || !repo)
-    throw new Error(
-      "GitHub storage is not configured (STAFF_GITHUB_TOKEN / STAFF_GITHUB_REPO).",
-    );
-  const call = async (
-    p: string,
-    init: RequestInit = {},
-    accept = "application/vnd.github+json",
-  ) => {
-    const res = await fetch(`https://api.github.com/repos/${repo}${p}`, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: accept,
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "lords-staff-upload",
-        "Content-Type": "application/json",
-      },
-    });
-    if (!res.ok) throw new Error(`GitHub API ${res.status} on ${p}`);
-    return res;
-  };
-  return { repo, branch, call };
-}
-
-/** Current sales_raw.json. Throws if it can't be read, so a bad config can never wipe history. */
-export async function loadRaw(): Promise<RawRow[]> {
-  if (target() === "filesystem") {
-    return JSON.parse(
-      await readFile(path.resolve(process.cwd(), DIR, RAW), "utf8"),
+let client: SupabaseClient | undefined;
+function db(): SupabaseClient {
+  if (client) return client;
+  const url = import.meta.env.SUPABASE_URL ?? process.env.SUPABASE_URL;
+  const key =
+    import.meta.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SECRET_KEY;
+  if (!url || !key) {
+    throw new StorageError(
+      "Supabase is not configured. Set SUPABASE_URL and SUPABASE_SECRET_KEY.",
     );
   }
-  const { branch, call } = github();
-  // Read from the repo (not the deployed bundle) so back-to-back uploads never overwrite each other.
-  const res = await call(
-    `/contents/${DIR}/${RAW}?ref=${branch}`,
-    {},
-    "application/vnd.github.raw+json",
-  );
-  return JSON.parse(await res.text());
-}
-
-export async function saveJsonFiles(
-  files: Record<string, unknown>,
-): Promise<SaveResult> {
-  const serialised = Object.entries(files).map(
-    ([name, data]) => [name, JSON.stringify(data, null, 2) + "\n"] as const,
-  );
-  return target() === "filesystem"
-    ? saveToDisk(serialised)
-    : saveToGitHub(serialised);
-}
-
-async function saveToDisk(
-  files: readonly (readonly [string, string])[],
-): Promise<SaveResult> {
-  const dir = path.resolve(process.cwd(), DIR);
-  await mkdir(dir, { recursive: true });
-  // Temp files first, then swap in, so a failure never leaves half-updated data.
-  for (const [name, body] of files)
-    await writeFile(path.join(dir, name + ".tmp"), body, "utf8");
-  for (const [name] of files)
-    await rename(path.join(dir, name + ".tmp"), path.join(dir, name));
-  return { target: "filesystem", detail: `Saved to ${DIR}/` };
-}
-
-async function saveToGitHub(
-  files: readonly (readonly [string, string])[],
-): Promise<SaveResult> {
-  const { repo, branch, call } = github();
-  const json = (res: Response) => res.json();
-  const post = (p: string, body: unknown, method = "POST") =>
-    call(p, { method, body: JSON.stringify(body) }).then(json);
-
-  const ref = await call(`/git/ref/heads/${branch}`).then(json);
-  const baseSha: string = ref.object.sha;
-  const baseCommit = await call(`/git/commits/${baseSha}`).then(json);
-  const tree = await post("/git/trees", {
-    base_tree: baseCommit.tree.sha,
-    tree: files.map(([name, content]) => ({
-      path: `${DIR}/${name}`,
-      mode: "100644",
-      type: "blob",
-      content,
-    })),
+  // Server-side settings from Supabase's docs: no session storage or token refresh.
+  client = createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
   });
-  const commit = await post("/git/commits", {
-    message: "Update staff sales data from CASH UP upload",
-    tree: tree.sha,
-    parents: [baseSha],
+  return client;
+}
+
+/** Supabase errors are plain objects, so wrap them in something that has a message. */
+const fail = (what: string, e: { message: string; hint?: string | null }) =>
+  new StorageError(`${what}: ${e.message}${e.hint ? ` (${e.hint})` : ""}`);
+
+/** Every saved row, oldest first. Pages through the table so nothing is cut off at 1,000 rows. */
+async function loadRows(): Promise<RawRow[]> {
+  const rows: DbRow[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await db()
+      .from(TABLE)
+      .select(COLUMNS)
+      .order("date")
+      .order("staff_name")
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw fail("Could not read the sales data", error);
+    rows.push(...((data ?? []) as unknown as DbRow[]));
+    if (!data || data.length < PAGE_SIZE) break;
+  }
+  return rows.map(dbToRaw);
+}
+
+/** The per-staff figures the staff pages show. */
+export async function getByStaff(): Promise<Record<string, any>> {
+  return buildByStaff(await loadRows());
+}
+
+/**
+ * Saves the rows. Any date that already exists is replaced (deleted and re-inserted)
+ * inside one database transaction, so a failure never leaves a day half-saved.
+ * Returns the dates that were replaced.
+ */
+export async function saveRows(
+  rows: RawRow[],
+): Promise<{ replaced: string[] }> {
+  const dates = [...new Set(rows.map((r) => r.date))];
+  const found = await db().from(TABLE).select("date").in("date", dates);
+  if (found.error) throw fail("Could not check existing data", found.error);
+  const replaced = [...new Set((found.data ?? []).map((r) => r.date))].sort();
+
+  const { error } = await db().rpc("replace_cash_up_days", {
+    p_rows: rows.map(rowToDb),
   });
-  await post(`/git/refs/heads/${branch}`, { sha: commit.sha }, "PATCH");
-  return {
-    target: "github",
-    detail: `Committed to ${repo}@${branch} (${commit.sha.slice(0, 7)})`,
-  };
+  if (error) throw fail("Could not save the sales data", error);
+  return { replaced };
 }

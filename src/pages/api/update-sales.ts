@@ -3,16 +3,14 @@ import { read } from "xlsx";
 import { timingSafeEqual } from "node:crypto";
 import {
   extractRows,
-  mergeRows,
-  buildAll,
   UploadError,
   type RawRow,
   type Sheet,
 } from "../../lib/staffSales/cashUp";
 import {
-  loadRaw,
-  saveJsonFiles,
-  env,
+  saveRows,
+  StorageError,
+  uploadKey,
   isDev,
 } from "../../lib/staffSales/storage";
 
@@ -35,7 +33,7 @@ function keyMatches(given: string | null, expected: string) {
 
 export const POST: APIRoute = async ({ request }) => {
   // This endpoint overwrites business data, so it stays closed in production unless a key is set.
-  const key = env("STAFF_UPLOAD_TOKEN");
+  const key = uploadKey();
   if (!key && !isDev)
     return json(
       {
@@ -95,19 +93,14 @@ export const POST: APIRoute = async ({ request }) => {
       summary.push({ name: file.name, date: rows[0].date, staff: rows.length });
     }
 
-    // Add to the existing data (re-uploading a date replaces that date), then rebuild all three files.
-    const { rows, replaced } = mergeRows(await loadRaw(), incoming);
-    const saved = await saveJsonFiles(buildAll(rows));
-    return json({
-      ok: true,
-      files: summary,
-      replaced,
-      target: saved.target,
-      detail: saved.detail,
-    });
+    // Saves all days in one database transaction; a re-uploaded date replaces that date.
+    const { replaced } = await saveRows(incoming);
+    return json({ ok: true, files: summary, replaced });
   } catch (err) {
     if (err instanceof UploadError)
       return json({ error: `Nothing was saved. ${err.message}` }, 400);
+    if (err instanceof StorageError)
+      return json({ error: `Nothing was saved. ${err.message}` }, 500);
     console.error("[update-sales]", err);
     return json(
       {
