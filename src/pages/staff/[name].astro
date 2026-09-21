@@ -112,7 +112,7 @@ function getWeekNumber(date) {
                         R{(allTime.averageDailySales || 0).toLocaleString()}
                     </span>
                 </div>
-                <div class="stat-box">
+                <!-- <div class="stat-box">
                     <span class="stat-label">Net Cash</span>
                     <span class="stat-value">
                         R{allTime.netCash.toLocaleString()}
@@ -123,9 +123,9 @@ function getWeekNumber(date) {
                     <span class="stat-value">
                         R{allTime.totalDeductions.toLocaleString()}
                     </span>
-                </div>
+                </div> -->
                 <div class="stat-box">
-                    <span class="stat-label">Cash Paid</span>
+                    <span class="stat-label">Tips Earned</span>
                     <span class="stat-value">
                         R{allTime.cashPaid.toLocaleString()}
                     </span>
@@ -145,8 +145,8 @@ function getWeekNumber(date) {
                             <th>Days</th>
                             <th>Total Sales</th>
                             <th>Daily Avg</th>
-                            <th>Net Cash</th>
-                            <th>Cash Paid</th>
+                            <!-- <th>Net Cash</th> -->
+                            <th>Tips Earned</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -162,7 +162,7 @@ function getWeekNumber(date) {
                                         month.totalSales / month.days_worked,
                                     ).toLocaleString()}
                                 </td>
-                                <td>R{month.netCash.toLocaleString()}</td>
+                                <!-- <td>R{month.netCash.toLocaleString()}</td> -->
                                 <td>R{month.cashPaid.toLocaleString()}</td>
                             </tr>
                         ))}
@@ -217,9 +217,9 @@ function getWeekNumber(date) {
                             <tr>
                                 <th>Date</th>
                                 <th>Sales</th>
-                                <th>Net Cash</th>
-                                <th>Deductions</th>
-                                <th>Cash Paid</th>
+                                <!-- <th>Net Cash</th> -->
+                                <!-- <th>Deductions</th> -->
+                                <th>Tips Earned</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -227,9 +227,9 @@ function getWeekNumber(date) {
                                 <tr>
                                     <td>{day.date}</td>
                                     <td>R{day.totalSales.toLocaleString()}</td>
-                                    <td>R{day.netCash.toLocaleString()}</td>
+                                    <!-- <td>R{day.netCash.toLocaleString()}</td> -->
                                     <td>
-                                        R{day.totalDeductions.toLocaleString()}
+                                        <!-- R{day.totalDeductions.toLocaleString()} -->
                                     </td>
                                     <td>R{day.cashPaid.toLocaleString()}</td>
                                 </tr>
@@ -245,7 +245,7 @@ function getWeekNumber(date) {
 <style>
     .container {
         max-width: 1200px;
-        margin: 0 auto;
+        margin: 5rem auto 0 auto;
         padding: 20px;
     }
 
@@ -355,5 +355,12 @@ function getWeekNumber(date) {
     .month-details table {
         margin-top: 10px;
         font-size: 0.9em;
+    }
+
+    /* mobile styles */
+    @media (max-width: 768px) {
+        .container {
+            margin: 0 auto;
+        }
     }
 </style>

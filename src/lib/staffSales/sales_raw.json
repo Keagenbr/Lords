@@ -21,7 +21,7 @@
       "total_sales": 2767,
       "net_cash": 193,
       "total_deductions": 27.905,
-      "cash_paid": 0
+      "cash_paid": 165.095
     }
   },
   {
@@ -46,7 +46,7 @@
       "total_sales": 2367,
       "net_cash": 0,
       "total_deductions": 278.58,
-      "cash_paid": 0
+      "cash_paid": 278.58
     }
   },
   {
@@ -71,7 +71,7 @@
       "total_sales": 3456,
       "net_cash": 657,
       "total_deductions": 424.665,
-      "cash_paid": 0
+      "cash_paid": 232.33499999999998
     }
   },
   {
@@ -95,7 +95,7 @@
       "total_sales": 2224,
       "net_cash": 0,
       "total_deductions": 179.58499999999998,
-      "cash_paid": 0
+      "cash_paid": 179.58499999999998
     }
   },
   {
@@ -120,7 +120,7 @@
       "total_sales": 8754,
       "net_cash": 99,
       "total_deductions": 725.61,
-      "cash_paid": 0
+      "cash_paid": 626.61
     }
   },
   {
@@ -145,7 +145,7 @@
       "total_sales": 2767,
       "net_cash": 193,
       "total_deductions": 27.905,
-      "cash_paid": 0
+      "cash_paid": 165.095
     }
   },
   {
@@ -170,7 +170,7 @@
       "total_sales": 2367,
       "net_cash": 0,
       "total_deductions": 278.58,
-      "cash_paid": 0
+      "cash_paid": 278.58
     }
   },
   {
@@ -195,7 +195,7 @@
       "total_sales": 3456,
       "net_cash": 657,
       "total_deductions": 424.665,
-      "cash_paid": 0
+      "cash_paid": 232.33499999999998
     }
   },
   {
@@ -219,7 +219,7 @@
       "total_sales": 2224,
       "net_cash": 0,
       "total_deductions": 179.58499999999998,
-      "cash_paid": 0
+      "cash_paid": 179.58499999999998
     }
   },
   {
@@ -244,7 +244,7 @@
       "total_sales": 8754,
       "net_cash": 99,
       "total_deductions": 725.61,
-      "cash_paid": 0
+      "cash_paid": 626.61
     }
   },
   {
@@ -269,7 +269,7 @@
       "total_sales": 2767,
       "net_cash": 193,
       "total_deductions": 27.905,
-      "cash_paid": 0
+      "cash_paid": 165.095
     }
   },
   {
@@ -294,7 +294,7 @@
       "total_sales": 2367,
       "net_cash": 0,
       "total_deductions": 278.58,
-      "cash_paid": 0
+      "cash_paid": 278.58
     }
   },
   {
@@ -319,7 +319,7 @@
       "total_sales": 3456,
       "net_cash": 657,
       "total_deductions": 424.665,
-      "cash_paid": 0
+      "cash_paid": 232.33499999999998
     }
   },
   {
@@ -343,7 +343,7 @@
       "total_sales": 2224,
       "net_cash": 0,
       "total_deductions": 179.58499999999998,
-      "cash_paid": 0
+      "cash_paid": 179.58499999999998
     }
   },
   {
@@ -368,7 +368,7 @@
       "total_sales": 8754,
       "net_cash": 99,
       "total_deductions": 725.61,
-      "cash_paid": 0
+      "cash_paid": 626.61
     }
   },
   {
@@ -393,7 +393,7 @@
       "total_sales": 2767,
       "net_cash": 193,
       "total_deductions": 27.905,
-      "cash_paid": 0
+      "cash_paid": 165.095
     }
   },
   {
@@ -418,7 +418,7 @@
       "total_sales": 2367,
       "net_cash": 0,
       "total_deductions": 278.58,
-      "cash_paid": 0
+      "cash_paid": 278.58
     }
   },
   {
@@ -443,7 +443,7 @@
       "total_sales": 3456,
       "net_cash": 657,
       "total_deductions": 424.665,
-      "cash_paid": 0
+      "cash_paid": 232.33499999999998
     }
   },
   {
@@ -467,7 +467,7 @@
       "total_sales": 2224,
       "net_cash": 0,
       "total_deductions": 179.58499999999998,
-      "cash_paid": 0
+      "cash_paid": 179.58499999999998
     }
   },
   {
@@ -492,7 +492,7 @@
       "total_sales": 8754,
       "net_cash": 99,
       "total_deductions": 725.61,
-      "cash_paid": 0
+      "cash_paid": 626.61
     }
   },
   {
@@ -517,7 +517,7 @@
       "total_sales": 2767,
       "net_cash": 193,
       "total_deductions": 27.905,
-      "cash_paid": 0
+      "cash_paid": 165.095
     }
   },
   {
@@ -542,7 +542,7 @@
       "total_sales": 2367,
       "net_cash": 0,
       "total_deductions": 278.58,
-      "cash_paid": 0
+      "cash_paid": 278.58
     }
   },
   {
@@ -567,7 +567,7 @@
       "total_sales": 3456,
       "net_cash": 657,
       "total_deductions": 424.665,
-      "cash_paid": 0
+      "cash_paid": 232.33499999999998
     }
   },
   {
@@ -591,7 +591,7 @@
       "total_sales": 2224,
       "net_cash": 0,
       "total_deductions": 179.58499999999998,
-      "cash_paid": 0
+      "cash_paid": 179.58499999999998
     }
   },
   {
@@ -616,131 +616,7 @@
       "total_sales": 8754,
       "net_cash": 99,
       "total_deductions": 725.61,
-      "cash_paid": 0
-    }
-  },
-  {
-    "staff_name": "SISEKELO",
-    "date": "2026-07-06",
-    "year": "2026",
-    "month": "07",
-    "month_name": "July",
-    "day": "06",
-    "manager": "JUSTIN",
-    "source_file": "CASH UP 06.07.2026.xlsx",
-    "sales_data": {
-      "sales": 2767,
-      "tabbs": 2574,
-      "c_c_tips": 55.575,
-      "net_cash": 193,
-      "tips": 27.67,
-      "deductions": 27.905,
-      "paid": 165.095
-    },
-    "summary": {
-      "total_sales": 2767,
-      "net_cash": 193,
-      "total_deductions": 27.905,
-      "cash_paid": 0
-    }
-  },
-  {
-    "staff_name": "NOSIPHO",
-    "date": "2026-07-06",
-    "year": "2026",
-    "month": "07",
-    "month_name": "July",
-    "day": "06",
-    "manager": "JUSTIN",
-    "source_file": "CASH UP 06.07.2026.xlsx",
-    "sales_data": {
-      "sales": 2367,
-      "tabbs": 2367,
-      "c_c_tips": 302.25,
-      "tips": 23.67,
-      "deductions": 278.58,
-      "paid": -278.58,
-      "col_22": 230
-    },
-    "summary": {
-      "total_sales": 2367,
-      "net_cash": 0,
-      "total_deductions": 278.58,
-      "cash_paid": 0
-    }
-  },
-  {
-    "staff_name": "FANA",
-    "date": "2026-07-06",
-    "year": "2026",
-    "month": "07",
-    "month_name": "July",
-    "day": "06",
-    "manager": "JUSTIN",
-    "source_file": "CASH UP 06.07.2026.xlsx",
-    "sales_data": {
-      "sales": 3456,
-      "tabbs": 2799,
-      "c_c_tips": 459.225,
-      "net_cash": 657,
-      "tips": 34.56,
-      "deductions": 424.665,
-      "paid": 232.33499999999998
-    },
-    "summary": {
-      "total_sales": 3456,
-      "net_cash": 657,
-      "total_deductions": 424.665,
-      "cash_paid": 0
-    }
-  },
-  {
-    "staff_name": "THANDEKA",
-    "date": "2026-07-06",
-    "year": "2026",
-    "month": "07",
-    "month_name": "July",
-    "day": "06",
-    "manager": "JUSTIN",
-    "source_file": "CASH UP 06.07.2026.xlsx",
-    "sales_data": {
-      "sales": 2224,
-      "tabbs": 2224,
-      "c_c_tips": 201.825,
-      "tips": 22.240000000000002,
-      "deductions": 179.58499999999998,
-      "paid": -179.58499999999998
-    },
-    "summary": {
-      "total_sales": 2224,
-      "net_cash": 0,
-      "total_deductions": 179.58499999999998,
-      "cash_paid": 0
-    }
-  },
-  {
-    "staff_name": "PENNY",
-    "date": "2026-07-06",
-    "year": "2026",
-    "month": "07",
-    "month_name": "July",
-    "day": "06",
-    "manager": "JUSTIN",
-    "source_file": "CASH UP 06.07.2026.xlsx",
-    "sales_data": {
-      "sales": 8754,
-      "tabbs": 8655,
-      "c_c_tips": 813.15,
-      "net_cash": 99,
-      "tips": 87.54,
-      "deductions": 725.61,
-      "paid": -626.61
-    },
-    "summary": {
-      "total_sales": 8754,
-      "net_cash": 99,
-      "total_deductions": 725.61,
-      "cash_paid": 0
+      "cash_paid": 626.61
     }
   },
   {
@@ -765,7 +641,7 @@
       "total_sales": 2767,
       "net_cash": 193,
       "total_deductions": 27.905,
-      "cash_paid": 0
+      "cash_paid": 165.095
     }
   },
   {
@@ -790,7 +666,7 @@
       "total_sales": 2367,
       "net_cash": 0,
       "total_deductions": 278.58,
-      "cash_paid": 0
+      "cash_paid": 278.58
     }
   },
   {
@@ -815,7 +691,7 @@
       "total_sales": 3456,
       "net_cash": 657,
       "total_deductions": 424.665,
-      "cash_paid": 0
+      "cash_paid": 232.33499999999998
     }
   },
   {
@@ -839,7 +715,7 @@
       "total_sales": 2224,
       "net_cash": 0,
       "total_deductions": 179.58499999999998,
-      "cash_paid": 0
+      "cash_paid": 179.58499999999998
     }
   },
   {
@@ -864,7 +740,7 @@
       "total_sales": 8754,
       "net_cash": 99,
       "total_deductions": 725.61,
-      "cash_paid": 0
+      "cash_paid": 626.61
     }
   },
   {
@@ -889,7 +765,7 @@
       "total_sales": 2767,
       "net_cash": 193,
       "total_deductions": 27.905,
-      "cash_paid": 0
+      "cash_paid": 165.095
     }
   },
   {
@@ -914,7 +790,7 @@
       "total_sales": 2367,
       "net_cash": 0,
       "total_deductions": 278.58,
-      "cash_paid": 0
+      "cash_paid": 278.58
     }
   },
   {
@@ -939,7 +815,7 @@
       "total_sales": 3456,
       "net_cash": 657,
       "total_deductions": 424.665,
-      "cash_paid": 0
+      "cash_paid": 232.33499999999998
     }
   },
   {
@@ -963,7 +839,7 @@
       "total_sales": 2224,
       "net_cash": 0,
       "total_deductions": 179.58499999999998,
-      "cash_paid": 0
+      "cash_paid": 179.58499999999998
     }
   },
   {
@@ -988,7 +864,7 @@
       "total_sales": 8754,
       "net_cash": 99,
       "total_deductions": 725.61,
-      "cash_paid": 0
+      "cash_paid": 626.61
     }
   },
   {
@@ -1013,7 +889,7 @@
       "total_sales": 2767,
       "net_cash": 193,
       "total_deductions": 27.905,
-      "cash_paid": 0
+      "cash_paid": 165.095
     }
   },
   {
@@ -1038,7 +914,7 @@
       "total_sales": 2367,
       "net_cash": 0,
       "total_deductions": 278.58,
-      "cash_paid": 0
+      "cash_paid": 278.58
     }
   },
   {
@@ -1063,7 +939,7 @@
       "total_sales": 3456,
       "net_cash": 657,
       "total_deductions": 424.665,
-      "cash_paid": 0
+      "cash_paid": 232.33499999999998
     }
   },
   {
@@ -1087,7 +963,7 @@
       "total_sales": 2224,
       "net_cash": 0,
       "total_deductions": 179.58499999999998,
-      "cash_paid": 0
+      "cash_paid": 179.58499999999998
     }
   },
   {
@@ -1112,7 +988,7 @@
       "total_sales": 8754,
       "net_cash": 99,
       "total_deductions": 725.61,
-      "cash_paid": 0
+      "cash_paid": 626.61
     }
   },
   {
@@ -1137,7 +1013,7 @@
       "total_sales": 2767,
       "net_cash": 193,
       "total_deductions": 27.905,
-      "cash_paid": 0
+      "cash_paid": 165.095
     }
   },
   {
@@ -1162,7 +1038,7 @@
       "total_sales": 2367,
       "net_cash": 0,
       "total_deductions": 278.58,
-      "cash_paid": 0
+      "cash_paid": 278.58
     }
   },
   {
@@ -1187,7 +1063,7 @@
       "total_sales": 3456,
       "net_cash": 657,
       "total_deductions": 424.665,
-      "cash_paid": 0
+      "cash_paid": 232.33499999999998
     }
   },
   {
@@ -1211,7 +1087,7 @@
       "total_sales": 2224,
       "net_cash": 0,
       "total_deductions": 179.58499999999998,
-      "cash_paid": 0
+      "cash_paid": 179.58499999999998
     }
   },
   {
@@ -1236,7 +1112,7 @@
       "total_sales": 8754,
       "net_cash": 99,
       "total_deductions": 725.61,
-      "cash_paid": 0
+      "cash_paid": 626.61
     }
   },
   {
@@ -1261,7 +1137,7 @@
       "total_sales": 2767,
       "net_cash": 193,
       "total_deductions": 27.905,
-      "cash_paid": 0
+      "cash_paid": 165.095
     }
   },
   {
@@ -1286,7 +1162,7 @@
       "total_sales": 2367,
       "net_cash": 0,
       "total_deductions": 278.58,
-      "cash_paid": 0
+      "cash_paid": 278.58
     }
   },
   {
@@ -1311,7 +1187,7 @@
       "total_sales": 3456,
       "net_cash": 657,
       "total_deductions": 424.665,
-      "cash_paid": 0
+      "cash_paid": 232.33499999999998
     }
   },
   {
@@ -1335,7 +1211,7 @@
       "total_sales": 2224,
       "net_cash": 0,
       "total_deductions": 179.58499999999998,
-      "cash_paid": 0
+      "cash_paid": 179.58499999999998
     }
   },
   {
@@ -1360,7 +1236,7 @@
       "total_sales": 8754,
       "net_cash": 99,
       "total_deductions": 725.61,
-      "cash_paid": 0
+      "cash_paid": 626.61
     }
   },
   {
@@ -1385,7 +1261,7 @@
       "total_sales": 2767,
       "net_cash": 193,
       "total_deductions": 27.905,
-      "cash_paid": 0
+      "cash_paid": 165.095
     }
   },
   {
@@ -1410,7 +1286,7 @@
       "total_sales": 2367,
       "net_cash": 0,
       "total_deductions": 278.58,
-      "cash_paid": 0
+      "cash_paid": 278.58
     }
   },
   {
@@ -1435,7 +1311,7 @@
       "total_sales": 3456,
       "net_cash": 657,
       "total_deductions": 424.665,
-      "cash_paid": 0
+      "cash_paid": 232.33499999999998
     }
   },
   {
@@ -1459,7 +1335,7 @@
       "total_sales": 2224,
       "net_cash": 0,
       "total_deductions": 179.58499999999998,
-      "cash_paid": 0
+      "cash_paid": 179.58499999999998
     }
   },
   {
@@ -1484,7 +1360,282 @@
       "total_sales": 8754,
       "net_cash": 99,
       "total_deductions": 725.61,
-      "cash_paid": 0
+      "cash_paid": 626.61
+    }
+  },
+  {
+    "staff_name": "SISEKELO",
+    "date": "2026-07-06",
+    "year": "2026",
+    "month": "07",
+    "month_name": "July",
+    "day": "06",
+    "manager": "JUSTIN",
+    "source_file": "CASH UP 06.07.2026.xlsx",
+    "sales_data": {
+      "sales": 2767,
+      "tabbs": 2574,
+      "c_c_tips": 55.575,
+      "net_cash": 193,
+      "tips": 27.67,
+      "deductions": 27.905,
+      "paid": 165.095
+    },
+    "summary": {
+      "total_sales": 2767,
+      "net_cash": 193,
+      "total_deductions": 27.905,
+      "cash_paid": 165.095
+    }
+  },
+  {
+    "staff_name": "NOSIPHO",
+    "date": "2026-07-06",
+    "year": "2026",
+    "month": "07",
+    "month_name": "July",
+    "day": "06",
+    "manager": "JUSTIN",
+    "source_file": "CASH UP 06.07.2026.xlsx",
+    "sales_data": {
+      "sales": 2367,
+      "tabbs": 2367,
+      "c_c_tips": 302.25,
+      "net_cash": 0,
+      "tips": 23.67,
+      "deductions": 278.58,
+      "paid": -278.58
+    },
+    "summary": {
+      "total_sales": 2367,
+      "net_cash": 0,
+      "total_deductions": 278.58,
+      "cash_paid": 278.58
+    }
+  },
+  {
+    "staff_name": "FANA",
+    "date": "2026-07-06",
+    "year": "2026",
+    "month": "07",
+    "month_name": "July",
+    "day": "06",
+    "manager": "JUSTIN",
+    "source_file": "CASH UP 06.07.2026.xlsx",
+    "sales_data": {
+      "sales": 3456,
+      "tabbs": 2799,
+      "c_c_tips": 459.225,
+      "net_cash": 657,
+      "tips": 34.56,
+      "deductions": 424.665,
+      "paid": 232.335
+    },
+    "summary": {
+      "total_sales": 3456,
+      "net_cash": 657,
+      "total_deductions": 424.665,
+      "cash_paid": 232.335
+    }
+  },
+  {
+    "staff_name": "THANDEKA",
+    "date": "2026-07-06",
+    "year": "2026",
+    "month": "07",
+    "month_name": "July",
+    "day": "06",
+    "manager": "JUSTIN",
+    "source_file": "CASH UP 06.07.2026.xlsx",
+    "sales_data": {
+      "sales": 2224,
+      "tabbs": 2224,
+      "c_c_tips": 201.825,
+      "net_cash": 0,
+      "tips": 22.24,
+      "deductions": 179.585,
+      "paid": -179.585
+    },
+    "summary": {
+      "total_sales": 2224,
+      "net_cash": 0,
+      "total_deductions": 179.585,
+      "cash_paid": 179.585
+    }
+  },
+  {
+    "staff_name": "PENNY",
+    "date": "2026-07-06",
+    "year": "2026",
+    "month": "07",
+    "month_name": "July",
+    "day": "06",
+    "manager": "JUSTIN",
+    "source_file": "CASH UP 06.07.2026.xlsx",
+    "sales_data": {
+      "sales": 8754,
+      "tabbs": 8655,
+      "c_c_tips": 813.15,
+      "net_cash": 99,
+      "tips": 87.54,
+      "deductions": 725.61,
+      "paid": -626.61
+    },
+    "summary": {
+      "total_sales": 8754,
+      "net_cash": 99,
+      "total_deductions": 725.61,
+      "cash_paid": 626.61
+    }
+  },
+  {
+    "staff_name": "SISEKELO",
+    "date": "2026-08-03",
+    "year": "2026",
+    "month": "08",
+    "month_name": "August",
+    "day": "03",
+    "manager": "JUSTIN",
+    "source_file": "CASH UP 03.08.2026.xlsx",
+    "sales_data": {
+      "sales": 6000,
+      "tabbs": 2574,
+      "c_c_tips": 55.575,
+      "net_cash": 3426,
+      "tips": 60,
+      "deductions": -4.425,
+      "paid": 3430.425
+    },
+    "summary": {
+      "total_sales": 6000,
+      "net_cash": 3426,
+      "total_deductions": -4.425,
+      "cash_paid": 3430.425
+    }
+  },
+  {
+    "staff_name": "NOSIPHO",
+    "date": "2026-08-03",
+    "year": "2026",
+    "month": "08",
+    "month_name": "August",
+    "day": "03",
+    "manager": "JUSTIN",
+    "source_file": "CASH UP 03.08.2026.xlsx",
+    "sales_data": {
+      "sales": 6000,
+      "tabbs": 2367,
+      "c_c_tips": 302.25,
+      "net_cash": 3633,
+      "tips": 60,
+      "deductions": 242.25,
+      "paid": 3390.75
+    },
+    "summary": {
+      "total_sales": 6000,
+      "net_cash": 3633,
+      "total_deductions": 242.25,
+      "cash_paid": 3390.75
+    }
+  },
+  {
+    "staff_name": "FANA",
+    "date": "2026-08-03",
+    "year": "2026",
+    "month": "08",
+    "month_name": "August",
+    "day": "03",
+    "manager": "JUSTIN",
+    "source_file": "CASH UP 03.08.2026.xlsx",
+    "sales_data": {
+      "sales": 6000,
+      "tabbs": 2799,
+      "c_c_tips": 459.225,
+      "net_cash": 3201,
+      "tips": 60,
+      "deductions": 399.225,
+      "paid": 2801.775
+    },
+    "summary": {
+      "total_sales": 6000,
+      "net_cash": 3201,
+      "total_deductions": 399.225,
+      "cash_paid": 2801.775
+    }
+  },
+  {
+    "staff_name": "THANDEKA",
+    "date": "2026-08-03",
+    "year": "2026",
+    "month": "08",
+    "month_name": "August",
+    "day": "03",
+    "manager": "JUSTIN",
+    "source_file": "CASH UP 03.08.2026.xlsx",
+    "sales_data": {
+      "sales": 6000,
+      "tabbs": 2224,
+      "c_c_tips": 201.825,
+      "net_cash": 3776,
+      "tips": 60,
+      "deductions": 141.825,
+      "paid": 3634.175
+    },
+    "summary": {
+      "total_sales": 6000,
+      "net_cash": 3776,
+      "total_deductions": 141.825,
+      "cash_paid": 3634.175
+    }
+  },
+  {
+    "staff_name": "PENNY",
+    "date": "2026-08-03",
+    "year": "2026",
+    "month": "08",
+    "month_name": "August",
+    "day": "03",
+    "manager": "JUSTIN",
+    "source_file": "CASH UP 03.08.2026.xlsx",
+    "sales_data": {
+      "sales": 6000,
+      "tabbs": 8655,
+      "c_c_tips": 813.15,
+      "net_cash": -2655,
+      "tips": 60,
+      "deductions": 753.15,
+      "paid": -3408.15
+    },
+    "summary": {
+      "total_sales": 6000,
+      "net_cash": -2655,
+      "total_deductions": 753.15,
+      "cash_paid": 3408.15
+    }
+  },
+  {
+    "staff_name": "PRECIOUS",
+    "date": "2026-08-03",
+    "year": "2026",
+    "month": "08",
+    "month_name": "August",
+    "day": "03",
+    "manager": "JUSTIN",
+    "source_file": "CASH UP 03.08.2026.xlsx",
+    "sales_data": {
+      "sales": 10000,
+      "tabbs": 8655,
+      "c_c_tips": 962.325,
+      "net_cash": 1345,
+      "tips": 100,
+      "deductions": 862.325,
+      "paid": 482.675
+    },
+    "summary": {
+      "total_sales": 10000,
+      "net_cash": 1345,
+      "total_deductions": 862.325,
+      "cash_paid": 482.675
     }
   }
 ]

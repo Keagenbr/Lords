@@ -1,34 +1,35 @@
 ---
 import Layout from "../../layouts/Layout.astro";
-import Nav from "../../components/Nav.astro"; // Import the navigation component
-
+import ExcelUploader from "../../components/ExcelUploader.astro";
 import staffData from "../../lib/staffSales/sales_by_staff.json";
 
-// Calculate stats for all staff
 const staffList = Object.values(staffData)
-    .map((staff) => {
-        const years = Object.keys(staff.years);
-        const totalYears = years.length;
-
-        return {
-            name: staff.name,
-            totalSales: staff.allTime.totalSales,
-            netCash: staff.allTime.netCash,
-            daysWorked: staff.allTime.daysWorked,
-            averageDailySales: staff.allTime.averageDailySales || 0,
-            totalYears,
-            years,
-        };
-    })
+    .map((staff) => ({
+        name: staff.name,
+        totalSales: staff.allTime.totalSales,
+        netCash: staff.allTime.netCash,
+        daysWorked: staff.allTime.daysWorked,
+        averageDailySales: staff.allTime.averageDailySales || 0,
+        totalYears: Object.keys(staff.years).length,
+    }))
     .sort((a, b) => b.totalSales - a.totalSales);
 
 const totalAllStaff = staffList.reduce((sum, s) => sum + s.totalSales, 0);
 ---
 
-<Nav />
 <Layout title="Staff Dashboard">
     <main class="container">
         <h1>Staff Performance Dashboard</h1>
+
+        <!-- DRAG & DROP UPLOADER - Only on this page -->
+        <section class="uploader-section">
+            <h2>Upload New Sales Data</h2>
+            <p class="uploader-help">
+                Drop CASH UP Excel files here to add new sales data. Files
+                should be named like "CASH UP 04.08.2026.xlsx"
+            </p>
+            <ExcelUploader />
+        </section>
 
         <div class="summary-cards">
             <div class="card">
@@ -70,9 +71,6 @@ const totalAllStaff = staffList.reduce((sum, s) => sum + s.totalSales, 0);
                             <strong>Daily Average:</strong> R
                             {staff.averageDailySales.toLocaleString()}
                         </p>
-                        <p>
-                            <strong>Years Active:</strong> {staff.totalYears}
-                        </p>
                     </div>
                     <span class="view-link">View Details →</span>
                 </a>
@@ -82,9 +80,27 @@ const totalAllStaff = staffList.reduce((sum, s) => sum + s.totalSales, 0);
 </Layout>
 
 <style>
+    .uploader-section {
+        margin-bottom: 40px;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        color: white;
+    }
+
+    .uploader-section h2 {
+        margin-top: 0;
+        color: white;
+    }
+
+    .uploader-help {
+        margin-bottom: 20px;
+        opacity: 0.9;
+    }
+
     .container {
         max-width: 1200px;
-        margin: 0 auto;
+        margin: 5rem auto 0 auto;
         padding: 20px;
     }
     h1 {
@@ -150,5 +166,12 @@ const totalAllStaff = staffList.reduce((sum, s) => sum + s.totalSales, 0);
         margin-top: 15px;
         color: #00d4aa;
         font-weight: bold;
+    }
+
+    /* mobile styles */
+    @media (max-width: 768px) {
+        .container {
+            margin: 0 auto;
+        }
     }
 </style>

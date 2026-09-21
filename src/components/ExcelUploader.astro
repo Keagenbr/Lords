@@ -1,0 +1,259 @@
+---
+// Used only in src/pages/staff/index.astro (which supplies the heading and help text).
+interface Props {
+    endpoint?: string;
+}
+const { endpoint = "/api/update-sales" } = Astro.props;
+---
+
+<div class="uploader" data-endpoint={endpoint}>
+    <label class="drop" for="cashup-files">
+        <input id="cashup-files" type="file" multiple accept=".xlsx,.xls" />
+        <span class="prompt">Drop CASH UP files here, or click to choose</span>
+        <span class="hint">
+            .xlsx or .xls. The date is read from the file name.
+        </span>
+    </label>
+
+    <ul class="files" data-files></ul>
+
+    <div class="row">
+        <label for="cashup-key">Upload key</label>
+        <input id="cashup-key" type="password" autocomplete="off" />
+        <button type="button" data-submit disabled>
+            Save to dashboard
+        </button>
+    </div>
+
+    <p class="status" role="status" aria-live="polite" data-status></p>
+</div>
+
+<script>
+    const root = document.querySelector<HTMLElement>(".uploader");
+    if (root) {
+        const endpoint = root.dataset.endpoint!;
+        const drop = root.querySelector<HTMLLabelElement>(".drop")!;
+        const input = root.querySelector<HTMLInputElement>("#cashup-files")!;
+        const keyInput = root.querySelector<HTMLInputElement>("#cashup-key")!;
+        const list = root.querySelector<HTMLUListElement>("[data-files]")!;
+        const button = root.querySelector<HTMLButtonElement>("[data-submit]")!;
+        const status = root.querySelector<HTMLElement>("[data-status]")!;
+        let files: File[] = [];
+
+        keyInput.value = sessionStorage.getItem("cashUpKey") ?? "";
+
+        // Same rule as the server: day-first date in the file name.
+        const dateOf = (name: string) => {
+            const m = /(\d{1,2})[._\-/ ](\d{1,2})[._\-/ ](\d{4})/.exec(name);
+            if (!m) return null;
+            const d = new Date(Date.UTC(+m[3], +m[2] - 1, +m[1]));
+            if (d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[1])
+                return null;
+            return d.toLocaleDateString("en-ZA", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                timeZone: "UTC",
+            });
+        };
+
+        const say = (msg: string, error = false) => {
+            status.textContent = msg;
+            status.dataset.state = error ? "error" : "ok";
+        };
+
+        const render = () => {
+            list.replaceChildren(
+                ...files.map((f) => {
+                    const li = document.createElement("li");
+                    const date = dateOf(f.name);
+                    li.textContent = `${f.name}: ${date ?? "no date in the file name"}`;
+                    if (!date) li.dataset.state = "error";
+                    return li;
+                }),
+            );
+            button.disabled =
+                !files.length || files.some((f) => !dateOf(f.name));
+            if (files.length && button.disabled)
+                say(
+                    'Rename the highlighted file, for example "CASH UP 04.08.2026.xlsx".',
+                    true,
+                );
+            else if (files.length)
+                say(
+                    "Saving adds these days, and replaces any day that was uploaded before.",
+                );
+        };
+
+        const add = (picked: FileList | null | undefined) => {
+            for (const f of Array.from(picked ?? [])) {
+                if (!/\.(xlsx|xls)$/i.test(f.name))
+                    return say(`${f.name} is not an Excel file.`, true);
+                files = [...files.filter((x) => x.name !== f.name), f];
+            }
+            render();
+        };
+
+        input.addEventListener("change", () => {
+            add(input.files);
+            input.value = "";
+        });
+        ["dragenter", "dragover"].forEach((t) =>
+            drop.addEventListener(t, (e) => {
+                e.preventDefault();
+                drop.classList.add("is-over");
+            }),
+        );
+        ["dragleave", "drop"].forEach((t) =>
+            drop.addEventListener(t, () => drop.classList.remove("is-over")),
+        );
+        drop.addEventListener("drop", (e) => {
+            e.preventDefault();
+            add((e as DragEvent).dataTransfer?.files);
+        });
+
+        button.addEventListener("click", async () => {
+            button.disabled = true;
+            say("Reading and saving…");
+            sessionStorage.setItem("cashUpKey", keyInput.value);
+            const body = new FormData();
+            files.forEach((f) => body.append("file", f));
+            try {
+                const res = await fetch(endpoint, {
+                    method: "POST",
+                    body,
+                    headers: { "x-upload-key": keyInput.value },
+                });
+                if (
+                    !(res.headers.get("content-type") ?? "").includes(
+                        "application/json",
+                    )
+                ) {
+                    throw new Error(
+                        "The upload service isn't available here. Static hosting (such as GitHub Pages) can't run it.",
+                    );
+                }
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error ?? "Upload failed.");
+
+                const days = data.files.length;
+                const replaced = data.replaced.length
+                    ? ` Replaced earlier data for ${data.replaced.join(", ")}.`
+                    : "";
+                files = [];
+                render();
+                if (data.target === "filesystem") {
+                    say(
+                        `Saved ${days} day${days === 1 ? "" : "s"}.${replaced} Reloading…`,
+                    );
+                    setTimeout(() => location.reload(), 1200);
+                } else {
+                    say(
+                        `Saved ${days} day${days === 1 ? "" : "s"}.${replaced} The site is rebuilding; refresh in a minute or two.`,
+                    );
+                }
+            } catch (err) {
+                say(
+                    err instanceof Error ? err.message : "Upload failed.",
+                    true,
+                );
+                render();
+            }
+        });
+    }
+</script>
+
+<style>
+    .uploader {
+        display: grid;
+        gap: 12px;
+    }
+    .drop {
+        position: relative;
+        display: grid;
+        gap: 4px;
+        justify-items: center;
+        text-align: center;
+        padding: 28px 16px;
+        border: 2px dashed currentColor;
+        border-radius: 10px;
+        cursor: pointer;
+        opacity: 0.9;
+        transition: background-color 0.15s;
+    }
+    .drop:hover,
+    .drop.is-over {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.15);
+    }
+    /* Hidden visually but still focusable, so keyboard users can open the file picker. */
+    .drop input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+    }
+    .drop:focus-within {
+        outline: 3px solid currentColor;
+        outline-offset: 3px;
+    }
+    .prompt {
+        font-weight: 600;
+    }
+    .hint {
+        font-size: 0.875rem;
+        opacity: 0.8;
+    }
+    .files {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 4px;
+    }
+    .files li[data-state="error"] {
+        font-weight: 700;
+        text-decoration: underline wavy;
+    }
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+    .row input {
+        flex: 1 1 10rem;
+        min-width: 0;
+        padding: 8px;
+        border: 0;
+        border-radius: 6px;
+        background: white;
+        color: #222;
+    }
+    .row button {
+        padding: 8px 16px;
+        border: 0;
+        border-radius: 6px;
+        background: white;
+        color: #333;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .row button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .status {
+        margin: 0;
+        min-height: 1.5em;
+    }
+    .status[data-state="error"] {
+        font-weight: 700;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .drop {
+            transition: none;
+        }
+    }
+</style>
