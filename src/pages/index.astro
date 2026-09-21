@@ -15,7 +15,7 @@ const { title } = Astro.props;
             class="home-header-img"
         /> -->
         <h1>
-            <span>Welcome to</span>Lords and Legends
+            <span>Welcome to </span>Lords and Legends
         </h1>
     </main>
 
@@ -26,13 +26,13 @@ const { title } = Astro.props;
             position: relative;
             min-height: calc(50em - var(--nav-header));
             // min-height: ;
-            max-width: 1080px;
+            width: min(50%, 100%);
             max-height: 1080px;
             margin: 0 10%;
             padding: 0;
             background:
                 linear-gradient(to bottom, var(--img-overlay), transparent),
-                url("../../src/assets/headerImg.jpg") no-repeat center center;
+                url("../../src/assets/headerImg.webp") no-repeat center center;
             background-size: cover;
             // background-attachment: fixed;
             display: flex;
@@ -48,7 +48,7 @@ const { title } = Astro.props;
                 justify-content: center;
                 background:
                     linear-gradient(to bottom, var(--img-overlay), transparent),
-                    url("../../src/assets/headerImgM.jpg") no-repeat center
+                    url("../../src/assets/headerImgM.webp") no-repeat center
                         center;
                 background-size: contain;
             }

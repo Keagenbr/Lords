@@ -100,7 +100,7 @@ const totalAllStaff = staffList.reduce((sum, s) => sum + s.totalSales, 0);
 
     .container {
         max-width: 1200px;
-        margin: 0 auto;
+        margin: 5rem auto 0 auto;
         padding: 20px;
     }
     h1 {
@@ -166,5 +166,12 @@ const totalAllStaff = staffList.reduce((sum, s) => sum + s.totalSales, 0);
         margin-top: 15px;
         color: #00d4aa;
         font-weight: bold;
+    }
+
+    /* mobile styles */
+    @media (max-width: 768px) {
+        .container {
+            margin: 0 auto;
+        }
     }
 </style>

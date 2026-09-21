@@ -180,7 +180,7 @@ export function extractRows(ws: Sheet, fileName: string): RawRow[] {
         total_sales: d.sales,
         net_cash: d.net_cash,
         total_deductions: d.deductions,
-        cash_paid: 0, // existing data always stores 0 here; kept so old and new rows agree
+        cash_paid: Math.abs(d.paid), // the sheet's "Paid" column, always positive; shown as "Tips Earned" on the pages
       },
     });
   }
@@ -280,7 +280,16 @@ export function buildByMonth(byStaff: Record<string, any>) {
 }
 
 /** The three files that src/pages/staff/* read. */
-export function buildAll(rows: RawRow[]) {
+export function buildAll(input: RawRow[]) {
+  // Older rows stored cash_paid as 0; fill it from their saved "paid" value (as a positive number) so history and new uploads agree.
+  const rows = input.map((r) =>
+    typeof r.sales_data?.paid === "number"
+      ? {
+          ...r,
+          summary: { ...r.summary, cash_paid: Math.abs(r.sales_data.paid) },
+        }
+      : r,
+  );
   const byStaff = buildByStaff(rows);
   return {
     "sales_raw.json": rows,
