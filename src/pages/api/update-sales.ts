@@ -8,13 +8,13 @@ import {
   UploadError,
   type RawRow,
   type Sheet,
-} from "../../lib/staffSales/cashUp.ts";
+} from "../../lib/staffSales/cashUp";
 import {
   loadRaw,
   saveJsonFiles,
   env,
   isDev,
-} from "../../lib/staffSales/storage.ts";
+} from "../../lib/staffSales/storage";
 
 export const prerender = false; // runs on the server, on demand
 
