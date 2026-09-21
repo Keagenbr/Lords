@@ -2,18 +2,13 @@
   "compilerOptions": {
     "plugins": [
       {
-        "name": "@astrojs/ts-plugin"
-      }
+        "name": "@astrojs/ts-plugin",
+      },
     ],
     "jsx": "react-jsx",
-    "jsxImportSource": "react"
+    "jsxImportSource": "react",
   },
   "extends": "astro/tsconfigs/strict",
-  "include": [
-    ".astro/types.d.ts",
-    "**/*"
-  ],
-  "exclude": [
-    "dist"
-  ]
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["public"],
 }
