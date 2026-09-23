@@ -11,7 +11,6 @@ export default defineConfig({
     css: {
       transformer: "postcss",
     },
-    output: "server",
     adapter: vercel(),
   },
 
