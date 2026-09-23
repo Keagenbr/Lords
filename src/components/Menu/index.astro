@@ -1,421 +1,333 @@
 ---
-// Menu.astro - Interactive Menu Component with Search and Filter
-// Place this file in: src/components/Menu.astro
+import { getMenu, type MenuType } from "../../lib/menu";
 
-import drinksData from "./data/drinks.json";
-import foodData from "./data/food.json";
-import specialsData from "./data/specials.json";
-import plattersData from "./data/platters.json";
+let menuData: MenuType[] = [];
 
-// Flatten all menu data for easy searching
-const flattenMenu = (data: any, type: string) => {
-    const items: any[] = [];
+try {
+    menuData = await getMenu();
+} catch (e) {
+    console.error("Failed to load menu from Supabase:", e);
+}
 
-    Object.entries(data).forEach(([category, value]: [string, any]) => {
-        if (Array.isArray(value)) {
-            value.forEach((item: any) => {
-                items.push({
-                    ...item,
-                    category,
-                    type,
-                    categoryLabel: category.replace(/_/g, " ").toUpperCase(),
-                });
-            });
-        } else if (typeof value === "object" && value !== null) {
-            // Handle nested structures like kids_menu
-            Object.entries(value).forEach(
-                ([subCategory, subValue]: [string, any]) => {
-                    if (Array.isArray(subValue)) {
-                        subValue.forEach((item: any) => {
-                            items.push({
-                                ...item,
-                                category: `${category} - ${subCategory}`,
-                                type,
-                                categoryLabel: `${category} - ${subCategory}`
-                                    .replace(/_/g, " ")
-                                    .toUpperCase(),
-                            });
-                        });
-                    }
-                },
-            );
-        }
-    });
-
-    return items;
-};
-
-const allDrinks = flattenMenu(drinksData, "drinks");
-const allFood = flattenMenu(foodData, "food");
-const allSpecials = flattenMenu(specialsData, "specials");
-const allPlatters = plattersData.platters.map((p: any) => ({
-    ...p,
-    type: "platters",
-    category: "platters",
-    categoryLabel: "PLATTERS",
-}));
-
-const allItems = [...allDrinks, ...allFood, ...allSpecials, ...allPlatters];
-
-// Get unique categories for filter
-const categories = [...new Set(allItems.map((item) => item.category))].sort();
-
-// Get unique types for filter
-const types = [
-    { id: "all", label: "All Items" },
-    { id: "drinks", label: "Drinks" },
-    { id: "food", label: "Food" },
-    { id: "specials", label: "Specials" },
-    { id: "platters", label: "Platters" },
-];
+// Serialized for potential client-side search later
+const menuJson = JSON.stringify(menuData);
 ---
 
-<div
-    class="menu-container"
-    x-data="{
-  search: '',
-  selectedType: 'all',
-  selectedCategory: 'all',
-  get filteredItems() {
-    return items.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(this.search.toLowerCase()) ||
-                           (item.description && item.description.toLowerCase().includes(this.search.toLowerCase()));
-      const matchesType = this.selectedType === 'all' || item.type === this.selectedType;
-      const matchesCategory = this.selectedCategory === 'all' || item.category === this.selectedCategory;
-      return matchesSearch && matchesType && matchesCategory;
-    });
-  },
-  get categoriesForType() {
-    if (this.selectedType === 'all') return [...new Set(items.map(i => i.category))].sort();
-    return [...new Set(items.filter(i => i.type === this.selectedType).map(i => i.category))].sort();
-  }
-}"
-    x-init="items = JSON.parse($el.dataset.items)"
-    data-items={JSON.stringify(allItems)}
->
-    <!-- Header -->
+<div class="menu-container" x-data="menuApp" data-menu={menuJson}>
     <div class="menu-header">
         <h1>Lords & Legends Menu</h1>
         <p class="tagline">Good times. Cold drinks. Great company.</p>
     </div>
 
-    <!-- Search and Filters -->
-    <div class="filters-section">
-        <!-- Search -->
-        <div class="search-box">
-            <input
-                type="text"
-                x-model="search"
-                placeholder="Search menu items..."
-                class="search-input"
-            />
-            <svg
-                class="search-icon"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-            >
-                <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-            </svg>
-        </div>
-
-        <!-- Type Filter -->
-        <div class="filter-group">
-            <label>Menu Type:</label>
-            <div class="filter-buttons">
-                <template x-for="type in types" :key="type.id">
-                    <button
-                        @click="selectedType = type.id; selectedCategory = 'all'"
-                        :class="{ 'active': selectedType === type.id }"
-                        class="filter-btn"
-                        x-text="type.label"
-                    ></button>
-                </template>
-            </div>
-        </div>
-
-        <!-- Category Filter -->
-        <div class="filter-group" x-show="categoriesForType.length > 0">
-            <label>Category:</label>
-            <select x-model="selectedCategory" class="category-select">
-                <option value="all">All Categories</option>
-                <template x-for="cat in categoriesForType" :key="cat">
-                    <option
-                        :value="cat"
-                        x-text="cat.replace(/_/g, ' ').toUpperCase()"
-                    ></option>
-                </template>
-            </select>
-        </div>
-
-        <!-- Results Count -->
-        <div class="results-count">
-            <span x-text="filteredItems.length"></span> items found
-        </div>
+    <!-- Search -->
+    <div class="search-box">
+        <input
+            type="text"
+            x-model="search"
+            placeholder="Search menu items..."
+            class="search-input"
+        />
     </div>
 
-    <!-- Menu Grid -->
-    <div class="menu-grid">
-        <template
-            x-for="item in filteredItems"
-            :key="item.name + item.category"
+    <!-- Type tabs -->
+    <div class="filter-buttons">
+        <button
+            class="filter-btn"
+            :class="{ active: selectedType === 'all' }"
+            @click="selectedType = 'all'"
         >
-            <div class="menu-card">
-                <div class="card-header">
-                    <h3 x-text="item.name"></h3>
-                    <span
-                        class="price"
-                        x-text="item.price || item.price_250ml || 'R150'"
-                    ></span>
-                </div>
-                <p class="category-label" x-text="item.categoryLabel"></p>
-                <p
-                    class="description"
-                    x-text="item.description || 'No description available'"
-                    x-show="item.description"
-                ></p>
-                <div class="card-footer">
-                    <span class="type-badge" x-text="item.type"></span>
-                    <span
-                        class="serves"
-                        x-text="item.serves"
-                        x-show="item.serves"
-                    ></span>
-                </div>
-            </div>
+            All
+        </button>
+        <template x-for="t in types" :key="t.id">
+            <button
+                class="filter-btn"
+                :class="{ active: selectedType === t.id }"
+                @click="selectedType = t.id"
+                x-text="t.label"
+            ></button>
         </template>
     </div>
 
-    <!-- Empty State -->
-    <div class="empty-state" x-show="filteredItems.length === 0">
-        <svg
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            class="empty-icon"
-        >
-            <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-        </svg>
+    <!-- Rendered server-side sections, filtered client-side -->
+    <template x-for="type in filteredMenu" :key="type.id">
+        <section class="menu-type-section">
+            <h2 x-text="type.label"></h2>
+
+            <!-- Category-level image (clickable + downloadable) -->
+            <template x-for="cat in type.categories" :key="cat.id">
+                <div class="category-block">
+                    <h3 x-text="cat.label.replace(/_/g, ' ')"></h3>
+
+                    <template x-if="cat.image_url">
+                        <div class="menu-image-wrapper">
+                            <img
+                                :src="cat.image_url"
+                                :alt="cat.label + ' menu'"
+                                class="menu-image"
+                                @click="openLightbox(cat.image_url)"
+                            />
+                            <a
+                                :href="cat.image_url"
+                                :download="cat.label + '-menu'"
+                                class="download-btn"
+                                target="_blank"
+                                rel="noopener"
+                            >
+                                ⬇ Download Menu
+                            </a>
+                        </div>
+                    </template>
+
+                    <ul class="item-list">
+                        <template
+                            x-for="item in filteredItems(cat)"
+                            :key="item.id"
+                        >
+                            <li class="menu-item">
+                                <div class="item-line">
+                                    <span
+                                        class="item-name"
+                                        x-text="item.name"
+                                    ></span>
+                                    <span class="dots"></span>
+                                    <span
+                                        class="price"
+                                        x-text="item.price || ''"
+                                    ></span>
+                                </div>
+                                <p
+                                    class="description"
+                                    x-show="item.description"
+                                    x-text="item.description"
+                                ></p>
+                                <span
+                                    class="serves"
+                                    x-show="item.serves"
+                                    x-text="item.serves"
+                                ></span>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+            </template>
+        </section>
+    </template>
+
+    <!-- Empty state -->
+    <div class="empty-state" x-show="!hasResults">
         <p>No items found matching your search.</p>
-        <button
-            @click="search = ''; selectedType = 'all'; selectedCategory = 'all'"
-            class="reset-btn"
-        >
+        <button class="reset-btn" @click="search = ''; selectedType = 'all'">
             Reset Filters
+        </button>
+    </div>
+
+    <!-- Lightbox -->
+    <div class="lightbox" x-show="lightboxOpen" @click="lightboxOpen = false">
+        <img :src="lightboxSrc" alt="Menu" />
+        <a
+            class="download-btn lightbox-download"
+            :href="lightboxSrc"
+            download
+            @click.stop
+        >
+            ⬇ Download
+        </a>
+        <button class="close-btn" @click="lightboxOpen = false">
+            &times;
         </button>
     </div>
 </div>
 
+<script is:inline>
+    document.addEventListener("alpine:init", () => {
+        Alpine.data("menuApp", () => ({
+            menu: JSON.parse(
+                document.querySelector("[data-menu]").dataset.menu,
+            ),
+            search: "",
+            selectedType: "all",
+            lightboxOpen: false,
+            lightboxSrc: "",
+
+            get types() {
+                return this.menu.map((t) => ({ id: t.id, label: t.label }));
+            },
+
+            get filteredMenu() {
+                return this.menu
+                    .filter(
+                        (t) =>
+                            this.selectedType === "all" ||
+                            t.id === this.selectedType,
+                    )
+                    .map((t) => ({
+                        ...t,
+                        categories: t.categories.filter(
+                            (c) =>
+                                this.filteredItems(c).length > 0 || c.image_url,
+                        ),
+                    }))
+                    .filter((t) => t.categories.length > 0);
+            },
+
+            get hasResults() {
+                return this.filteredMenu.some(
+                    (t) =>
+                        t.categories.some(
+                            (c) => this.filteredItems(c).length > 0,
+                        ) || t.categories.some((c) => c.image_url),
+                );
+            },
+
+            filteredItems(cat) {
+                const q = this.search.toLowerCase();
+                return cat.items.filter(
+                    (i) =>
+                        i.name.toLowerCase().includes(q) ||
+                        (i.description || "").toLowerCase().includes(q),
+                );
+            },
+
+            openLightbox(src) {
+                this.lightboxSrc = src;
+                this.lightboxOpen = true;
+            },
+        }));
+    });
+</script>
+
 <style>
     .menu-container {
-        max-width: 1200px;
+        max-width: 900px;
         margin: 0 auto;
         padding: 2rem;
-        font-family:
-            system-ui,
-            -apple-system,
-            sans-serif;
     }
-
     .menu-header {
         text-align: center;
         margin-bottom: 2rem;
     }
-
     .menu-header h1 {
         font-size: 2.5rem;
         color: #1a365d;
-        margin-bottom: 0.5rem;
     }
-
     .tagline {
         color: #718096;
         font-style: italic;
     }
 
-    .filters-section {
-        background: #f7fafc;
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin-bottom: 2rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
     .search-box {
-        position: relative;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
     }
-
     .search-input {
         width: 100%;
-        padding: 0.75rem 1rem 0.75rem 2.5rem;
+        padding: 0.75rem 1rem;
         border: 2px solid #e2e8f0;
         border-radius: 8px;
         font-size: 1rem;
-        transition: border-color 0.2s;
-    }
-
-    .search-input:focus {
-        outline: none;
-        border-color: #4299e1;
-    }
-
-    .search-icon {
-        position: absolute;
-        left: 0.75rem;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 20px;
-        height: 20px;
-        color: #a0aec0;
-    }
-
-    .filter-group {
-        margin-bottom: 1rem;
-    }
-
-    .filter-group label {
-        display: block;
-        font-weight: 600;
-        color: #4a5568;
-        margin-bottom: 0.5rem;
-        text-transform: uppercase;
-        font-size: 0.875rem;
     }
 
     .filter-buttons {
         display: flex;
         flex-wrap: wrap;
         gap: 0.5rem;
+        margin-bottom: 2rem;
+        justify-content: center;
     }
-
     .filter-btn {
-        padding: 0.5rem 1rem;
+        padding: 0.5rem 1.25rem;
         border: 2px solid #e2e8f0;
         background: white;
         border-radius: 20px;
         cursor: pointer;
-        transition: all 0.2s;
-        font-size: 0.875rem;
+        font-size: 0.9rem;
     }
-
-    .filter-btn:hover {
-        border-color: #4299e1;
-        color: #4299e1;
-    }
-
     .filter-btn.active {
-        background: #4299e1;
+        background: #2b6cb0;
         color: white;
-        border-color: #4299e1;
+        border-color: #2b6cb0;
     }
 
-    .category-select {
-        width: 100%;
-        padding: 0.5rem;
-        border: 2px solid #e2e8f0;
-        border-radius: 8px;
-        font-size: 0.875rem;
-        background: white;
+    .menu-type-section {
+        margin-bottom: 3rem;
+    }
+    .menu-type-section h2 {
+        font-size: 1.8rem;
+        color: #1a365d;
+        border-bottom: 3px solid #2b6cb0;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
     }
 
-    .results-count {
-        text-align: right;
-        color: #718096;
-        font-size: 0.875rem;
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid #e2e8f0;
+    .category-block {
+        margin-bottom: 2rem;
+    }
+    .category-block h3 {
+        font-size: 1.2rem;
+        color: #2b6cb0;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
     }
 
-    .menu-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 1.5rem;
+    .menu-image-wrapper {
+        margin-bottom: 1rem;
+        text-align: center;
     }
-
-    .menu-card {
-        background: white;
+    .menu-image {
+        max-width: 100%;
         border-radius: 12px;
-        padding: 1.5rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        border: 1px solid #e2e8f0;
-        transition:
-            transform 0.2s,
-            box-shadow 0.2s;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        transition: transform 0.2s;
+    }
+    .menu-image:hover {
+        transform: scale(1.02);
+    }
+    .download-btn {
+        display: inline-block;
+        margin-top: 0.5rem;
+        padding: 0.4rem 1rem;
+        background: #2b6cb0;
+        color: white;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.85rem;
+    }
+    .download-btn:hover {
+        background: #2c5282;
     }
 
-    .menu-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 0.5rem;
-    }
-
-    .card-header h3 {
-        font-size: 1.125rem;
-        color: #2d3748;
+    .item-list {
+        list-style: none;
+        padding: 0;
         margin: 0;
-        flex: 1;
-        padding-right: 1rem;
     }
-
+    .menu-item {
+        margin-bottom: 0.75rem;
+    }
+    .item-line {
+        display: flex;
+        align-items: baseline;
+    }
+    .item-name {
+        font-weight: 600;
+        color: #2d3748;
+    }
+    .dots {
+        flex: 1;
+        border-bottom: 1px dotted #cbd5e0;
+        margin: 0 0.5rem;
+    }
     .price {
-        font-size: 1.25rem;
         font-weight: 700;
         color: #2b6cb0;
         white-space: nowrap;
     }
-
-    .category-label {
-        font-size: 0.75rem;
-        color: #4299e1;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin: 0 0 0.5rem 0;
-        font-weight: 600;
-    }
-
     .description {
         color: #4a5568;
         font-size: 0.875rem;
-        line-height: 1.5;
-        margin: 0;
+        margin: 0.25rem 0 0;
     }
-
-    .card-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid #e2e8f0;
-    }
-
-    .type-badge {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
-        background: #edf2f7;
-        color: #4a5568;
-        border-radius: 4px;
-        text-transform: capitalize;
-    }
-
     .serves {
         font-size: 0.75rem;
         color: #718096;
@@ -424,49 +336,46 @@ const types = [
 
     .empty-state {
         text-align: center;
-        padding: 4rem 2rem;
+        padding: 3rem;
         color: #718096;
     }
-
-    .empty-icon {
-        width: 64px;
-        height: 64px;
-        margin-bottom: 1rem;
-        color: #cbd5e0;
-    }
-
     .reset-btn {
         margin-top: 1rem;
-        padding: 0.75rem 1.5rem;
+        padding: 0.6rem 1.25rem;
         background: #4299e1;
         color: white;
         border: none;
         border-radius: 8px;
         cursor: pointer;
-        font-size: 0.875rem;
-        transition: background 0.2s;
     }
 
-    .reset-btn:hover {
-        background: #3182ce;
+    .lightbox {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        cursor: pointer;
     }
-
-    @media (max-width: 768px) {
-        .menu-container {
-            padding: 1rem;
-        }
-
-        .menu-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .filter-buttons {
-            justify-content: center;
-        }
+    .lightbox img {
+        max-width: 90%;
+        max-height: 85vh;
+        border-radius: 8px;
+    }
+    .lightbox-download {
+        position: absolute;
+        bottom: 2rem;
+    }
+    .close-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1.5rem;
+        font-size: 2.5rem;
+        color: white;
+        background: none;
+        border: none;
+        cursor: pointer;
     }
 </style>
-
-<!-- <script>
-  Alpine.js is required for this component to work
-   Add to your layout: <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-</script> -->
