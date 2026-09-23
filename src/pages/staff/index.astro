@@ -1,7 +1,19 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import ExcelUploader from "../../components/ExcelUploader.astro";
-import staffData from "../../lib/staffSales/sales_by_staff.json";
+import { getByStaff } from "../../lib/staffSales/storage";
+
+export const prerender = false; // reads Supabase on every request, so new uploads show straight away
+
+let staffData: Record<string, any> = {};
+let loadError = "";
+try {
+    staffData = await getByStaff();
+} catch (err) {
+    console.error("[staff index]", err);
+    loadError =
+        err instanceof Error ? err.message : "Could not load sales data.";
+}
 
 const staffList = Object.values(staffData)
     .map((staff) => ({
@@ -45,13 +57,21 @@ const totalAllStaff = staffList.reduce((sum, s) => sum + s.totalSales, 0);
                 <p class="big-number">
                     R
                     {Math.round(
-                        totalAllStaff / staffList.length,
+                        totalAllStaff / (staffList.length || 1),
                     ).toLocaleString()}
                 </p>
             </div>
         </div>
 
         <h2>All Staff Members</h2>
+        {loadError && (
+            <p class="notice">Couldn't load the sales data: {loadError}</p>
+        )}
+        {!loadError && staffList.length === 0 && (
+            <p class="notice">
+                No sales data yet. Upload a CASH UP file above to get started.
+            </p>
+        )}
         <div class="staff-grid">
             {staffList.map((staff) => (
                 <a
@@ -156,6 +176,11 @@ const totalAllStaff = staffList.reduce((sum, s) => sum + s.totalSales, 0);
         color: #333;
         border-bottom: 2px solid #00d4aa;
         padding-bottom: 10px;
+    }
+
+    .notice {
+        margin: 0 0 20px;
+        color: #666;
     }
 
     .stats p {

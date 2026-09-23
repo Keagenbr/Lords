@@ -142,16 +142,10 @@ const { endpoint = "/api/update-sales" } = Astro.props;
                     : "";
                 files = [];
                 render();
-                if (data.target === "filesystem") {
-                    say(
-                        `Saved ${days} day${days === 1 ? "" : "s"}.${replaced} Reloading…`,
-                    );
-                    setTimeout(() => location.reload(), 1200);
-                } else {
-                    say(
-                        `Saved ${days} day${days === 1 ? "" : "s"}.${replaced} The site is rebuilding; refresh in a minute or two.`,
-                    );
-                }
+                say(
+                    `Saved ${days} day${days === 1 ? "" : "s"}.${replaced} Reloading…`,
+                );
+                setTimeout(() => location.reload(), 1200);
             } catch (err) {
                 say(
                     err instanceof Error ? err.message : "Upload failed.",

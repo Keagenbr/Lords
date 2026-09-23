@@ -1,4 +1,4 @@
-// Reads one daily CASH UP sheet and rebuilds the three staff JSON files.
+// Reads one daily CASH UP sheet and builds the per-staff figures shown on the staff pages.
 // Pure logic (no file or network access) so it is easy to test.
 
 export class UploadError extends Error {}
@@ -189,17 +189,69 @@ export function extractRows(ws: Sheet, fileName: string): RawRow[] {
   return rows;
 }
 
-/** New rows replace any existing rows for the same date; everything else is kept as is. */
-export function mergeRows(existing: RawRow[], incoming: RawRow[]) {
-  const incomingDates = new Set(incoming.map((r) => r.date));
-  const replaced = [
-    ...new Set(
-      existing.filter((r) => incomingDates.has(r.date)).map((r) => r.date),
-    ),
-  ].sort();
+/** One row of the Supabase table `cash_up_rows` (see supabase/schema.sql). */
+export interface DbRow {
+  date: string;
+  staff_name: string;
+  manager: string;
+  source_file: string;
+  sales: number;
+  tabbs: number;
+  c_c_tips: number;
+  net_cash: number;
+  tips: number;
+  deductions: number;
+  paid: number;
+}
+
+/** What gets saved: the sheet's own numbers, with the sign of "paid" untouched. */
+export function rowToDb(r: RawRow): DbRow {
+  const d = r.sales_data;
   return {
-    rows: [...existing.filter((r) => !incomingDates.has(r.date)), ...incoming],
-    replaced,
+    date: r.date,
+    staff_name: r.staff_name,
+    manager: r.manager,
+    source_file: r.source_file,
+    sales: d.sales,
+    tabbs: d.tabbs,
+    c_c_tips: d.c_c_tips,
+    net_cash: d.net_cash,
+    tips: d.tips,
+    deductions: d.deductions,
+    paid: d.paid,
+  };
+}
+
+/** Rebuilds the row shape the aggregation below expects. cash_paid is always positive. */
+export function dbToRaw(d: DbRow): RawRow {
+  const n = (v: unknown) => Number(v) || 0; // numeric columns can arrive as strings
+  const [year, month, day] = d.date.split("-");
+  const paid = n(d.paid);
+  const sales_data = {
+    sales: n(d.sales),
+    tabbs: n(d.tabbs),
+    c_c_tips: n(d.c_c_tips),
+    net_cash: n(d.net_cash),
+    tips: n(d.tips),
+    deductions: n(d.deductions),
+    paid,
+  };
+  return {
+    staff_name: d.staff_name,
+    date: d.date,
+    year,
+    month,
+    month_name: MONTHS[+month - 1],
+    day,
+    manager: d.manager ?? "",
+    source_file: d.source_file ?? "",
+    sales_data,
+    summary: {
+      total_sales: sales_data.sales,
+      net_cash: sales_data.net_cash,
+      total_deductions: sales_data.deductions,
+      cash_paid: Math.abs(paid),
+    },
   };
 }
 
@@ -277,23 +329,4 @@ export function buildByMonth(byStaff: Record<string, any>) {
     }
   }
   return out;
-}
-
-/** The three files that src/pages/staff/* read. */
-export function buildAll(input: RawRow[]) {
-  // Older rows stored cash_paid as 0; fill it from their saved "paid" value (as a positive number) so history and new uploads agree.
-  const rows = input.map((r) =>
-    typeof r.sales_data?.paid === "number"
-      ? {
-          ...r,
-          summary: { ...r.summary, cash_paid: Math.abs(r.sales_data.paid) },
-        }
-      : r,
-  );
-  const byStaff = buildByStaff(rows);
-  return {
-    "sales_raw.json": rows,
-    "sales_by_staff.json": byStaff,
-    "sales_by_month.json": buildByMonth(byStaff),
-  };
 }

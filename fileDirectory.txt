@@ -1,0 +1,62 @@
+Lords/
+├── .env.local                      # Environment variables (root level!)
+├── .env.example                    # Template for env variables
+├── .gitignore
+├── .gitattributes
+├── AGENTS.md
+├── FilePath.md                     # Your existing file
+├── astro.config.mjs
+├── package.json
+├── package-lock.json
+├── tsconfig.json
+├── public/
+│   └── favicon/
+│       ├── apple-touch-icon.png
+│       ├── favicon-16x16.png
+│       ├── favicon-32x32.png
+│       ├── favicon.ico
+│       ├── favicon.svg
+│       └── site.webmanifest
+├── src/
+│   ├── assets/                     # Images, fonts, static assets
+│   │
+│   ├── components/
+│   │   ├── ExcelUploader.astro     # Dropzone for CASH UP files
+│   │   ├── Fonts.astro
+│   │   ├── Nav.astro               # Navigation component
+│   │   └── Menu/
+│   │       ├── index.astro
+│   │       └── data/
+│   │           ├── drinks.json
+│   │           ├── food.json
+│   │           ├── platters.json
+│   │           └── specials.json
+│   │
+│   ├── db/
+│   │   └── supabase.js             # Browser/client Supabase instance
+│   │
+│   ├── layouts/
+│   │   └── Layout.astro            # Base page layout
+│   │
+│   ├── lib/
+│   │   └── staffSales/             # Staff sales business logic
+│   │       ├── cashUp.ts           # Excel parsing & data transformation
+│   │       ├── storage.ts          # Supabase CRUD operations (SERVER-ONLY)
+│   │       ├── sales_by_month.json # Cached data (can be removed with Supabase)
+│   │       ├── sales_by_staff.json # Cached data (can be removed with Supabase)
+│   │       └── sales_raw.json      # Cached data (can be removed with Supabase)
+│   │
+│   ├── pages/
+│   │   ├── api/
+│   │   │   └── update-sales.ts     # API endpoint for file uploads
+│   │   ├── staff/
+│   │   │   ├── index.astro         # Staff overview/dashboard
+│   │   │   └── [name].astro        # Individual staff detail page
+│   │   ├── contact.astro
+│   │   ├── index.astro             # Homepage
+│   │   └── menu.astro
+│   │
+│   └── styles/                     # SCSS/CSS styles
+│
+└── vendor/
+    └── xlsx-0.20.3.tgz             # SheetJS for Excel parsing
