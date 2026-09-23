@@ -138,7 +138,7 @@ const menuJson = JSON.stringify(menuData);
     </div>
 </div>
 
-<script>
+<script is:inline>
     document.addEventListener("alpine:init", () => {
         Alpine.data("menuApp", () => ({
             menu: JSON.parse(
