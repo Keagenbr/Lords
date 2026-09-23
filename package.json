@@ -28,7 +28,6 @@
     "xlsx": "file:vendor/xlsx-0.20.3.tgz"
   },
   "allowScripts": {
-    "esbuild@0.28.1": true,
-    "@parcel/watcher@2.6.0": true
+    "esbuild@0.28.2": true
   }
 }

@@ -11,8 +11,7 @@ export default defineConfig({
     css: {
       transformer: "postcss",
     },
-    output: "server",
-    adapter: vercel(),
+    // adapter: vercel(),
   },
 
   integrations: [react()],
@@ -20,4 +19,6 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
   },
+
+  adapter: vercel(),
 });
