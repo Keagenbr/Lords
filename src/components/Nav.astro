@@ -49,7 +49,6 @@ const navItems = [
             transform 300ms ease-in-out,
             box-shadow 300ms ease-in-out; // not "all"
         will-change: transform;
-
         &.nav-hidden {
             transform: translateY(-100%);
         }
@@ -294,7 +293,6 @@ const navItems = [
         }
     }
 </style>
-
 <div
     id="nav"
     class="nav-header"
@@ -383,7 +381,6 @@ const navItems = [
         x-transition:leave-end="opacity-0"
     ></div>
 </div>
-
 <script>
     const THRESHOLD = 5; // ignore tiny scroll jitters
     let lastY = window.scrollY;

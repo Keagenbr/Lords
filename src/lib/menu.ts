@@ -1,5 +1,17 @@
 import { supabase } from "../db/supabase";
 
+// 1. Define your mapping here
+const categoryImageMap: Record<string, string> = {
+  "Alcoholic Drinks": "MenuAlcDrinks.jpg",
+  "Cold Drinks": "MenuColdDrinks.jpg",
+  Drinks: "MenuDrinks.jpg",
+  "Liquor & Legends": "MenuL&L.jpg",
+  Platters: "MenuPlatter.jpg",
+  Shooters: "MenuShooters.jpg",
+  Specials: "weeklySpecials.jpg", // Maps to the main specials folder
+  // Add other mappings if you have specific categories
+};
+
 export type MenuItem = {
   id: string;
   name: string;
@@ -14,7 +26,7 @@ export type MenuCategory = {
   id: string;
   type_id: string;
   label: string;
-  image_url: string | null;
+  image_url: string | null; // This will be populated below
   items: MenuItem[];
 };
 
@@ -37,12 +49,18 @@ export async function getMenu(): Promise<MenuType[]> {
     label: t.label,
     categories: (categories ?? [])
       .filter((c) => c.type_id === t.id)
-      .map((c) => ({
-        id: c.id,
-        type_id: c.type_id,
-        label: c.label,
-        image_url: c.image_url,
-        items: (items ?? []).filter((i) => i.category_id === c.id),
-      })),
+      .map((c) => {
+        // 2. Check if this category has a specific image in our map
+        const filename = categoryImageMap[c.label];
+
+        return {
+          id: c.id,
+          type_id: c.type_id,
+          label: c.label,
+          // 3. Construct the URL using the bucket name
+          image_url: filename ? `${filename}` : c.image_url, // Fallback to DB value if no map exists
+          items: (items ?? []).filter((i) => i.category_id === c.id),
+        };
+      }),
   }));
 }

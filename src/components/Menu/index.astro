@@ -142,12 +142,22 @@ const menuJson = JSON.stringify(menuData);
     document.addEventListener("alpine:init", () => {
         Alpine.data("menuApp", () => ({
             menu: JSON.parse(
-                document.querySelector("[data-menu]").dataset.menu,
+                document.querySelector("[data-menu]").dataset.menu || "[]",
             ),
             search: "",
             selectedType: "all",
             lightboxOpen: false,
             lightboxSrc: "",
+
+            // Get your project URL from your environment or window
+            get supabaseUrl() {
+                return (
+                    window.SUPABASE_URL || "https://YOUR_PROJECT_ID.supabase.co"
+                );
+            },
+            get bucketName() {
+                return "lordsImg";
+            },
 
             get types() {
                 return this.menu.map((t) => ({ id: t.id, label: t.label }));
