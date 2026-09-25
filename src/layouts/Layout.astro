@@ -46,20 +46,28 @@ const { title = "Lords and Legends" } = Astro.props;
         <!-- <script is:inline src="../lib/nav.js"></script> -->
     </head>
     <style lang="scss">
+        html {
+            scroll-behavior: smooth;
+        }
+        :target {
+            scroll-margin-top: var(--nav-header);
+        }
         body {
-            height: 200vh;
-            overflow-x: hidden;
-            top: var(--nav-header);
+            margin: 0;
+            padding: 0;
+            font-family: "Noto Sans", sans-serif;
+            background-color: var(--bg-color);
+            // overflow-x: hidden;
         }
         :root {
-            --bg-color-light: hsl(30, 50%, 99%);
+            --bg-color-light: hsl(14, 45%, 95%);
             --bg-color-dark: hsl(20, 100%, 5%);
             --bg-color: var(--bg-color-light);
 
             --ham-color: hsl(215 30% 10%);
             --ham-color-active: hsl(215 30% 70%);
 
-            --nav-bg: hsl(17, 10%, 86%);
+            --nav-bg: hsl(14, 45%, 85%);
             --nav-bg-highlight: hsl(17 30% 85.5%);
             --nav-bg-shadow: hsl(226 99.6% 7%);
             --nav-bg-shadowA: hsla(226 99.6% 7%/0.5);

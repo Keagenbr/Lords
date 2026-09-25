@@ -1,52 +1,87 @@
 ---
 import Layout from "../layouts/Layout.astro"; // Import the main layout part
-
-// import headerImg from "../../src/assets/headerImg.jpg";
+// import { Image } from "astro:assets";
+// import headerImg from "../../src/assets/headerImg2.webp";
+import HeaderBottom from "../../src/assets/headerBottom.svg";
 
 const { title } = Astro.props;
 ---
 
 <Layout title="Home">
-    <main class="home-header">
-        <header>
+    <main class="home">
+        <header class="home-header">
+            <!-- <Image
+                src={headerImg}
+                alt="Lords and Legends Entance | also used as header image"
+            /> -->
             <h1>
                 <span>Welcome to </span>Lords and Legends
             </h1>
+            <HeaderBottom class="home-header-down" />
         </header>
+        <article>
+            <p class="home-about">
+                Lords and Legends was established over 15 years ago in
+                Amanzimtoti, South Coast by a legend, Bruce Lithgow. Bruce had a
+                vision to create a social, viby and enjoyable dining experience
+                for locals and visitors. Today Lords and Legends have also
+                established themselves at Brighton Beach. Proudly bringing
+                people of Brighton the same food and viby environment.
+            </p>
+            <p>
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Corporis voluptates voluptas enim repellat esse? Consequuntur
+                est doloribus fugiat, iure porro pariatur quae aperiam molestias
+                at similique earum praesentium voluptates facilis?
+            </p>
+            <p>
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Corporis voluptates voluptas enim repellat esse? Consequuntur
+                est doloribus fugiat, iure porro pariatur quae aperiam molestias
+                at similique earum praesentium voluptates facilis?
+            </p>
+            <p>
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Corporis voluptates voluptas enim repellat esse? Consequuntur
+                est doloribus fugiat, iure porro pariatur quae aperiam molestias
+                at similique earum praesentium voluptates facilis?
+            </p>
+            <p>
+                Lorem ipsum, dolor sit amet consectetur adipisicing elit.
+                Corporis voluptates voluptas enim repellat esse? Consequuntur
+                est doloribus fugiat, iure porro pariatur quae aperiam molestias
+                at similique earum praesentium voluptates facilis?
+            </p>
+        </article>
     </main>
 
     <style lang="scss">
         .home-header {
-            // top: var(--nav-header);
-            color: var(--text-color);
-            position: relative;
-            min-height: calc(50em - var(--nav-header));
-            // min-height: ;
-            width: min(50%, 100%);
-            max-height: 1080px;
-            margin: 0 10%;
-            padding: 0;
+            display: flex;
+            color: var(--text-color-dark);
+            height: calc(100vh - var(--nav-header));
+            margin-top: var(--nav-header);
             background:
-                linear-gradient(to bottom, var(--img-overlay), transparent),
+                                                                                                    // linear-gradient(to bottom, var(--img-overlay), transparent),
                 url("../../src/assets/headerImg.webp") no-repeat center center;
             background-size: cover;
-            // background-attachment: fixed;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+
+            & h1 {
+                color: var(--text-color-dark);
+            }
+            & svg {
+                align-self: flex-end;
+                width: 80px;
+                height: 60px;
+                bottom: 0;
+                left: 50%;
+                transform: translateX(-50%);
+            }
         }
         @media (max-width: 768px) {
             .home-header {
-                // top: var(--nav-headerM);
-                display: flex;
-                position: relative;
-                align-items: center;
-                justify-content: center;
-                background:
-                    linear-gradient(to bottom, var(--img-overlay), transparent),
-                    url("../../src/assets/headerImgM.webp") no-repeat center
-                        center;
-                background-size: contain;
+                height: calc(100vh - var(--nav-headerM));
+                margin-top: var(--nav-headerM);
             }
         }
     </style>
