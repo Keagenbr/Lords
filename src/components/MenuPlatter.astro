@@ -1,0 +1,141 @@
+---
+// src/components/MenuPlatter.astro
+import { getPublicImageUrl } from "../lib/supabaseStorage";
+
+interface Props {
+    filename?: string;
+    folder?: string;
+    label?: string;
+}
+
+const {
+    filename = "MenuPlatter.jpg",
+    folder = "MenuSpecials",
+    label = "Platter Menu",
+} = Astro.props;
+
+// Built on the server — no `window` involved.
+const imageUrl = getPublicImageUrl(`${folder}/${filename}`);
+---
+
+<div class="platter-wrapper">
+    <div
+        class="menu-image-container"
+        x-data="{ lightboxOpen: false }"
+        @click="lightboxOpen = true"
+    >
+        <img src={imageUrl} alt={label} class="menu-image" loading="lazy" />
+
+        <a href={imageUrl} download={filename} class="download-btn" @click.stop>
+            ⬇ Download Menu
+        </a>
+
+        <div
+            class="lightbox-overlay"
+            x-show="lightboxOpen"
+            x-cloak
+            @click="lightboxOpen = false"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+        >
+            <div class="lightbox-content" @click.stop>
+                <button
+                    class="close-lightbox-btn"
+                    @click="lightboxOpen = false"
+                >
+                    &times;
+                </button>
+                <img src={imageUrl} alt={`Full screen ${label}`} />
+                <a
+                    href={imageUrl}
+                    download={filename}
+                    class="download-btn lightbox-download"
+                    @click.stop
+                >
+                    ⬇ Download
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .platter-wrapper {
+        max-width: 1000px;
+        margin: 0 auto 4rem auto;
+        text-align: center;
+    }
+    .menu-image-container {
+        display: inline-block;
+        cursor: pointer;
+    }
+    .menu-image {
+        max-width: 100%;
+        height: auto;
+        border-radius: 12px;
+        border: 2px solid var(--MenuColor);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease;
+        display: block;
+    }
+    .menu-image:hover {
+        transform: scale(1.01);
+    }
+    .download-btn {
+        display: inline-block;
+        margin-top: 0.5rem;
+        padding: 0.6rem 1.5rem;
+        background-color: var(--bg-color-btn);
+        color: white;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+    .download-btn:hover {
+        background-color: var(--MenuColor);
+    }
+    /*Lightbox*/
+    /*.lightbox-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .lightbox-content {
+        position: relative;
+        max-width: 90%;
+        max-height: 85vh;
+    }
+    .lightbox-content img {
+        max-width: 100%;
+        max-height: 85vh;
+        border-radius: 8px;
+        border: 2px solid white;
+    }
+    .close-lightbox-btn {
+        position: absolute;
+        top: -40px;
+        right: 0;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 2rem;
+        cursor: pointer;
+    }
+    .lightbox-download {
+        position: absolute;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 0.5rem 1.5rem;
+        background: white;
+        color: black;
+        border-radius: 20px;
+        text-decoration: none;
+        font-weight: bold;
+    }*/
+</style>

@@ -1,0 +1,82 @@
+---
+---
+
+<style>
+    #progress {
+        display: grid;
+        pointer-events: none;
+        place-items: center;
+        position: fixed;
+        align-items: center;
+        right: 30px;
+        bottom: 30px;
+        border-radius: 50%;
+        /*background-color: var(--bg-color-btn);*/
+        box-shadow: 0 0 10px var(--nav-bg-shadow);
+        width: 60px;
+        height: 60px;
+        z-index: 9999;
+        cursor: pointer;
+        opacity: 0;
+        transform: scale(0.8);
+        transition:
+            opacity 0.25s ease,
+            transform 0.25s ease,
+            background 0.15s linear;
+    }
+    #progress.visible {
+        opacity: 1;
+        transform: scale(1);
+        pointer-events: auto;
+    }
+    #progress-value {
+        width: calc(100% - 10px);
+        height: calc(100% - 10px);
+        padding: 14px;
+        box-sizing: border-box;
+        background: var(--bg-color-light);
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        transition: transform 0.2s ease;
+    }
+    #progress-value path {
+        fill: var(--bg-color-btn, currentColor);
+    }
+    #progress:hover #progress-value {
+        transform: translateY(-3px);
+    }
+</style>
+<div id="progress">
+    <svg
+        id="progress-value"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 640 640"
+    >
+        <!--!Font Awesome Pro v7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2026 Fonticons, Inc.-->
+        <path d="M342.6 105.4C330.1 92.9 309.8 92.9 297.3 105.4L137.3 265.4C124.8 277.9 124.8 298.2 137.3 310.7C149.8 323.2 170.1 323.2 182.6 310.7L320 173.3L457.4 310.6C469.9 323.1 490.2 323.1 502.7 310.6C515.2 298.1 515.2 277.8 502.7 265.3L342.7 105.3zM502.6 457.4L342.6 297.4C330.1 284.9 309.8 284.9 297.3 297.4L137.3 457.4C124.8 469.9 124.8 490.2 137.3 502.7C149.8 515.2 170.1 515.2 182.6 502.7L320 365.3L457.4 502.6C469.9 515.1 490.2 515.1 502.7 502.6C515.2 490.1 515.2 469.8 502.7 457.3z" />
+    </svg>
+</div>
+
+<script is:inline>
+    const scrollProgress = document.getElementById("progress");
+
+    const calcScrollValue = () => {
+        const scrollTop = document.documentElement.scrollTop;
+        const calcHeight =
+            document.documentElement.scrollHeight -
+            document.documentElement.clientHeight;
+        const scrollValue =
+            calcHeight > 0 ? Math.round((scrollTop * 100) / calcHeight) : 0;
+
+        scrollProgress.classList.toggle("visible", scrollTop > 100);
+        scrollProgress.style.background = `conic-gradient(var(--bg-color-btn) ${scrollValue}%, var(--bg-color-light) ${scrollValue}%)`;
+    };
+
+    scrollProgress.addEventListener("click", () => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    document.addEventListener("scroll", calcScrollValue, { passive: true });
+    window.addEventListener("load", calcScrollValue);
+</script>

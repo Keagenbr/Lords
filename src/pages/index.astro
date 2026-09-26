@@ -1,53 +1,236 @@
 ---
 import Layout from "../layouts/Layout.astro"; // Import the main layout part
+// import { Image } from "astro:assets";
+// import headerImg from "../../src/assets/headerImg2.webp";
+import HeaderBottom from "../../src/assets/headerBottom.svg";
 
-// import headerImg from "../../src/assets/headerImg.jpg";
+// Gets the public URL for weekly specials image from Supabase Storage.
+import { getPublicImageUrl } from "../lib/supabaseStorage";
+
+interface Props {
+    filename?: string;
+    folder?: string;
+    label?: string;
+}
+
+const {
+    filename = "weeklySpecials.jpg",
+    label = "Weekly Specials",
+    folder = "MenuSpecials",
+} = Astro.props;
+
+// Built on the server — no `window` involved.
+const imageUrl = getPublicImageUrl(`${folder}/${filename}`);
 
 const { title } = Astro.props;
 ---
 
 <Layout title="Home">
-    <main class="home-header">
-        <header>
+    <main class="home">
+        <header class="home-header">
             <h1>
-                <span>Welcome to </span>Lords and Legends
+                <span>Welcome to </span>
+                Lords and Legends
             </h1>
+
+            <button class="menu-btn">
+                <a href="/menu">View Our Menu</a>
+            </button>
+            <section class="triangle"></section>
+            <!-- <HeaderBottom class="home-header-down" /> -->
         </header>
+        <section class="home-about">
+            <h2>About Us</h2>
+            <p>
+                Lords and Legends was established over 15 years ago in
+                Amanzimtoti, South Coast by a legend, Bruce Lithgow. Bruce had a
+                vision to create a social, viby and enjoyable dining experience
+                for locals and visitors. Today Lords and Legends have also
+                established themselves at Brighton Beach. Proudly bringing
+                people of Brighton the same food and viby environment.
+            </p>
+            <p>
+                If you are looking for a place to enjoy your favourite sports
+                broadcasts and to eat the most delicious food, then you must
+                visit Lords & Legends Sports Cafe which has an extensive menu
+                catering for everyone’s taste. With a great selection of food,
+                refreshing drinks and party atmosphere, there is no better place
+                to dine than in our Lords & Legends Sports Cafe!
+            </p>
+            <p>
+                If you are looking for a place to enjoy your favourite sports
+                broadcasts and to eat the most delicious food, then you must
+                visit Lords & Legends Sports Cafe which has an extensive menu
+                catering for everyone’s taste. With a great selection of food,
+                refreshing drinks and party atmosphere, there is no better place
+                to dine than in our Lords & Legends Sports Cafe!
+            </p>
+        </section>
+        <aside>
+            <h3>Daily Specials</h3>
+            <div class="weeklySpecials-wrapper">
+                <div
+                    class="menu-image-container"
+                    x-data="{ lightboxOpen: false }"
+                    @click="lightboxOpen = true"
+                >
+                    <img
+                        src={imageUrl}
+                        alt={label}
+                        class="menu-image"
+                        loading="lazy"
+                    />
+
+                    <a
+                        href={imageUrl}
+                        download={filename}
+                        class="download-btn"
+                        @click.stop
+                    >
+                        ⬇ Download Menu
+                    </a>
+
+                    <div
+                        class="lightbox-overlay"
+                        x-show="lightboxOpen"
+                        x-cloak
+                        @click="lightboxOpen = false"
+                        x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0"
+                        x-transition:enter-end="opacity-100"
+                    >
+                        <div class="lightbox-content" @click.stop>
+                            <button
+                                class="close-lightbox-btn"
+                                @click="lightboxOpen = false"
+                            >
+                                &times;
+                            </button>
+                            <img src={imageUrl} alt={`Full screen ${label}`} />
+                            <a
+                                href={imageUrl}
+                                download={filename}
+                                class="download-btn lightbox-download"
+                                @click.stop
+                            >
+                                ⬇ Download
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
     </main>
 
     <style lang="scss">
         .home-header {
-            // top: var(--nav-header);
-            color: var(--text-color);
-            position: relative;
-            min-height: calc(50em - var(--nav-header));
-            // min-height: ;
-            width: min(50%, 100%);
-            max-height: 1080px;
-            margin: 0 10%;
-            padding: 0;
-            background:
-                linear-gradient(to bottom, var(--img-overlay), transparent),
-                url("../../src/assets/headerImg.webp") no-repeat center center;
-            background-size: cover;
-            // background-attachment: fixed;
-            display: flex;
+            display: grid;
+            grid-template-rows: 2fr auto;
             align-items: center;
-            justify-content: center;
-        }
-        @media (max-width: 768px) {
-            .home-header {
-                // top: var(--nav-headerM);
-                display: flex;
-                position: relative;
-                align-items: center;
-                justify-content: center;
-                background:
-                    linear-gradient(to bottom, var(--img-overlay), transparent),
-                    url("../../src/assets/headerImgM.webp") no-repeat center
-                        center;
-                background-size: contain;
+            justify-items: center;
+            text-align: center;
+            color: var(--text-color-dark);
+            height: calc(100vh - var(--nav-headerM));
+            margin-top: var(--nav-headerM);
+            background: url("../../src/assets/headerImg.webp") no-repeat center
+                center;
+            // background-size: cover;
+
+            & h1 {
+                grid-area: 1 / 1 / 2 / 2;
+                & span {
+                    font-family: "Noto Sans";
+                }
+                color: var(--text-color-dark);
+                font-size: 4rem;
+                font-family: "Pinyon Script";
+            }
+            & svg {
+                bottom: 0;
+                z-index: 10;
             }
         }
+        .menu-btn {
+            grid-area: 1 / 1 / 2 / 2;
+
+            position: relative;
+            bottom: -25%;
+
+            padding: 0.5em 1em;
+            background-color: var(--bg-color);
+            color: var(--txt-color);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+
+            & a {
+                text-decoration: none;
+                color: var(--txt-color);
+            }
+        }
+
+        .triangle {
+            position: relative;
+            background: #2c3e50;
+            height: 30px;
+        }
+
+        .triangle::before {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 43px 43px 43px;
+            border-color: transparent transparent var(--bg-color) transparent;
+            left: 49%;
+            transform: translateX(-50%);
+        }
+
+        .weeklySpecials-wrapper {
+            max-width: 1000px;
+            margin: 0 auto 4rem auto;
+            text-align: center;
+        }
+        .menu-image-container {
+            display: inline-block;
+            cursor: pointer;
+        }
+        .menu-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            border: 2px solid var(--MenuColor);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            display: block;
+        }
+        .menu-image:hover {
+            transform: scale(1.01);
+        }
+        .download-btn {
+            display: inline-block;
+            margin-top: 0.5rem;
+            padding: 0.6rem 1.5rem;
+            background-color: var(--bg-color-btn);
+            color: white;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .download-btn:hover {
+            background-color: var(--MenuColor);
+        }
+
+        // @media (max-width: 768px) {
+        //     .home-header {
+        //         height: calc(100vh - var(--nav-headerM));
+        //         margin-top: calc(var(--nav-headerM) - 0.25em);
+        //         // margin-top: var(--nav-headerM);
+        //     }
+        // }
     </style>
+
+    <script is:inline></script>
 </Layout>
