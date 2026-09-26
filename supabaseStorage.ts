@@ -27,5 +27,3 @@ export function getPublicImageUrl(
 
   return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${encodedPath}`;
 }
-
-// https://supabase.com/dashboard/project/xwpwssyoetlphadybtsx/storage/files/buckets/LordsImg?path=Menu
