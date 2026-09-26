@@ -13,7 +13,7 @@ try {
 const menuJson = JSON.stringify(menuData);
 ---
 
-<div class="menu-container" x-data="menuApp" data-menu={menuJson}>
+<section class="menu-container" x-data="menuApp" data-menu={menuJson}>
     <div class="menu-header">
         <h1>Lords & Legends Menu</h1>
         <p class="tagline">Good times. Cold drinks. Great company.</p>
@@ -53,30 +53,9 @@ const menuJson = JSON.stringify(menuData);
         <section class="menu-type-section">
             <h2 x-text="type.label"></h2>
 
-            <!-- Category-level image (clickable + downloadable) -->
             <template x-for="cat in type.categories" :key="cat.id">
                 <div class="category-block">
                     <h3 x-text="cat.label.replace(/_/g, ' ')"></h3>
-
-                    <template x-if="cat.image_url">
-                        <div class="menu-image-wrapper">
-                            <img
-                                :src="cat.image_url"
-                                :alt="cat.label + ' menu'"
-                                class="menu-image"
-                                @click="openLightbox(cat.image_url)"
-                            />
-                            <a
-                                :href="cat.image_url"
-                                :download="cat.label + '-menu'"
-                                class="download-btn"
-                                target="_blank"
-                                rel="noopener"
-                            >
-                                ⬇ Download Menu
-                            </a>
-                        </div>
-                    </template>
 
                     <ul class="item-list">
                         <template
@@ -120,23 +99,7 @@ const menuJson = JSON.stringify(menuData);
             Reset Filters
         </button>
     </div>
-
-    <!-- Lightbox -->
-    <div class="lightbox" x-show="lightboxOpen" @click="lightboxOpen = false">
-        <img :src="lightboxSrc" alt="Menu" />
-        <a
-            class="download-btn lightbox-download"
-            :href="lightboxSrc"
-            download
-            @click.stop
-        >
-            ⬇ Download
-        </a>
-        <button class="close-btn" @click="lightboxOpen = false">
-            &times;
-        </button>
-    </div>
-</div>
+</section>
 
 <script is:inline>
     document.addEventListener("alpine:init", () => {
@@ -146,18 +109,6 @@ const menuJson = JSON.stringify(menuData);
             ),
             search: "",
             selectedType: "all",
-            lightboxOpen: false,
-            lightboxSrc: "",
-
-            // Get your project URL from your environment or window
-            get supabaseUrl() {
-                return (
-                    window.SUPABASE_URL || "https://YOUR_PROJECT_ID.supabase.co"
-                );
-            },
-            get bucketName() {
-                return "lordsImg";
-            },
 
             get types() {
                 return this.menu.map((t) => ({ id: t.id, label: t.label }));
@@ -173,19 +124,15 @@ const menuJson = JSON.stringify(menuData);
                     .map((t) => ({
                         ...t,
                         categories: t.categories.filter(
-                            (c) =>
-                                this.filteredItems(c).length > 0 || c.image_url,
+                            (c) => this.filteredItems(c).length > 0,
                         ),
                     }))
                     .filter((t) => t.categories.length > 0);
             },
 
             get hasResults() {
-                return this.filteredMenu.some(
-                    (t) =>
-                        t.categories.some(
-                            (c) => this.filteredItems(c).length > 0,
-                        ) || t.categories.some((c) => c.image_url),
+                return this.filteredMenu.some((t) =>
+                    t.categories.some((c) => this.filteredItems(c).length > 0),
                 );
             },
 
@@ -197,11 +144,6 @@ const menuJson = JSON.stringify(menuData);
                         (i.description || "").toLowerCase().includes(q),
                 );
             },
-
-            openLightbox(src) {
-                this.lightboxSrc = src;
-                this.lightboxOpen = true;
-            },
         }));
     });
 </script>
@@ -209,7 +151,8 @@ const menuJson = JSON.stringify(menuData);
 <style>
     .menu-container {
         max-width: 900px;
-        margin: 0 auto;
+        margin: 0 10%;
+        margin-top: var(--nav-headerM);
         padding: 2rem;
     }
     .menu-header {
@@ -279,34 +222,6 @@ const menuJson = JSON.stringify(menuData);
         margin-bottom: 0.75rem;
     }
 
-    .menu-image-wrapper {
-        margin-bottom: 1rem;
-        text-align: center;
-    }
-    .menu-image {
-        max-width: 100%;
-        border-radius: 12px;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        transition: transform 0.2s;
-    }
-    .menu-image:hover {
-        transform: scale(1.02);
-    }
-    .download-btn {
-        display: inline-block;
-        margin-top: 0.5rem;
-        padding: 0.4rem 1rem;
-        background: #2b6cb0;
-        color: white;
-        border-radius: 6px;
-        text-decoration: none;
-        font-size: 0.85rem;
-    }
-    .download-btn:hover {
-        background: #2c5282;
-    }
-
     .item-list {
         list-style: none;
         padding: 0;
@@ -356,36 +271,6 @@ const menuJson = JSON.stringify(menuData);
         color: white;
         border: none;
         border-radius: 8px;
-        cursor: pointer;
-    }
-
-    .lightbox {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.85);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        cursor: pointer;
-    }
-    .lightbox img {
-        max-width: 90%;
-        max-height: 85vh;
-        border-radius: 8px;
-    }
-    .lightbox-download {
-        position: absolute;
-        bottom: 2rem;
-    }
-    .close-btn {
-        position: absolute;
-        top: 1rem;
-        right: 1.5rem;
-        font-size: 2.5rem;
-        color: white;
-        background: none;
-        border: none;
         cursor: pointer;
     }
 </style>

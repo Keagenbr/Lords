@@ -1,6 +1,9 @@
 ---
-import Menu from "../components/Menu/index.astro";
+import Menu from "../components/Menu/index.astro"; //Imports the Menu list component
 import Layout from "../layouts/Layout.astro"; // Import the main layout part
+// import MenuMain from "../components/MenuMain.astro"; // Imports the MenuMain component
+// import MenuPlatter from "../components/MenuPlatter.astro"; // Imports the MenuPlatter component
+// import MenuSlider from "../components/MenuSlider.astro"; // Imports the MenuSlider component
 
 // import { getCollection } from "astro:content";
 const { title = "Menu" } = Astro.props;
@@ -14,4 +17,6 @@ const { title = "Menu" } = Astro.props;
 
 <Layout>
     <Menu />
+    <!-- <MenuPlatter />
+    <MenuSlider /> -->
 </Layout>
