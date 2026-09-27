@@ -1,6 +1,6 @@
 ---
 // src/components/MenuPlatter.astro
-import { getPublicImageUrl } from "../lib/supabaseStorage";
+import { getPublicImageUrl } from "../../lib/supabaseStorage";
 
 interface Props {
     filename?: string;
@@ -96,7 +96,7 @@ const imageUrl = getPublicImageUrl(`${folder}/${filename}`);
         background-color: var(--MenuColor);
     }
     /*Lightbox*/
-    /*.lightbox-overlay {
+    .lightbox-overlay {
         position: fixed;
         inset: 0;
         background: rgba(0, 0, 0, 0.9);
@@ -137,5 +137,5 @@ const imageUrl = getPublicImageUrl(`${folder}/${filename}`);
         border-radius: 20px;
         text-decoration: none;
         font-weight: bold;
-    }*/
+    }
 </style>

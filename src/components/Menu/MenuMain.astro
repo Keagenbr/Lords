@@ -4,7 +4,7 @@
 // Slider for the multi-page main menu. Images are loaded from Supabase
 // Storage and shown in the order defined in `defaultParts` below (or
 // via the `parts` prop if you want to override it per-page).
-import { getPublicImageUrl } from "../lib/supabaseStorage";
+import { getPublicImageUrl } from "../../lib/supabaseStorage";
 
 export interface MenuPart {
     filename: string;
@@ -202,7 +202,8 @@ const menuParts = parts.map((part) => ({
     .menu-slider-container {
         position: relative;
         overflow: hidden;
-        width: 100%;
+        width: 25rem;
+        height: 30rem;
         max-width: 800px;
         margin: 0 auto;
         border-radius: 12px;
@@ -306,7 +307,7 @@ const menuParts = parts.map((part) => ({
     }
 
     /*Lightbox*/
-    /*.lightbox-overlay {
+    .lightbox-overlay {
         position: fixed;
         inset: 0;
         background: rgba(0, 0, 0, 0.95);
@@ -352,5 +353,5 @@ const menuParts = parts.map((part) => ({
         border-radius: 20px;
         text-decoration: none;
         font-weight: bold;
-    }*/
+    }
 </style>

@@ -12,6 +12,12 @@ const categoryImageMap: Record<string, string> = {
   // Add other mappings if you have specific categories
 };
 
+export type MenuOptionGroup = {
+  key: string; // e.g. "side", "sauce", "rarity", "egg"
+  label: string; // shown above the choices, e.g. "Side"
+  options: string[]; // the pickable values, e.g. ["Chips","Side Salad"]
+};
+
 export type MenuItem = {
   id: string;
   name: string;
@@ -20,6 +26,8 @@ export type MenuItem = {
   serves: string | null;
   image_url: string | null;
   category_id: string;
+  option_groups: MenuOptionGroup[]; // populated by supabase_menu_options_v2.sql
+  takeaway: boolean; // populated by supabase_menu_options_v2.sql
 };
 
 export type MenuCategory = {
