@@ -22,10 +22,10 @@ const {
 // Built on the server — no `window` involved.
 const imageUrl = getPublicImageUrl(`${folder}/${filename}`);
 
-const { title } = Astro.props;
+const { title = "Home" } = Astro.props;
 ---
 
-<Layout title="Home">
+<Layout title={title}>
     <main class="home">
         <header class="home-header">
             <h1>
