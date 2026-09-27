@@ -1,0 +1,1202 @@
+---
+import { getMenu, type MenuType } from "../../lib/menu";
+
+let menuData: MenuType[] = [];
+
+try {
+    menuData = await getMenu();
+} catch (e) {
+    console.error("Failed to load menu from Supabase:", e);
+}
+
+// Serialized for client-side reactive rendering
+const menuJson = JSON.stringify(menuData);
+
+// ─────────────────────────────────────────────────────────────
+// WHATSAPP ORDERING CONFIG
+// ─────────────────────────────────────────────────────────────
+const WHATSAPP_NUMBER = "27626685787";
+const RESTAURANT_NAME = "Lords & Legends";
+---
+
+<section
+    class="menu-container"
+    x-data="menuApp"
+    data-menu={menuJson}
+    data-whatsapp={WHATSAPP_NUMBER}
+    data-restaurant={RESTAURANT_NAME}
+>
+    <div class="menu-header">
+        <h1>Lords & Legends Menu</h1>
+        <p class="tagline">Good times. Cold drinks. Great company.</p>
+    </div>
+
+    <!-- Search input -->
+    <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input
+            type="text"
+            x-model="search"
+            placeholder="Search menu items or descriptions..."
+            class="search-input"
+        />
+        <button
+            x-show="search.length > 0"
+            @click="search = ''"
+            class="clear-search-btn"
+            title="Clear search"
+        >
+            ✕
+        </button>
+    </div>
+
+    <!-- Type filter tabs -->
+    <div class="filter-buttons">
+        <button
+            class="filter-btn"
+            :class="{ active: selectedType === 'all' }"
+            @click="selectedType = 'all'"
+        >
+            <i class="fa-solid fa-utensils"></i> All
+        </button>
+        <template x-for="t in types" :key="t.id">
+            <button
+                class="filter-btn"
+                :class="{ active: selectedType === t.id }"
+                @click="selectedType = t.id"
+            >
+                <i :class="getTypeIcon(t.id)"></i>
+                <span x-text="t.label"></span>
+            </button>
+        </template>
+    </div>
+
+    <!-- Rendered server-side sections, filtered client-side -->
+    <template x-for="type in filteredMenu" :key="type.id">
+        <section class="menu-type-section">
+            <h2 class="type-header">
+                <i :class="getTypeIcon(type.id)"></i>
+                <span x-text="type.label"></span>
+            </h2>
+
+            <template x-for="cat in type.categories" :key="cat.id">
+                <div
+                    class="category-block"
+                    :class="{ 'is-open': isCategoryOpen(cat.id) }"
+                >
+                    <!-- Toggleable Dropdown Header -->
+                    <button
+                        type="button"
+                        class="category-header"
+                        @click="toggleCategory(cat.id)"
+                        :aria-expanded="isCategoryOpen(cat.id)"
+                    >
+                        <div class="category-title">
+                            <!-- Category Image / Drink Logo -->
+                            <img
+                                :src="getCategoryImage(cat)"
+                                :alt="cat.label"
+                                class="category-logo"
+                                loading="lazy"
+                            />
+                            <span x-text="cat.label.replace(/_/g, ' ')"></span>
+                        </div>
+
+                        <div class="category-meta">
+                            <span
+                                class="item-count-badge"
+                                x-text="filteredItems(cat).length + ' items'"
+                            ></span>
+                            <i
+                                class="fa-solid chevron-icon"
+                                :class="isCategoryOpen(cat.id) ? 'fa-chevron-up' : 'fa-chevron-down'"
+                            ></i>
+                        </div>
+                    </button>
+
+                    <!-- Collapsible Category Items Grid -->
+                    <div
+                        class="category-content"
+                        x-show="isCategoryOpen(cat.id)"
+                        x-collapse
+                    >
+                        <ul class="item-list">
+                            <template
+                                x-for="item in filteredItems(cat)"
+                                :key="item.id"
+                            >
+                                <li class="menu-item">
+                                    <div class="item-layout">
+                                        <!-- Item Image Thumbnail -->
+                                        <div
+                                            class="item-thumb-wrapper"
+                                            x-show="getItemImage(item)"
+                                        >
+                                            <img
+                                                :src="getItemImage(item)"
+                                                :alt="item.name"
+                                                class="item-thumb"
+                                                loading="lazy"
+                                            />
+                                        </div>
+
+                                        <div class="item-details">
+                                            <div class="item-line">
+                                                <span
+                                                    class="item-name"
+                                                    x-text="item.name"
+                                                ></span>
+                                                <span class="dots"></span>
+                                                <span
+                                                    class="price"
+                                                    x-text="item.price || ''"
+                                                ></span>
+                                            </div>
+                                            <p
+                                                class="description"
+                                                x-show="item.description"
+                                                x-text="item.description"
+                                            ></p>
+                                            <div class="item-tags">
+                                                <span
+                                                    class="serves-tag"
+                                                    x-show="item.serves"
+                                                    x-text="item.serves"
+                                                ></span>
+                                                <span
+                                                    class="dine-in-tag"
+                                                    x-show="item.takeaway === false"
+                                                >
+                                                    <i class="fa-solid fa-chair"></i>{" "}
+                                                    Dine-in only
+                                                </span>
+                                            </div>
+
+                                            <button
+                                                class="add-btn"
+                                                x-show="isOrderable(item, type.id)"
+                                                @click="openItemModal(item)"
+                                            >
+                                                <i class="fa-solid fa-plus"></i>{" "}
+                                                Add to order
+                                            </button>
+                                        </div>
+                                    </div>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </div>
+            </template>
+        </section>
+    </template>
+
+    <!-- Empty state -->
+    <div class="empty-state" x-show="!hasResults">
+        <i class="fa-solid fa-utensils-slash empty-icon"></i>
+        <p>No menu items match your search.</p>
+        <button class="reset-btn" @click="search = ''; selectedType = 'all'">
+            Reset Filters
+        </button>
+    </div>
+
+    <!-- ITEM MODAL -->
+    <div
+        class="modal-overlay"
+        x-show="showItemModal"
+        x-cloak
+        @click.self="closeItemModal"
+    >
+        <div class="modal-box" x-show="showItemModal" x-transition>
+            <template x-if="activeItem">
+                <div>
+                    <!-- Optional item image inside modal -->
+                    <div
+                        class="modal-item-img-container"
+                        x-show="getItemImage(activeItem)"
+                    >
+                        <img
+                            :src="getItemImage(activeItem)"
+                            :alt="activeItem.name"
+                            class="modal-item-img"
+                        />
+                    </div>
+
+                    <h3 x-text="activeItem.name"></h3>
+                    <p class="modal-price" x-text="activeItem.price || ''"></p>
+
+                    <!-- Option groups -->
+                    <template
+                        x-for="group in (activeItem.option_groups || [])"
+                        :key="group.key"
+                    >
+                        <div class="modal-field">
+                            <label x-text="group.label"></label>
+                            <div class="choice-group">
+                                <template
+                                    x-for="opt in group.options"
+                                    :key="opt"
+                                >
+                                    <label class="choice-pill">
+                                        <input
+                                            type="radio"
+                                            :name="group.key"
+                                            :value="opt"
+                                            x-model="modalChoices[group.key]"
+                                        />
+                                        <span x-text="opt"></span>
+                                    </label>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Quantity -->
+                    <div class="modal-field">
+                        <label>Quantity</label>
+                        <div class="qty-stepper">
+                            <button
+                                type="button"
+                                @click="modalQty = Math.max(1, modalQty - 1)"
+                            >
+                                −
+                            </button>
+                            <span x-text="modalQty"></span>
+                            <button type="button" @click="modalQty++">
+                                +
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Note -->
+                    <div class="modal-field">
+                        <label>Any specifications? (optional)</label>
+                        <textarea
+                            x-model="modalNote"
+                            placeholder="e.g. no onions, extra spicy, allergy info..."
+                            rows="2"
+                        ></textarea>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button class="cancel-btn" @click="closeItemModal">
+                            Cancel
+                        </button>
+                        <button class="confirm-btn" @click="confirmAddToCart">
+                            Add to order
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- FLOATING CART FAB + ORDER PANEL -->
+    <button
+        class="cart-fab"
+        x-show="cart.length > 0"
+        x-cloak
+        @click="showCartPanel = true"
+    >
+        <i class="fa-solid fa-cart-shopping"></i> View Order (
+        <span x-text="cartCount"></span>)
+    </button>
+
+    <div
+        class="modal-overlay"
+        x-show="showCartPanel"
+        x-cloak
+        @click.self="showCartPanel = false"
+    >
+        <div class="modal-box cart-panel" x-show="showCartPanel" x-transition>
+            <h3>
+                <i class="fa-solid fa-receipt"></i> Your Order
+            </h3>
+
+            <div class="empty-cart" x-show="cart.length === 0">
+                <p>Your order is empty.</p>
+            </div>
+
+            <ul class="cart-list" x-show="cart.length > 0">
+                <template x-for="(line, index) in cart" :key="index">
+                    <li class="cart-line">
+                        <div class="cart-line-top">
+                            <span x-text="line.qty + 'x ' + line.name"></span>
+                            <button
+                                class="remove-btn"
+                                @click="removeFromCart(index)"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div class="cart-line-details">
+                            <template
+                                x-for="opt in line.options"
+                                :key="opt.label"
+                            >
+                                <span x-text="opt.label + ': ' + opt.value"></span>
+                            </template>
+                            <span x-show="line.note">
+                                Note: <span x-text="line.note"></span>
+                            </span>
+                        </div>
+                    </li>
+                </template>
+            </ul>
+
+            <div class="modal-field">
+                <label>Name for order</label>
+                <input
+                    type="text"
+                    x-model="orderName"
+                    placeholder="Your name"
+                />
+            </div>
+            <div class="modal-field">
+                <label>Collection time</label>
+                <input
+                    type="time"
+                    x-model="collectTime"
+                    placeholder="Leave blank for collection in 20-30 mins"
+                />
+            </div>
+
+            <p class="cart-total" x-show="cartTotal > 0">
+                Estimated Total: R<span x-text="cartTotal.toFixed(2)"></span>
+            </p>
+
+            <div class="modal-actions">
+                <button class="cancel-btn" @click="showCartPanel = false">
+                    Keep browsing
+                </button>
+                <button
+                    class="confirm-btn whatsapp-btn"
+                    :disabled="cart.length === 0"
+                    @click="sendOrderViaWhatsApp"
+                >
+                    <i class="fa-brands fa-whatsapp"></i> Send Order via
+                    WhatsApp
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script is:inline>
+    document.addEventListener("alpine:init", () => {
+        Alpine.data("menuApp", () => ({
+            menu: JSON.parse(
+                document.querySelector("[data-menu]").dataset.menu || "[]",
+            ),
+            whatsappNumber:
+                document.querySelector("[data-whatsapp]").dataset.whatsapp,
+            restaurantName:
+                document.querySelector("[data-restaurant]").dataset.restaurant,
+
+            search: "",
+            selectedType: "all",
+
+            // Open/closed state per category ID
+            openCategories: {},
+
+            EXCLUDED_ORDER_TYPES: ["drinks", "specials"],
+
+            // Item modal state
+            showItemModal: false,
+            activeItem: null,
+            modalChoices: {},
+            modalQty: 1,
+            modalNote: "",
+
+            // Cart state
+            cart: [],
+            showCartPanel: false,
+            orderName: "",
+            collectTime: "",
+
+            init() {
+                // Initialize default category dropdown states (all expanded initially or default state)
+                this.menu.forEach((t) => {
+                    t.categories.forEach((c) => {
+                        this.openCategories[c.id] = true;
+                    });
+                });
+            },
+
+            get types() {
+                return this.menu.map((t) => ({ id: t.id, label: t.label }));
+            },
+
+            get filteredMenu() {
+                return this.menu
+                    .filter(
+                        (t) =>
+                            this.selectedType === "all" ||
+                            t.id === this.selectedType,
+                    )
+                    .map((t) => ({
+                        ...t,
+                        categories: t.categories.filter(
+                            (c) => this.filteredItems(c).length > 0,
+                        ),
+                    }))
+                    .filter((t) => t.categories.length > 0);
+            },
+
+            get hasResults() {
+                return this.filteredMenu.some((t) =>
+                    t.categories.some((c) => this.filteredItems(c).length > 0),
+                );
+            },
+
+            filteredItems(cat) {
+                const q = this.search.trim().toLowerCase();
+                if (!q) return cat.items;
+                return cat.items.filter(
+                    (i) =>
+                        i.name.toLowerCase().includes(q) ||
+                        (i.description || "").toLowerCase().includes(q),
+                );
+            },
+
+            // Dropdown Toggle Logic
+            toggleCategory(catId) {
+                this.openCategories[catId] = !this.openCategories[catId];
+            },
+
+            isCategoryOpen(catId) {
+                // Always expand dropdowns when active search is entered
+                if (this.search.trim().length > 0) return true;
+                return !!this.openCategories[catId];
+            },
+
+            // Category Drink Logos & Fallback Images
+            getCategoryImage(cat) {
+                if (cat.image_url) {
+                    if (
+                        cat.image_url.startsWith("http") ||
+                        cat.image_url.startsWith("/")
+                    ) {
+                        return cat.image_url;
+                    }
+                    return `https://xwpwssyoetlphadybtsx.supabase.co/storage/v1/object/public/LordsImg/Categories/${cat.image_url}`;
+                }
+
+                // Temp placeholder icons matching drinks & food styling
+                const categoryLogos = {
+                    drinks_beer:
+                        "https://images.unsplash.com/photo-1608270586620-248524c67de9?w=120&auto=format&fit=crop&q=80",
+                    drinks_ciders:
+                        "https://images.unsplash.com/photo-1560512823-829485b8bf24?w=120&auto=format&fit=crop&q=80",
+                    drinks_cocktails:
+                        "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=120&auto=format&fit=crop&q=80",
+                    drinks_cooldrinks:
+                        "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=120&auto=format&fit=crop&q=80",
+                    drinks_energy_drinks:
+                        "https://images.unsplash.com/photo-1622543925917-763c34d1a86e?w=120&auto=format&fit=crop&q=80",
+                    drinks_hot_drinks:
+                        "https://images.unsplash.com/photo-1541167760496-1628856ab772?w=120&auto=format&fit=crop&q=80",
+                    drinks_other_wine:
+                        "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=120&auto=format&fit=crop&q=80",
+                    drinks_shooters_mixed:
+                        "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=120&auto=format&fit=crop&q=80",
+                    drinks_shooters_single:
+                        "https://images.unsplash.com/photo-1527281400683-1aae777175f8?w=120&auto=format&fit=crop&q=80",
+                    drinks_water:
+                        "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=120&auto=format&fit=crop&q=80",
+                    drinks_wine_by_carafe:
+                        "https://images.unsplash.com/photo-1558001373-a1286be6b208?w=120&auto=format&fit=crop&q=80",
+                    drinks_wine_by_glass:
+                        "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?w=120&auto=format&fit=crop&q=80",
+                    food_smash_burgers:
+                        "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=120&auto=format&fit=crop&q=80",
+                    food_all_day_breakfast:
+                        "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=120&auto=format&fit=crop&q=80",
+                    food_pub_grub:
+                        "https://images.unsplash.com/photo-1544025162-d76694265947?w=120&auto=format&fit=crop&q=80",
+                    platters_all:
+                        "https://images.unsplash.com/photo-1541529086526-db283c563270?w=120&auto=format&fit=crop&q=80",
+                    specials_all:
+                        "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=120&auto=format&fit=crop&q=80",
+                };
+
+                return (
+                    categoryLogos[cat.id] ||
+                    "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=120&auto=format&fit=crop&q=80"
+                );
+            },
+
+            // Menu Item Image Logic with temp placeholder fallback
+            getItemImage(item) {
+                if (item.image_url) {
+                    if (
+                        item.image_url.startsWith("http") ||
+                        item.image_url.startsWith("/")
+                    ) {
+                        return item.image_url;
+                    }
+                    return `https://xwpwssyoetlphadybtsx.supabase.co/storage/v1/object/public/LordsImg/MenuItems/${item.image_url}`;
+                }
+
+                // Temporary styled placeholders for items without Supabase URLs
+                const defaultItemPlaceholders = {
+                    drinks_beer:
+                        "https://images.unsplash.com/photo-1608270586620-248524c67de9?w=200&auto=format&fit=crop&q=80",
+                    drinks_cocktails:
+                        "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=200&auto=format&fit=crop&q=80",
+                    drinks_ciders:
+                        "https://images.unsplash.com/photo-1560512823-829485b8bf24?w=200&auto=format&fit=crop&q=80",
+                    food_smash_burgers:
+                        "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200&auto=format&fit=crop&q=80",
+                    food_loaded_fries:
+                        "https://images.unsplash.com/photo-1576107232684-1279f3908594?w=200&auto=format&fit=crop&q=80",
+                    food_salads_and_starters:
+                        "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200&auto=format&fit=crop&q=80",
+                };
+
+                return defaultItemPlaceholders[item.category_id] || null;
+            },
+
+            getTypeIcon(typeId) {
+                const icons = {
+                    food: "fa-solid fa-burger",
+                    drinks: "fa-solid fa-beer-mug-empty",
+                    platters: "fa-solid fa-utensils",
+                    specials: "fa-solid fa-star",
+                };
+                return icons[typeId] || "fa-solid fa-list";
+            },
+
+            isOrderable(item, typeId) {
+                if (this.EXCLUDED_ORDER_TYPES.includes(typeId)) return false;
+                if (item.takeaway === false) return false;
+                return true;
+            },
+
+            openItemModal(item) {
+                this.activeItem = item;
+                this.modalChoices = {};
+                (item.option_groups || []).forEach((group) => {
+                    this.modalChoices[group.key] = group.options[0] || "";
+                });
+                this.modalQty = 1;
+                this.modalNote = "";
+                this.showItemModal = true;
+            },
+
+            closeItemModal() {
+                this.showItemModal = false;
+                this.activeItem = null;
+            },
+
+            confirmAddToCart() {
+                if (!this.activeItem) return;
+                const options = (this.activeItem.option_groups || [])
+                    .map((group) => ({
+                        label: group.label,
+                        value: this.modalChoices[group.key],
+                    }))
+                    .filter((o) => o.value);
+
+                this.cart.push({
+                    name: this.activeItem.name,
+                    price: this.activeItem.price || "",
+                    priceValue: this.parsePrice(this.activeItem.price),
+                    options,
+                    note: this.modalNote.trim(),
+                    qty: this.modalQty,
+                });
+                this.closeItemModal();
+                this.showCartPanel = true;
+            },
+
+            removeFromCart(index) {
+                this.cart.splice(index, 1);
+            },
+
+            parsePrice(priceStr) {
+                if (!priceStr) return 0;
+                const n = parseFloat(String(priceStr).replace(/[^0-9.]/g, ""));
+                return isNaN(n) ? 0 : n;
+            },
+
+            get cartCount() {
+                return this.cart.reduce((sum, l) => sum + l.qty, 0);
+            },
+
+            get cartTotal() {
+                return this.cart.reduce(
+                    (sum, l) => sum + l.priceValue * l.qty,
+                    0,
+                );
+            },
+
+            buildOrderMessage() {
+                const lines = [];
+                lines.push(`*NEW ORDER – ${this.restaurantName}*`);
+                lines.push(`Name: ${this.orderName || "(not given)"}`);
+                lines.push(
+                    `Collection time: ${this.collectTime || "(Asap - 20 to 30 mins)"}`,
+                );
+                lines.push("");
+
+                this.cart.forEach((line) => {
+                    let itemLine = `${line.qty}x ${line.name}`;
+                    if (line.price) itemLine += ` (${line.price})`;
+                    lines.push(itemLine);
+                    (line.options || []).forEach((opt) => {
+                        lines.push(`   • ${opt.label}: ${opt.value}`);
+                    });
+                    if (line.note) lines.push(`   • Note: ${line.note}`);
+                });
+
+                if (this.cartTotal > 0) {
+                    lines.push("");
+                    lines.push(
+                        `*Estimated Total: R${this.cartTotal.toFixed(2)}*`,
+                    );
+                }
+
+                return lines.join("\n");
+            },
+
+            sendOrderViaWhatsApp() {
+                if (this.cart.length === 0) return;
+                const message = this.buildOrderMessage();
+                const url = `https://wa.me/${this.whatsappNumber}?text=${encodeURIComponent(message)}`;
+                window.open(url, "_blank");
+            },
+        }));
+    });
+</script>
+
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .menu-container {
+        max-width: 960px;
+        margin: 0 auto;
+        margin-top: calc(var(--nav-headerM) + 1.5rem);
+        padding: 1.5rem;
+        color: var(--txt-color);
+    }
+
+    .menu-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .menu-header h1 {
+        font-size: 2.25rem;
+        color: var(--bg-color-btn);
+        margin: 0 0 0.25rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+    .tagline {
+        color: var(--text-color-hover);
+        font-style: italic;
+        font-size: 1.05rem;
+        margin: 0;
+    }
+
+    /* Search Box */
+    .search-box {
+        position: relative;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+    .search-icon {
+        position: absolute;
+        left: 1rem;
+        color: var(--bg-color-btn);
+        opacity: 0.7;
+    }
+    .search-input {
+        width: 100%;
+        padding: 0.85rem 2.5rem 0.85rem 2.75rem;
+        border: 2px solid var(--nav-bg);
+        background: #ffffff;
+        border-radius: 12px;
+        font-size: 1rem;
+        outline: none;
+        transition:
+            border-color 0.2s,
+            box-shadow 0.2s;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .search-input:focus {
+        border-color: var(--bg-color-btn);
+        box-shadow: 0 0 0 3px hsla(14, 45%, 30%, 0.15);
+    }
+    .clear-search-btn {
+        position: absolute;
+        right: 0.85rem;
+        background: transparent;
+        border: none;
+        font-size: 1.1rem;
+        color: var(--bg-color-btn);
+        cursor: pointer;
+    }
+
+    /* Filter Tabs */
+    .filter-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-bottom: 2rem;
+        justify-content: center;
+    }
+    .filter-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.55rem 1.25rem;
+        border: 2px solid var(--nav-bg);
+        background: #ffffff;
+        color: var(--bg-color-btn);
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 0.925rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    .filter-btn:hover {
+        background: var(--nav-bg);
+    }
+    .filter-btn.active {
+        background: var(--bg-color-btn);
+        color: #ffffff;
+        border-color: var(--bg-color-btn);
+        box-shadow: 0 4px 10px hsla(14, 45%, 30%, 0.25);
+    }
+
+    /* Menu Type Sections */
+    .menu-type-section {
+        margin-bottom: 2.5rem;
+    }
+    .type-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-size: 1.6rem;
+        color: var(--bg-color-btn);
+        border-bottom: 3px solid var(--nav-bg);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.25rem;
+        font-weight: 700;
+    }
+
+    /* Category Dropdown Block */
+    .category-block {
+        background: #ffffff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+        transition:
+            border-color 0.2s,
+            box-shadow 0.2s;
+    }
+    .category-block.is-open {
+        border-color: hsla(14, 45%, 30%, 0.3);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .category-header {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.85rem 1.2rem;
+        background: #ffffff;
+        border: none;
+        cursor: pointer;
+        text-align: left;
+        transition: background-color 0.2s;
+    }
+    .category-header:hover {
+        background: var(--bg-color-light);
+    }
+
+    .category-title {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--bg-color-btn);
+        text-transform: capitalize;
+    }
+
+    .category-logo {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--nav-bg);
+        background: #ffffff;
+        flex-shrink: 0;
+    }
+
+    .category-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .item-count-badge {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-color-hover);
+        background: var(--nav-bg);
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+    }
+    .chevron-icon {
+        color: var(--bg-color-btn);
+        font-size: 0.9rem;
+        transition: transform 0.2s ease;
+    }
+
+    /* Category Collapsible Items List */
+    .category-content {
+        padding: 0.5rem 1.25rem 1.25rem;
+        border-top: 1px solid var(--bg-color-light);
+    }
+
+    .item-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .menu-item {
+        padding: 0.9rem 0;
+        border-bottom: 1px dashed var(--nav-bg);
+    }
+    .menu-item:last-child {
+        border-bottom: none;
+    }
+
+    .item-layout {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    .item-thumb-wrapper {
+        flex-shrink: 0;
+    }
+    .item-thumb {
+        width: 64px;
+        height: 64px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid var(--nav-bg);
+    }
+
+    .item-details {
+        flex: 1;
+    }
+
+    .item-line {
+        display: flex;
+        align-items: baseline;
+    }
+    .item-name {
+        font-weight: 700;
+        color: #1a202c;
+        font-size: 1.025rem;
+    }
+    .dots {
+        flex: 1;
+        border-bottom: 1px dotted #cbd5e0;
+        margin: 0 0.5rem;
+    }
+    .price {
+        font-weight: 700;
+        color: var(--bg-color-btn);
+        white-space: nowrap;
+        font-size: 1.025rem;
+    }
+    .description {
+        color: #4a5568;
+        font-size: 0.88rem;
+        margin: 0.35rem 0 0.25rem;
+        line-height: 1.4;
+    }
+
+    .item-tags {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        margin-top: 0.3rem;
+    }
+    .serves-tag {
+        font-size: 0.75rem;
+        color: var(--text-color-hover);
+        font-style: italic;
+    }
+    .dine-in-tag {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #c05621;
+        background: #fffaf0;
+        border: 1px solid #fbd38d;
+        border-radius: 4px;
+        padding: 0.15rem 0.45rem;
+    }
+
+    /* Add Button */
+    .add-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-top: 0.6rem;
+        padding: 0.4rem 0.95rem;
+        background: var(--bg-color-btn);
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.825rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+            background-color 0.2s,
+            transform 0.1s;
+    }
+    .add-btn:hover {
+        background: var(--text-color-hover);
+        transform: translateY(-1px);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #718096;
+    }
+    .empty-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.75rem;
+        color: var(--nav-bg);
+    }
+    .reset-btn {
+        margin-top: 0.75rem;
+        padding: 0.6rem 1.25rem;
+        background: var(--bg-color-btn);
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    /* Modal Overlay & Modal Box */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(2px);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .modal-box {
+        background: #ffffff;
+        width: 100%;
+        max-width: 520px;
+        max-height: 88vh;
+        overflow-y: auto;
+        border-radius: 16px 16px 0 0;
+        padding: 1.5rem;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    }
+    @media (min-width: 640px) {
+        .modal-overlay {
+            align-items: center;
+        }
+        .modal-box {
+            border-radius: 16px;
+        }
+    }
+
+    .modal-item-img-container {
+        width: 100%;
+        height: 160px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        border-radius: 10px;
+    }
+    .modal-item-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .modal-price {
+        color: var(--bg-color-btn);
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin: 0.25rem 0 1rem;
+    }
+
+    .modal-field {
+        margin-bottom: 1rem;
+    }
+    .modal-field label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #2d3748;
+        margin-bottom: 0.4rem;
+    }
+    .modal-field input[type="text"],
+    .modal-field input[type="time"],
+    .modal-field textarea {
+        width: 100%;
+        padding: 0.65rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+
+    .choice-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .choice-pill {
+        border: 2px solid var(--nav-bg);
+        border-radius: 20px;
+        padding: 0.4rem 0.9rem;
+        font-size: 0.85rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: #ffffff;
+    }
+    .choice-pill input {
+        accent-color: var(--bg-color-btn);
+    }
+
+    .qty-stepper {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .qty-stepper button {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 2px solid var(--nav-bg);
+        background: #ffffff;
+        font-size: 1.1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+    }
+    .cancel-btn,
+    .confirm-btn {
+        flex: 1;
+        padding: 0.75rem;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+    }
+    .cancel-btn {
+        background: var(--bg-color-light);
+        color: #2d3748;
+    }
+    .confirm-btn {
+        background: var(--bg-color-btn);
+        color: #ffffff;
+    }
+    .confirm-btn:disabled {
+        background: #a0aec0;
+        cursor: not-allowed;
+    }
+    .whatsapp-btn {
+        background: #25d366;
+        color: #ffffff;
+    }
+
+    /* Cart Floating Action Button */
+    .cart-fab {
+        position: fixed;
+        bottom: 1.75rem;
+        right: 1.75rem;
+        background: #25d366;
+        color: white;
+        border: none;
+        padding: 0.9rem 1.4rem;
+        border-radius: 30px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        cursor: pointer;
+        z-index: 900;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Cart Panel Details */
+    .cart-list {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 1rem;
+    }
+    .cart-line {
+        border-bottom: 1px solid var(--nav-bg);
+        padding: 0.6rem 0;
+    }
+    .cart-line-top {
+        display: flex;
+        justify-content: space-between;
+        font-weight: 600;
+    }
+    .remove-btn {
+        background: none;
+        border: none;
+        color: #e53e3e;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+    .cart-line-details {
+        display: flex;
+        flex-direction: column;
+        font-size: 0.8rem;
+        color: #718096;
+        margin-top: 0.2rem;
+    }
+    .empty-cart {
+        text-align: center;
+        color: #718096;
+        padding: 1.5rem 0;
+    }
+    .cart-total {
+        font-weight: 700;
+        text-align: right;
+        color: var(--bg-color-btn);
+        margin: 0.5rem 0 0;
+        font-size: 1.1rem;
+    }
+</style>

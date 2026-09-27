@@ -1,0 +1,721 @@
+---
+// src/components/MenuEditor.astro
+import { getMenu, type MenuType } from "../lib/menu";
+import { getPublicImageUrl } from "../db/supabase";
+
+let menuData: MenuType[] = [];
+
+try {
+    menuData = await getMenu();
+} catch (e) {
+    console.error("Failed to load menu data for editor:", e);
+}
+
+const menuJson = JSON.stringify(menuData);
+---
+
+<section
+    class="menu-editor-container"
+    x-data="menuEditorApp"
+    data-menu={menuJson}
+>
+    <!-- Editor Control Header -->
+    <div class="editor-header">
+        <div class="header-titles">
+            <h1>
+                <i class="fa-solid fa-pen-to-square"></i> Menu Management Editor
+            </h1>
+            <p class="tagline">
+                Update menu items, upload new pictures, and reorder categories.
+            </p>
+        </div>
+        <div class="header-actions">
+            <button
+                class="save-btn"
+                @click="saveAllChanges()"
+                :disabled="isSaving"
+            >
+                <i class="fa-solid fa-floppy-disk" x-show="!isSaving"></i>
+                <i
+                    class="fa-solid fa-spinner fa-spin"
+                    x-show="isSaving"
+                    x-cloak
+                ></i>
+                <span x-text="isSaving ? 'Saving Changes...' : 'Save Menu'"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input
+            type="text"
+            x-model="search"
+            placeholder="Search item name, category, or description..."
+            class="search-input"
+        />
+        <button
+            x-show="search.length > 0"
+            @click="search = ''"
+            class="clear-search-btn"
+        >
+            ✕
+        </button>
+    </div>
+
+    <!-- Type Tabs -->
+    <div class="filter-buttons">
+        <button
+            class="filter-btn"
+            :class="{ active: selectedType === 'all' }"
+            @click="selectedType = 'all'"
+        >
+            <i class="fa-solid fa-utensils"></i> All Types
+        </button>
+        <template x-for="t in types" :key="t.id">
+            <button
+                class="filter-btn"
+                :class="{ active: selectedType === t.id }"
+                @click="selectedType = t.id"
+            >
+                <i :class="getTypeIcon(t.id)"></i>
+                <span x-text="t.label"></span>
+            </button>
+        </template>
+    </div>
+
+    <!-- Category Sections & Editable Item Grids -->
+    <template x-for="type in filteredMenu" :key="type.id">
+        <section class="menu-type-section">
+            <h2 class="type-header">
+                <i :class="getTypeIcon(type.id)"></i>
+                <span x-text="type.label"></span>
+            </h2>
+
+            <template x-for="cat in type.categories" :key="cat.id">
+                <div
+                    class="category-block"
+                    :class="{ 'is-open': isCategoryOpen(cat.id) }"
+                >
+                    <div class="category-header">
+                        <div
+                            class="category-title"
+                            @click="toggleCategory(cat.id)"
+                        >
+                            <!-- Editable Category Logo with Image Changer -->
+                            <div
+                                class="cat-logo-wrapper"
+                                @click.stop="openImagePicker('category', cat)"
+                            >
+                                <img
+                                    :src="getCategoryImage(cat)"
+                                    :alt="cat.label"
+                                    class="category-logo"
+                                />
+                                <div class="image-overlay-edit">
+                                    <i class="fa-solid fa-camera"></i>
+                                </div>
+                            </div>
+                            <span x-text="cat.label.replace(/_/g, ' ')"></span>
+                        </div>
+
+                        <div class="category-actions">
+                            <button
+                                class="add-item-btn"
+                                @click.stop="addNewItem(cat)"
+                                title="Add New Item to Category"
+                            >
+                                <i class="fa-solid fa-plus"></i> Add Item
+                            </button>
+                            <button
+                                class="toggle-cat-btn"
+                                @click="toggleCategory(cat.id)"
+                            >
+                                <i
+                                    class="fa-solid"
+                                    :class="isCategoryOpen(cat.id) ? 'fa-chevron-up' : 'fa-chevron-down'"
+                                ></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Collapsible Category Items -->
+                    <div
+                        class="category-content"
+                        x-show="isCategoryOpen(cat.id)"
+                        x-collapse
+                    >
+                        <ul class="item-list">
+                            <template
+                                x-for="(item, index) in cat.items"
+                                :key="item.id || index"
+                            >
+                                <li class="menu-item-editor">
+                                    <div class="item-layout">
+                                        <!-- Item Image Preview & Changer -->
+                                        <div
+                                            class="item-thumb-wrapper"
+                                            @click="openImagePicker('item', item)"
+                                        >
+                                            <div class="image-preview-container">
+                                                <img
+                                                    :src="getItemImage(item)"
+                                                    :alt="item.name"
+                                                    class="item-thumb"
+                                                    x-show="getItemImage(item)"
+                                                />
+                                                <div
+                                                    class="no-img-placeholder"
+                                                    x-show="!getItemImage(item)"
+                                                >
+                                                    <i class="fa-solid fa-image"></i>
+                                                    <span>No Img</span>
+                                                </div>
+                                                <div class="thumb-hover-edit">
+                                                    <i class="fa-solid fa-arrows-rotate"></i>{" "}
+                                                    Change
+                                                </div>
+                                            </div>
+                                            <button
+                                                class="view-lightbox-btn"
+                                                x-show="getItemImage(item)"
+                                                @click.stop="openLightbox(getItemImage(item), item.name)"
+                                                title="View Fullsize"
+                                            >
+                                                <i class="fa-solid fa-expand"></i>
+                                            </button>
+                                        </div>
+
+                                        <!-- Item Details Editor -->
+                                        <div class="item-details-fields">
+                                            <div class="field-row">
+                                                <input
+                                                    type="text"
+                                                    x-model="item.name"
+                                                    placeholder="Item Name"
+                                                    class="edit-input name-input"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    x-model="item.price"
+                                                    placeholder="Price (e.g. R95.00)"
+                                                    class="edit-input price-input"
+                                                />
+                                            </div>
+
+                                            <textarea
+                                                x-model="item.description"
+                                                placeholder="Description / Ingredients..."
+                                                class="edit-textarea"
+                                                rows="2"
+                                            ></textarea>
+
+                                            <div class="field-tags">
+                                                <input
+                                                    type="text"
+                                                    x-model="item.serves"
+                                                    placeholder="Serves info (e.g. Serves 2)"
+                                                    class="edit-input serves-input"
+                                                />
+                                                <label class="toggle-checkbox">
+                                                    <input
+                                                        type="checkbox"
+                                                        x-model="item.takeaway"
+                                                    />
+                                                    <span>
+                                                        Available Takeaway
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Item Controls -->
+                                        <div class="item-actions">
+                                            <button
+                                                class="delete-item-btn"
+                                                @click="removeItem(cat, index)"
+                                                title="Delete Item"
+                                            >
+                                                <i class="fa-solid fa-trash-can"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </div>
+            </template>
+        </section>
+    </template>
+
+    <!-- Lightbox Modal for Image Inspection -->
+    <div
+        class="lightbox-overlay"
+        x-show="lightboxOpen"
+        x-cloak
+        @click="lightboxOpen = false"
+    >
+        <div class="lightbox-content" @click.stop>
+            <button class="close-lightbox-btn" @click="lightboxOpen = false">
+                &times;
+            </button>
+            <img :src="lightboxUrl" :alt="lightboxTitle" />
+            <div class="lightbox-caption" x-text="lightboxTitle"></div>
+        </div>
+    </div>
+
+    <!-- Hidden File Input for Image Uploading -->
+    <input
+        type="file"
+        id="editorImageInput"
+        accept="image/*"
+        style="display: none;"
+        @change="handleImageUpload($event)"
+    />
+
+    <!-- Upload Progress Loader Modal -->
+    <div class="loader-overlay" x-show="isUploading" x-cloak>
+        <div class="loader-box">
+            <i class="fa-solid fa-circle-notch fa-spin loader-icon"></i>
+            <p>Uploading image to Supabase Storage...</p>
+        </div>
+    </div>
+</section>
+
+<script is:inline>
+    document.addEventListener("alpine:init", () => {
+        Alpine.data("menuEditorApp", () => ({
+            menu: JSON.parse(
+                document.querySelector("[data-menu]").dataset.menu || "[]",
+            ),
+            search: "",
+            selectedType: "all",
+            openCategories: {},
+            isSaving: false,
+            isUploading: false,
+
+            // Target for image change
+            activeUploadTarget: null, // { type: 'category' | 'item', targetObj: Object }
+
+            // Lightbox
+            lightboxOpen: false,
+            lightboxUrl: "",
+            lightboxTitle: "",
+
+            init() {
+                this.menu.forEach((t) => {
+                    t.categories.forEach((c) => {
+                        this.openCategories[c.id] = true;
+                    });
+                });
+            },
+
+            get types() {
+                return this.menu.map((t) => ({ id: t.id, label: t.label }));
+            },
+
+            get filteredMenu() {
+                return this.menu
+                    .filter(
+                        (t) =>
+                            this.selectedType === "all" ||
+                            t.id === this.selectedType,
+                    )
+                    .map((t) => ({
+                        ...t,
+                        categories: t.categories.filter((c) => {
+                            if (!this.search.trim()) return true;
+                            const q = this.search.toLowerCase();
+                            return (
+                                c.label.toLowerCase().includes(q) ||
+                                c.items.some(
+                                    (i) =>
+                                        i.name.toLowerCase().includes(q) ||
+                                        (i.description || "")
+                                            .toLowerCase()
+                                            .includes(q),
+                                )
+                            );
+                        }),
+                    }));
+            },
+
+            toggleCategory(catId) {
+                this.openCategories[catId] = !this.openCategories[catId];
+            },
+
+            isCategoryOpen(catId) {
+                if (this.search.trim().length > 0) return true;
+                return !!this.openCategories[catId];
+            },
+
+            getTypeIcon(typeId) {
+                const icons = {
+                    food: "fa-solid fa-burger",
+                    drinks: "fa-solid fa-beer-mug-empty",
+                    platters: "fa-solid fa-utensils",
+                    specials: "fa-solid fa-star",
+                };
+                return icons[typeId] || "fa-solid fa-list";
+            },
+
+            getCategoryImage(cat) {
+                if (!cat.image_url)
+                    return "https://via.placeholder.com/120?text=No+Category+Image";
+                if (
+                    cat.image_url.startsWith("http") ||
+                    cat.image_url.startsWith("/")
+                ) {
+                    return cat.image_url;
+                }
+                return `https://xwpwssyoetlphadybtsx.supabase.co/storage/v1/object/public/LordsImg/Categories/${cat.image_url}`;
+            },
+
+            getItemImage(item) {
+                if (!item.image_url) return null;
+                if (
+                    item.image_url.startsWith("http") ||
+                    item.image_url.startsWith("/")
+                ) {
+                    return item.image_url;
+                }
+                return `https://xwpwssyoetlphadybtsx.supabase.co/storage/v1/object/public/LordsImg/MenuItems/${item.image_url}`;
+            },
+
+            addNewItem(category) {
+                category.items.unshift({
+                    id: "new_" + Date.now(),
+                    category_id: category.id,
+                    name: "New Menu Item",
+                    price: "R0.00",
+                    description: "",
+                    serves: "",
+                    takeaway: true,
+                    image_url: "",
+                });
+            },
+
+            removeItem(category, index) {
+                if (
+                    confirm("Are you sure you want to delete this menu item?")
+                ) {
+                    category.items.splice(index, 1);
+                }
+            },
+
+            openImagePicker(type, targetObj) {
+                this.activeUploadTarget = { type, targetObj };
+                document.getElementById("editorImageInput").click();
+            },
+
+            async handleImageUpload(event) {
+                const file = event.target.files[0];
+                if (!file || !this.activeUploadTarget) return;
+
+                this.isUploading = true;
+                try {
+                    // Simulate image upload to bucket or insert real upload logic
+                    const fileName = `${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
+                    const simulatedUrl = URL.createObjectURL(file); // Temporary preview
+
+                    if (this.activeUploadTarget.type === "category") {
+                        this.activeUploadTarget.targetObj.image_url = fileName;
+                        // Attach preview URL override
+                        this.activeUploadTarget.targetObj._previewUrl =
+                            simulatedUrl;
+                    } else {
+                        this.activeUploadTarget.targetObj.image_url = fileName;
+                        this.activeUploadTarget.targetObj._previewUrl =
+                            simulatedUrl;
+                    }
+                } catch (err) {
+                    alert("Image upload failed: " + err.message);
+                } finally {
+                    this.isUploading = false;
+                    event.target.value = "";
+                }
+            },
+
+            openLightbox(url, title) {
+                this.lightboxUrl = url;
+                this.lightboxTitle = title;
+                this.lightboxOpen = true;
+            },
+
+            async saveAllChanges() {
+                this.isSaving = true;
+                try {
+                    // Call backend API endpoint to persist menu updates to Supabase
+                    const response = await fetch("/api/menu/update", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ menu: this.menu }),
+                    });
+                    if (!response.ok)
+                        throw new Error("Server failed to save menu");
+                    alert("Menu updated successfully!");
+                } catch (err) {
+                    alert("Error saving menu changes: " + err.message);
+                } finally {
+                    this.isSaving = false;
+                }
+            },
+        }));
+    });
+</script>
+
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .menu-editor-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 1.5rem;
+        color: var(--txt-color);
+    }
+
+    .editor-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid var(--nav-bg);
+    }
+
+    .header-titles h1 {
+        font-size: 2rem;
+        color: var(--bg-color-btn);
+        margin: 0;
+    }
+
+    .save-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: #25d366;
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+
+    .search-box {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 0.85rem 2.5rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 12px;
+        font-size: 1rem;
+    }
+
+    .filter-buttons {
+        display: flex;
+        gap: 0.6rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        padding: 0.5rem 1.2rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 20px;
+        background: #fff;
+        cursor: pointer;
+
+        &.active {
+            background: var(--bg-color-btn);
+            color: #fff;
+        }
+    }
+
+    .category-block {
+        background: #fff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+        margin-bottom: 1.25rem;
+        padding: 1rem;
+    }
+
+    .category-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .cat-logo-wrapper {
+        position: relative;
+        cursor: pointer;
+
+        &:hover .image-overlay-edit {
+            opacity: 1;
+        }
+    }
+
+    .category-logo {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .image-overlay-edit {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .item-layout {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem 0;
+        border-bottom: 1px dashed var(--nav-bg);
+    }
+
+    .image-preview-container {
+        position: relative;
+        width: 72px;
+        height: 72px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--nav-bg);
+        cursor: pointer;
+
+        &:hover .thumb-hover-edit {
+            opacity: 1;
+        }
+    }
+
+    .item-thumb {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .thumb-hover-edit {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        color: #fff;
+        font-size: 0.7rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .no-img-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-color-light);
+        font-size: 0.7rem;
+        color: #718096;
+    }
+
+    .item-details-fields {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .field-row {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .edit-input,
+    .edit-textarea {
+        padding: 0.5rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 6px;
+        font-size: 0.9rem;
+    }
+
+    .name-input {
+        flex: 2;
+        font-weight: 700;
+    }
+    .price-input {
+        flex: 1;
+    }
+
+    .delete-item-btn {
+        background: none;
+        border: none;
+        color: #e53e3e;
+        cursor: pointer;
+        font-size: 1.1rem;
+    }
+
+    /* Lightbox & Loader */
+    .lightbox-overlay,
+    .loader-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .lightbox-content {
+        position: relative;
+        max-width: 90%;
+        max-height: 85vh;
+
+        img {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 8px;
+        }
+    }
+
+    .close-lightbox-btn {
+        position: absolute;
+        top: -30px;
+        right: 0;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 2rem;
+        cursor: pointer;
+    }
+
+    .loader-box {
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        text-align: center;
+
+        .loader-icon {
+            font-size: 2.5rem;
+            color: var(--bg-color-btn);
+            margin-bottom: 1rem;
+        }
+    }
+</style>

@@ -1,22 +1,45 @@
 ---
-import Menu from "../components/Menu/index.astro"; //Imports the Menu list component
-import Layout from "../layouts/Layout.astro"; // Import the main layout part
-// import MenuMain from "../components/MenuMain.astro"; // Imports the MenuMain component
-// import MenuPlatter from "../components/MenuPlatter.astro"; // Imports the MenuPlatter component
-// import MenuSlider from "../components/MenuSlider.astro"; // Imports the MenuSlider component
+// src/pages/menu.astro
+import Layout from "../layouts/Layout.astro";
+import Menu from "../components/Menu/index.astro";
+import Navigation from "../components/Nav.astro";
+import { getMenu } from "../lib/menu";
 
-// import { getCollection } from "astro:content";
-const { title = "Menu" } = Astro.props;
+const menuData = await getMenu();
 
-// interface Props {
-//   menu:CollectionEntry<'menu'>
-// };
+// Extract types and categories for navigation
+const types = menuData.map((t) => ({ id: t.id, label: t.label }));
+const categories = menuData.flatMap((t) =>
+    t.categories.map((c) => ({ id: c.id, label: c.label, type_id: t.id })),
+);
 
-// const menu = await getCollection("menu");
+// Determine logged-in user role (from session / Astro.locals / Supabase Auth)
+const userRole = Astro.locals?.user?.role || "admin";
 ---
 
-<Layout>
+<Layout title="Menu - Lords & Legends">
+    <Navigation userRole={userRole} types={types} categories={categories} />
+    <!-- Main Menu Content -->
     <Menu />
-    <!-- <MenuPlatter />
-    <MenuSlider /> -->
 </Layout>
+
+<style>
+    .admin-image-components {
+        margin-top: 3rem;
+        padding: 2rem 1rem;
+        background: #f7fafc;
+        border-top: 2px dashed #cbd5e0;
+    }
+    .admin-badge {
+        text-align: center;
+        display: block;
+        max-width: 300px;
+        margin: 0 auto 2rem auto;
+        padding: 0.4rem 1rem;
+        background: #2b6cb0;
+        color: white;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+</style>

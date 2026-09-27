@@ -1,0 +1,16 @@
+---
+// src/pages/admin/menu-editor.astro
+import Layout from "../../layouts/Layout.astro";
+import MenuEditor from "../../components/MenuEditor.astro";
+
+const userRole = Astro.locals?.user?.role || "admin";
+
+// Ensure non-admins are redirected
+if (userRole !== "admin" && userRole !== "owner") {
+    return Astro.redirect("/menu");
+}
+---
+
+<Layout title="Menu Editor">
+    <MenuEditor />
+</Layout>

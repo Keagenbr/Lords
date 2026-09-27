@@ -1,0 +1,119 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { supabase } from "../../lib/supabase";
+import MenuMain from "../../components/Menu/MenuMain.astro";
+import MenuSlider from "../../components/Menu/MenuSlider.astro";
+import MenuPlatter from "../../components/Menu/MenuPlatter.astro";
+import Menu from "../../components/Menu/index.astro";
+import AuthSessionManager from "../../components/AuthSessionManager.astro";
+
+export const prerender = false;
+
+// 1. Session Verification
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
+
+if (!accessToken || !refreshToken) {
+    return Astro.redirect("/admin/login");
+}
+
+const { data: sessionData, error: sessionError } =
+    await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+    });
+
+if (sessionError || !sessionData.user) {
+    return Astro.redirect("/admin/login");
+}
+
+const user = sessionData.user;
+const isAdmin =
+    user.app_metadata?.role === "admin" || user.user_metadata?.role === "admin";
+
+if (!isAdmin) {
+    return new Response("Forbidden: Admin access required.", { status: 403 });
+}
+---
+
+<Layout title="Admin Portal - Menu Views & Editor">
+    <main class="admin-container">
+        <!-- Add session manager header -->
+        <AuthSessionManager
+            userEmail={user.email}
+            loginPath="/admin/login"
+            timeoutMinutes={15}
+        />
+        <header class="admin-header">
+            <h1>Admin Control Panel</h1>
+            <p>Welcome back, {user.email}</p>
+            <div class="admin-nav">
+                <a href="/staff" class="admin-btn">
+                    Manage Staff Dashboard
+                </a>
+            </div>
+        </header>
+
+        <section class="menu-preview-section">
+            <h2>Live Menu Components Preview</h2>
+
+            <div class="component-block">
+                <h3>Main Menu Slider</h3>
+                <MenuMain />
+            </div>
+
+            <div class="component-block">
+                <h3>Specials Slider</h3>
+                <MenuSlider />
+            </div>
+
+            <div class="component-block">
+                <h3>Platter Special</h3>
+                <MenuPlatter />
+            </div>
+
+            <div class="component-block">
+                <h3>Interactive Menu & WhatsApp Order Builder</h3>
+                <Menu />
+            </div>
+        </section>
+    </main>
+</Layout>
+
+<style>
+    .admin-container {
+        max-width: 1200px;
+        margin: 5rem auto 2rem auto;
+        padding: 20px;
+    }
+    .admin-header {
+        border-bottom: 3px solid var(--MenuColor, #00d4aa);
+        padding-bottom: 1.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .admin-btn {
+        background: var(--bg-color-btn, #00d4aa);
+        color: white;
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    .component-block {
+        background: #ffffff;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2.5rem;
+    }
+    .component-block h3 {
+        margin-top: 0;
+        color: var(--bg-color-btn, #2d3748);
+        border-bottom: 2px solid #edf2f7;
+        padding-bottom: 0.5rem;
+    }
+</style>

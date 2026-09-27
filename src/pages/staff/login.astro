@@ -1,0 +1,229 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { supabase } from "../../lib/supabase";
+
+export const prerender = false;
+
+const slugOf = (str: string) =>
+    str
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-");
+
+let errorMessage = "";
+
+// Helper to calculate target slug for staff
+const getTargetSlug = (user: any) => {
+    const rawTarget =
+        user.user_metadata?.staff_slug ||
+        user.user_metadata?.name ||
+        user.email?.split("@")[0] ||
+        "";
+    return slugOf(rawTarget);
+};
+
+// 1. If already logged in, redirect immediately
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
+
+if (accessToken && refreshToken) {
+    const { data: sessionData } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+    });
+
+    if (sessionData?.user) {
+        const user = sessionData.user;
+        const isAdmin =
+            user.app_metadata?.role === "admin" ||
+            user.user_metadata?.role === "admin";
+
+        if (isAdmin) {
+            return Astro.redirect("/staff");
+        } else {
+            return Astro.redirect(`/staff/${getTargetSlug(user)}`);
+        }
+    }
+}
+
+// 2. Handle POST login form submission
+if (Astro.request.method === "POST") {
+    try {
+        const formData = await Astro.request.formData();
+        const email = formData.get("email")?.toString();
+        const password = formData.get("password")?.toString();
+
+        if (!email || !password) {
+            errorMessage = "Please enter both email and password.";
+        } else {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (error || !data.session) {
+                errorMessage = error?.message || "Invalid login credentials.";
+            } else {
+                Astro.cookies.set(
+                    "sb-access-token",
+                    data.session.access_token,
+                    {
+                        path: "/",
+                        httpOnly: true,
+                        secure: true,
+                        sameSite: "lax",
+                    },
+                );
+                Astro.cookies.set(
+                    "sb-refresh-token",
+                    data.session.refresh_token,
+                    {
+                        path: "/",
+                        httpOnly: true,
+                        secure: true,
+                        sameSite: "lax",
+                    },
+                );
+
+                const user = data.user;
+                const isAdmin =
+                    user.app_metadata?.role === "admin" ||
+                    user.user_metadata?.role === "admin";
+
+                if (isAdmin) {
+                    return Astro.redirect("/staff");
+                } else {
+                    return Astro.redirect(`/staff/${getTargetSlug(user)}`);
+                }
+            }
+        }
+    } catch (err) {
+        errorMessage =
+            err instanceof Error
+                ? err.message
+                : "An unexpected error occurred.";
+    }
+}
+---
+
+<Layout title="Staff Portal Login">
+    <main class="login-container">
+        <div class="login-card">
+            <h1>Staff Portal Login</h1>
+            <p class="subtitle">
+                Sign in to view your sales & performance profile
+            </p>
+
+            {errorMessage && <div class="error-banner">{errorMessage}</div>}
+
+            <form method="POST" class="login-form">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        required
+                        placeholder="staff@restaurant.com"
+                    />
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                        placeholder="••••••••"
+                    />
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    Sign In
+                </button>
+            </form>
+        </div>
+    </main>
+</Layout>
+
+<style>
+    .login-container {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .login-card {
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 2.5rem;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    }
+    h1 {
+        margin: 0 0 8px 0;
+        font-size: 1.8rem;
+        color: #1a202c;
+        text-align: center;
+    }
+    .subtitle {
+        text-align: center;
+        color: #718096;
+        margin-bottom: 2rem;
+        font-size: 0.95rem;
+    }
+    .error-banner {
+        background: #fff5f5;
+        border: 1px solid #feb2b2;
+        color: #c53030;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+    }
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #4a5568;
+        font-size: 0.9rem;
+    }
+    input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        font-size: 1rem;
+        box-sizing: border-box;
+        transition: border-color 0.2s;
+    }
+    input:focus {
+        outline: none;
+        border-color: #00d4aa;
+        box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.2);
+    }
+    .submit-btn {
+        width: 100%;
+        background: #00d4aa;
+        color: white;
+        border: none;
+        padding: 0.85rem;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        margin-top: 0.5rem;
+    }
+    .submit-btn:hover {
+        background: #00b894;
+    }
+</style>

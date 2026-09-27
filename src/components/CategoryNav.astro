@@ -1,0 +1,118 @@
+---
+// src/components/CategoryNav.astro
+interface Category {
+    id: string;
+    label: string;
+    type_id: string;
+}
+
+interface Type {
+    id: string;
+    label: string;
+}
+
+interface Props {
+    types: Type[];
+    categories: Category[];
+}
+
+const { types = [], categories = [] } = Astro.props;
+---
+
+<nav class="category-subnav" x-data="{ activeTab: 'all' }">
+    <div class="subnav-container">
+        <!-- Types Bar -->
+        <div class="types-scroll">
+            <button
+                class="subnav-pill"
+                :class="{ active: activeTab === 'all' }"
+                @click="activeTab = 'all'; $dispatch('filter-type', 'all')"
+            >
+                All Menu
+            </button>
+            {types.map((t) => (
+                <button
+                    class="subnav-pill"
+                    :class={`{ active: activeTab === '${t.id}' }`}
+                    @click={`activeTab = '${t.id}'; $dispatch('filter-type', '${t.id}')`}
+                >
+                    {t.label}
+                </button>
+            ))}
+        </div>
+
+        <!-- Quick Jump Categories List -->
+        <div class="categories-jump-bar" x-show="activeTab !== 'all'">
+            {categories.map((cat) => (
+                <a
+                    href={`#cat-${cat.id}`}
+                    class="jump-link"
+                    x-show={`activeTab === '${cat.type_id}'`}
+                >
+                    {cat.label.replace(/_/g, " ")}
+                </a>
+            ))}
+        </div>
+    </div>
+</nav>
+
+<style>
+    .category-subnav {
+        position: sticky;
+        top: var(--nav-header);
+        z-index: 990;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--nav-bg);
+        padding: 0.5rem 1rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    .subnav-container {
+        max-width: 960px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+    .types-scroll {
+        display: flex;
+        gap: 0.5rem;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .types-scroll::-webkit-scrollbar {
+        display: none;
+    }
+    .subnav-pill {
+        padding: 0.4rem 1rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 20px;
+        background: #fff;
+        color: var(--txt-color);
+        font-weight: 600;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+    .subnav-pill.active {
+        background: var(--bg-color-btn);
+        color: #fff;
+        border-color: var(--bg-color-btn);
+    }
+    .categories-jump-bar {
+        display: flex;
+        gap: 0.75rem;
+        overflow-x: auto;
+        padding-top: 0.25rem;
+    }
+    .jump-link {
+        font-size: 0.8rem;
+        color: var(--text-color-hover);
+        text-decoration: none;
+        white-space: nowrap;
+        font-weight: 500;
+    }
+    .jump-link:hover {
+        text-decoration: underline;
+    }
+</style>
