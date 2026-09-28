@@ -82,6 +82,9 @@ if (!isAdmin) {
 
 <style>
     .admin-container {
+        display: block;
+        position: relative;
+        top: calc(var(--nav-header) / 30%);
         max-width: 1200px;
         margin: 5rem auto 2rem auto;
         padding: 20px;
@@ -115,5 +118,24 @@ if (!isAdmin) {
         color: var(--bg-color-btn, #2d3748);
         border-bottom: 2px solid #edf2f7;
         padding-bottom: 0.5rem;
+    }
+    @media (max-width: 768px) {
+        .admin-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            top: calc(var(--nav-header) - 30%);
+            max-width: 1200px;
+            margin: 5rem auto 2rem auto;
+            padding: 20px;
+        }
+        admin-header {
+            padding-bottom: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
     }
 </style>

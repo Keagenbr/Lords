@@ -193,6 +193,8 @@ const warningWindowMs = 60 * 1000; // Warning shown at 14 minutes (60 seconds re
         display: flex;
         justify-content: space-between;
         align-items: center;
+        position: relative;
+        top: calc(var(--nav-header) / 3);
         background: #1a202c;
         color: #edf2f7;
         padding: 0.6rem 1.25rem;
@@ -247,6 +249,7 @@ const warningWindowMs = 60 * 1000; // Warning shown at 14 minutes (60 seconds re
     .inactivity-modal {
         position: fixed;
         top: 0;
+        /*top: var(--nav-header);*/
         left: 0;
         width: 100vw;
         height: 100vh;
@@ -362,6 +365,11 @@ const warningWindowMs = 60 * 1000; // Warning shown at 14 minutes (60 seconds re
         }
         100% {
             box-shadow: 0 0 0 0 rgba(225, 29, 72, 0);
+        }
+    }
+    @media (max-width: 768px) {
+        .session-manager-bar {
+            top: calc(var(--nav-header) - 15%);
         }
     }
 </style>
