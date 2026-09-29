@@ -1,14 +1,22 @@
 ---
 // src/components/MenuEditor.astro
+//
+// Edits menu items (text, price, picture, takeaway flag) and the picture of
+// each category. Changes are collected in the browser and written when the
+// admin presses "Save Menu", one row at a time, through /admin/menu-crud
+// (admin-only, allow-listed columns). Pictures are uploaded through
+// /admin/upload-image (admin-only).
 import { getMenu, type MenuType } from "../lib/menu";
-import { getPublicImageUrl } from "../db/supabase";
+import { STORAGE_PUBLIC_BASE } from "../lib/supabaseStorage";
 
 let menuData: MenuType[] = [];
+let loadError = "";
 
 try {
     menuData = await getMenu();
 } catch (e) {
     console.error("Failed to load menu data for editor:", e);
+    loadError = "Could not load the menu from Supabase. Please refresh.";
 }
 
 const menuJson = JSON.stringify(menuData);
@@ -18,6 +26,8 @@ const menuJson = JSON.stringify(menuData);
     class="menu-editor-container"
     x-data="menuEditorApp"
     data-menu={menuJson}
+    data-storage-base={STORAGE_PUBLIC_BASE}
+    data-load-error={loadError}
 >
     <!-- Editor Control Header -->
     <div class="editor-header">
@@ -26,14 +36,21 @@ const menuJson = JSON.stringify(menuData);
                 <i class="fa-solid fa-pen-to-square"></i> Menu Management Editor
             </h1>
             <p class="tagline">
-                Update menu items, upload new pictures, and reorder categories.
+                Update menu items and their pictures, then press Save Menu.
             </p>
         </div>
         <div class="header-actions">
+            <span
+                class="unsaved-note"
+                x-show="dirtyCount > 0"
+                x-cloak
+                x-text="dirtyCount + (dirtyCount === 1 ? ' unsaved change' : ' unsaved changes')"
+            ></span>
             <button
+                type="button"
                 class="save-btn"
                 @click="saveAllChanges()"
-                :disabled="isSaving"
+                :disabled="isSaving || dirtyCount === 0"
             >
                 <i class="fa-solid fa-floppy-disk" x-show="!isSaving"></i>
                 <i
@@ -44,6 +61,25 @@ const menuJson = JSON.stringify(menuData);
                 <span x-text="isSaving ? 'Saving Changes...' : 'Save Menu'"></span>
             </button>
         </div>
+    </div>
+
+    <!-- Save / upload feedback -->
+    <div
+        class="status-banner"
+        :class="status.type"
+        x-show="status.message"
+        x-cloak
+        role="status"
+    >
+        <span x-text="status.message"></span>
+        <button
+            type="button"
+            class="status-close"
+            @click="status = { type: '', message: '' }"
+            aria-label="Dismiss message"
+        >
+            ✕
+        </button>
     </div>
 
     <!-- Search & Filter Controls -->
@@ -151,7 +187,10 @@ const menuJson = JSON.stringify(menuData);
                                 x-for="(item, index) in cat.items"
                                 :key="item.id || index"
                             >
-                                <li class="menu-item-editor">
+                                <li
+                                    class="menu-item-editor"
+                                    :data-item-id="item.id"
+                                >
                                     <div class="item-layout">
                                         <!-- Item Image Preview & Changer -->
                                         <div
@@ -286,18 +325,34 @@ const menuJson = JSON.stringify(menuData);
 
 <script is:inline>
     document.addEventListener("alpine:init", () => {
+        // Neutral placeholder (an inline SVG, so no third-party image host).
+        const NO_IMAGE =
+            "data:image/svg+xml;utf8," +
+            encodeURIComponent(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">' +
+                    '<rect width="120" height="120" fill="#e2e8f0"/>' +
+                    '<text x="60" y="64" font-family="sans-serif" font-size="12" ' +
+                    'text-anchor="middle" fill="#718096">No image</text></svg>',
+            );
+
         Alpine.data("menuEditorApp", () => ({
-            menu: JSON.parse(
-                document.querySelector("[data-menu]").dataset.menu || "[]",
-            ),
+            menu: [],
+            storageBase: "",
+
+            // What the database currently holds, used to find unsaved edits.
+            baseline: {}, // item id -> JSON snapshot
+            categoryBaseline: {}, // category id -> image_url
+            deletedIds: [], // saved items the admin removed, pending delete
+
             search: "",
             selectedType: "all",
             openCategories: {},
             isSaving: false,
             isUploading: false,
+            status: { type: "", message: "" },
 
-            // Target for image change
-            activeUploadTarget: null, // { type: 'category' | 'item', targetObj: Object }
+            // Which picture is being changed: { type, id }
+            activeUploadTarget: null,
 
             // Lightbox
             lightboxOpen: false,
@@ -305,13 +360,57 @@ const menuJson = JSON.stringify(menuData);
             lightboxTitle: "",
 
             init() {
-                this.menu.forEach((t) => {
+                const el = this.$el;
+                this.storageBase = el.dataset.storageBase || "";
+
+                if (el.dataset.loadError) {
+                    this.status = {
+                        type: "error",
+                        message: el.dataset.loadError,
+                    };
+                }
+
+                let parsed = [];
+                try {
+                    parsed = JSON.parse(el.dataset.menu || "[]");
+                } catch (err) {
+                    console.error("Menu data could not be read:", err);
+                }
+
+                // Normalise so the form controls always have a value to bind.
+                // (takeaway: only an explicit `false` means "not for takeaway".)
+                parsed.forEach((t) => {
+                    t.categories = t.categories || [];
+                    t.categories.forEach((c) => {
+                        c.items = c.items || [];
+                        c.items.forEach((i) => {
+                            i.name = i.name ?? "";
+                            i.price = i.price ?? "";
+                            i.description = i.description ?? "";
+                            i.serves = i.serves ?? "";
+                            i.image_url = i.image_url ?? "";
+                            i.takeaway = i.takeaway !== false;
+                        });
+                    });
+                });
+
+                this.menu = parsed;
+                this.takeSnapshot();
+                this.menu.forEach((t) =>
                     t.categories.forEach((c) => {
                         this.openCategories[c.id] = true;
-                    });
+                    }),
+                );
+
+                window.addEventListener("beforeunload", (event) => {
+                    if (this.dirtyCount > 0) {
+                        event.preventDefault();
+                        event.returnValue = "";
+                    }
                 });
             },
 
+            // ── Derived data ───────────────────────────────────────
             get types() {
                 return this.menu.map((t) => ({ id: t.id, label: t.label }));
             },
@@ -332,7 +431,9 @@ const menuJson = JSON.stringify(menuData);
                                 c.label.toLowerCase().includes(q) ||
                                 c.items.some(
                                     (i) =>
-                                        i.name.toLowerCase().includes(q) ||
+                                        (i.name || "")
+                                            .toLowerCase()
+                                            .includes(q) ||
                                         (i.description || "")
                                             .toLowerCase()
                                             .includes(q),
@@ -342,6 +443,67 @@ const menuJson = JSON.stringify(menuData);
                     }));
             },
 
+            // ── Unsaved-change tracking ────────────────────────────
+            itemPayload(item) {
+                return {
+                    name: String(item.name ?? "").trim(),
+                    price: String(item.price ?? "").trim(),
+                    description: String(item.description ?? "").trim(),
+                    serves: String(item.serves ?? "").trim(),
+                    image_url: String(item.image_url ?? "").trim(),
+                    takeaway: !!item.takeaway,
+                };
+            },
+
+            takeSnapshot() {
+                this.baseline = {};
+                this.categoryBaseline = {};
+                this.deletedIds = [];
+                this.menu.forEach((t) =>
+                    t.categories.forEach((c) => {
+                        this.categoryBaseline[c.id] = c.image_url || "";
+                        c.items.forEach((i) => {
+                            this.baseline[i.id] = JSON.stringify(
+                                this.itemPayload(i),
+                            );
+                        });
+                    }),
+                );
+            },
+
+            isNewItem(item) {
+                return String(item.id).startsWith("new_");
+            },
+
+            isItemDirty(item) {
+                return (
+                    this.isNewItem(item) ||
+                    this.baseline[item.id] !==
+                        JSON.stringify(this.itemPayload(item))
+                );
+            },
+
+            isCategoryDirty(cat) {
+                return (
+                    (cat.image_url || "") !==
+                    (this.categoryBaseline[cat.id] ?? "")
+                );
+            },
+
+            get dirtyCount() {
+                let n = this.deletedIds.length;
+                this.menu.forEach((t) =>
+                    t.categories.forEach((c) => {
+                        if (this.isCategoryDirty(c)) n++;
+                        c.items.forEach((i) => {
+                            if (this.isItemDirty(i)) n++;
+                        });
+                    }),
+                );
+                return n;
+            },
+
+            // ── UI helpers ─────────────────────────────────────────
             toggleCategory(catId) {
                 this.openCategories[catId] = !this.openCategories[catId];
             },
@@ -361,80 +523,141 @@ const menuJson = JSON.stringify(menuData);
                 return icons[typeId] || "fa-solid fa-list";
             },
 
-            getCategoryImage(cat) {
-                if (!cat.image_url)
-                    return "https://via.placeholder.com/120?text=No+Category+Image";
-                if (
-                    cat.image_url.startsWith("http") ||
-                    cat.image_url.startsWith("/")
-                ) {
-                    return cat.image_url;
+            // A stored value is either a full URL (what uploads save) or a
+            // bare file name from older rows.
+            resolveImage(value, folder) {
+                if (!value) return "";
+                if (/^(https?:)?\/\//.test(value) || value.startsWith("/")) {
+                    return value;
                 }
-                return `https://xwpwssyoetlphadybtsx.supabase.co/storage/v1/object/public/LordsImg/Categories/${cat.image_url}`;
+                return `${this.storageBase}/${folder}/${encodeURIComponent(value)}`;
+            },
+
+            getCategoryImage(cat) {
+                return this.resolveImage(cat.image_url, "Categories") || NO_IMAGE;
             },
 
             getItemImage(item) {
-                if (!item.image_url) return null;
-                if (
-                    item.image_url.startsWith("http") ||
-                    item.image_url.startsWith("/")
-                ) {
-                    return item.image_url;
-                }
-                return `https://xwpwssyoetlphadybtsx.supabase.co/storage/v1/object/public/LordsImg/MenuItems/${item.image_url}`;
+                return this.resolveImage(item.image_url, "MenuItems");
             },
 
+            // ── Item add / remove ──────────────────────────────────
             addNewItem(category) {
-                category.items.unshift({
-                    id: "new_" + Date.now(),
+                const last = category.items.reduce(
+                    (max, i) => Math.max(max, Number(i.sort_order) || 0),
+                    0,
+                );
+                const tempId = "new_" + Date.now();
+                category.items.push({
+                    id: tempId,
                     category_id: category.id,
                     name: "New Menu Item",
-                    price: "R0.00",
+                    price: "",
                     description: "",
                     serves: "",
                     takeaway: true,
                     image_url: "",
+                    sort_order: last + 1,
+                });
+                this.openCategories[category.id] = true;
+                this.$nextTick(() => {
+                    const rows = this.$el.querySelectorAll(
+                        `[data-item-id="${tempId}"]`,
+                    );
+                    rows[0]?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                    });
                 });
             },
 
             removeItem(category, index) {
+                const item = category.items[index];
+                if (!item) return;
                 if (
-                    confirm("Are you sure you want to delete this menu item?")
+                    !confirm(
+                        `Delete "${item.name || "this item"}"? This is applied when you press Save Menu.`,
+                    )
                 ) {
-                    category.items.splice(index, 1);
+                    return;
                 }
+                if (!this.isNewItem(item)) this.deletedIds.push(item.id);
+                category.items.splice(index, 1);
             },
 
-            openImagePicker(type, targetObj) {
-                this.activeUploadTarget = { type, targetObj };
+            // ── Pictures ───────────────────────────────────────────
+            openImagePicker(type, target) {
+                this.activeUploadTarget = { type, id: target.id };
                 document.getElementById("editorImageInput").click();
             },
 
+            findUploadTarget() {
+                const t = this.activeUploadTarget;
+                if (!t) return null;
+                for (const type of this.menu) {
+                    for (const cat of type.categories) {
+                        if (
+                            t.type === "category" &&
+                            String(cat.id) === String(t.id)
+                        ) {
+                            return cat;
+                        }
+                        if (t.type === "item") {
+                            const hit = cat.items.find(
+                                (i) => String(i.id) === String(t.id),
+                            );
+                            if (hit) return hit;
+                        }
+                    }
+                }
+                return null;
+            },
+
             async handleImageUpload(event) {
-                const file = event.target.files[0];
-                if (!file || !this.activeUploadTarget) return;
+                const input = event.target;
+                const file = input.files[0];
+                const target = this.findUploadTarget();
+                if (!file || !target) {
+                    input.value = "";
+                    return;
+                }
 
                 this.isUploading = true;
                 try {
-                    // Simulate image upload to bucket or insert real upload logic
-                    const fileName = `${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
-                    const simulatedUrl = URL.createObjectURL(file); // Temporary preview
+                    const form = new FormData();
+                    form.append("file", file);
+                    form.append(
+                        "folder",
+                        this.activeUploadTarget.type === "category"
+                            ? "Categories"
+                            : "MenuItems",
+                    );
 
-                    if (this.activeUploadTarget.type === "category") {
-                        this.activeUploadTarget.targetObj.image_url = fileName;
-                        // Attach preview URL override
-                        this.activeUploadTarget.targetObj._previewUrl =
-                            simulatedUrl;
-                    } else {
-                        this.activeUploadTarget.targetObj.image_url = fileName;
-                        this.activeUploadTarget.targetObj._previewUrl =
-                            simulatedUrl;
-                    }
+                    const res = await fetch("/admin/upload-image", {
+                        method: "POST",
+                        body: form,
+                        credentials: "same-origin",
+                    });
+                    const body = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(this.errorText(res, body));
+
+                    // Shows immediately; it is attached to the menu when the
+                    // admin presses "Save Menu".
+                    target.image_url = body.url;
+                    this.status = {
+                        type: "info",
+                        message:
+                            'Picture uploaded. Press "Save Menu" to attach it.',
+                    };
                 } catch (err) {
-                    alert("Image upload failed: " + err.message);
+                    this.status = {
+                        type: "error",
+                        message: "Image upload failed: " + err.message,
+                    };
                 } finally {
                     this.isUploading = false;
-                    event.target.value = "";
+                    this.activeUploadTarget = null;
+                    input.value = "";
                 }
             },
 
@@ -444,22 +667,133 @@ const menuJson = JSON.stringify(menuData);
                 this.lightboxOpen = true;
             },
 
+            // ── Saving ─────────────────────────────────────────────
+            errorText(res, body) {
+                if (res.status === 403 || res.status === 401) {
+                    return "Your admin session has expired. Please sign in again.";
+                }
+                return body?.error || `Request failed (${res.status})`;
+            },
+
+            async callCrud(action, table, data) {
+                const res = await fetch("/admin/menu-crud", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin",
+                    body: JSON.stringify({ action, table, data }),
+                });
+                const body = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(this.errorText(res, body));
+                return body;
+            },
+
             async saveAllChanges() {
+                if (this.isSaving || this.dirtyCount === 0) return;
+
+                // Every changed or new item needs a name.
+                for (const type of this.menu) {
+                    for (const cat of type.categories) {
+                        const unnamed = cat.items.find(
+                            (i) =>
+                                this.isItemDirty(i) &&
+                                !String(i.name || "").trim(),
+                        );
+                        if (unnamed) {
+                            this.status = {
+                                type: "error",
+                                message: `Please give every item a name (check "${cat.label.replace(/_/g, " ")}").`,
+                            };
+                            return;
+                        }
+                    }
+                }
+
                 this.isSaving = true;
-                try {
-                    // Call backend API endpoint to persist menu updates to Supabase
-                    const response = await fetch("/api/menu/update", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ menu: this.menu }),
-                    });
-                    if (!response.ok)
-                        throw new Error("Server failed to save menu");
-                    alert("Menu updated successfully!");
-                } catch (err) {
-                    alert("Error saving menu changes: " + err.message);
-                } finally {
-                    this.isSaving = false;
+                this.status = { type: "", message: "" };
+                const errors = [];
+                let saved = 0;
+
+                // 1. Deleted items
+                for (const id of [...this.deletedIds]) {
+                    try {
+                        await this.callCrud("delete", "menu_items", { id });
+                        this.deletedIds = this.deletedIds.filter(
+                            (x) => x !== id,
+                        );
+                        saved++;
+                    } catch (err) {
+                        errors.push(`Delete failed: ${err.message}`);
+                    }
+                }
+
+                for (const type of this.menu) {
+                    for (const cat of type.categories) {
+                        // 2. Category picture
+                        if (this.isCategoryDirty(cat)) {
+                            try {
+                                await this.callCrud("update", "menu_categories", {
+                                    id: cat.id,
+                                    image_url: cat.image_url || "",
+                                });
+                                this.categoryBaseline[cat.id] =
+                                    cat.image_url || "";
+                                saved++;
+                            } catch (err) {
+                                errors.push(
+                                    `Category "${cat.label}": ${err.message}`,
+                                );
+                            }
+                        }
+
+                        // 3. Items (iterate a copy: ids change on create)
+                        for (const item of [...cat.items]) {
+                            if (!this.isItemDirty(item)) continue;
+                            const payload = this.itemPayload(item);
+                            try {
+                                if (this.isNewItem(item)) {
+                                    const { row } = await this.callCrud(
+                                        "create",
+                                        "menu_items",
+                                        {
+                                            ...payload,
+                                            category_id: cat.id,
+                                            sort_order: item.sort_order,
+                                        },
+                                    );
+                                    item.id = row.id;
+                                } else {
+                                    await this.callCrud("update", "menu_items", {
+                                        ...payload,
+                                        id: item.id,
+                                    });
+                                }
+                                this.baseline[item.id] = JSON.stringify(
+                                    this.itemPayload(item),
+                                );
+                                saved++;
+                            } catch (err) {
+                                errors.push(
+                                    `"${payload.name}": ${err.message}`,
+                                );
+                            }
+                        }
+                    }
+                }
+
+                this.isSaving = false;
+                if (errors.length === 0) {
+                    this.status = {
+                        type: "success",
+                        message: `Menu saved (${saved} change${saved === 1 ? "" : "s"}).`,
+                    };
+                } else {
+                    this.status = {
+                        type: "error",
+                        message:
+                            (saved ? `${saved} saved, ` : "") +
+                            `${errors.length} failed. ` +
+                            errors.slice(0, 3).join(" · "),
+                    };
                 }
             },
         }));
@@ -479,6 +813,17 @@ const menuJson = JSON.stringify(menuData);
         padding: 1.5rem;
         color: var(--txt-color);
         top: var(--nav-header);
+    }
+
+    @media (max-width: 768px) {
+        .menu-editor-container {
+            top: var(--nav-headerM);
+        }
+        .editor-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
     }
 
     .editor-header {
@@ -507,6 +852,60 @@ const menuJson = JSON.stringify(menuData);
         border-radius: 8px;
         font-weight: 700;
         cursor: pointer;
+        font-size: 1rem;
+    }
+
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .unsaved-note {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--bg-color-btn);
+    }
+
+    .save-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .status-banner {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1.25rem;
+        border-radius: 8px;
+        border: 1px solid var(--nav-bg);
+        background: #fff;
+        font-size: 0.9rem;
+
+        &.success {
+            background: #f0fff4;
+            border-color: #9ae6b4;
+            color: #22543d;
+        }
+        &.error {
+            background: #fff5f5;
+            border-color: #feb2b2;
+            color: #742a2a;
+        }
+        &.info {
+            background: #ebf8ff;
+            border-color: #90cdf4;
+            color: #2a4365;
+        }
+    }
+
+    .status-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: inherit;
         font-size: 1rem;
     }
 

@@ -1,6 +1,7 @@
 ---
 // src/components/MenuPlatter.astro
 import { getPublicImageUrl } from "../../lib/supabaseStorage";
+import { PLATTER, PLATTER_FOLDER } from "../../lib/menuImages";
 
 interface Props {
     filename?: string;
@@ -9,9 +10,9 @@ interface Props {
 }
 
 const {
-    filename = "MenuPlatter.jpg",
-    folder = "MenuSpecials",
-    label = "Platter Menu",
+    filename = PLATTER.filename,
+    folder = PLATTER_FOLDER,
+    label = PLATTER.label,
 } = Astro.props;
 
 // Built on the server — no `window` involved.

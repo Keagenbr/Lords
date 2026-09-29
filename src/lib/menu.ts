@@ -1,6 +1,33 @@
 import { supabase } from "./supabase";
 
-export async function getMenu() {
+export interface MenuItem {
+  id: string | number;
+  name: string;
+  price: string | null;
+  description: string | null;
+  serves: string | null;
+  image_url: string | null;
+  sort_order: number | null;
+  takeaway: boolean | null;
+  option_groups?: unknown;
+}
+
+export interface MenuCategory {
+  id: string;
+  label: string;
+  sort_order: number | null;
+  image_url: string | null;
+  items: MenuItem[];
+}
+
+export interface MenuType {
+  id: string;
+  label: string;
+  sort_order: number | null;
+  categories: MenuCategory[];
+}
+
+export async function getMenu(): Promise<MenuType[]> {
   const { data, error } = await supabase
     .from("menu_types")
     .select(
@@ -34,5 +61,5 @@ export async function getMenu() {
     throw error;
   }
 
-  return data || [];
+  return (data || []) as unknown as MenuType[];
 }

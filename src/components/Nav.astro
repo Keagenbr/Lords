@@ -2,49 +2,16 @@
 import LogoSrcMobile from "../assets/L&LmobileLogo.svg";
 import LogoSrcDesktop from "../assets/LordsLogo.svg";
 
-export interface Category {
-    id: string;
-    label: string;
-    type_id: string;
-}
-
-export interface Type {
-    id: string;
-    label: string;
-}
-
-interface Props {
-    userRole?: "admin" | "owner" | "customer" | string;
-    types?: Type[];
-    categories?: Category[];
-}
-
-const { userRole = "customer", types = [], categories = [] } = Astro.props;
-const isAdminOrOwner = userRole === "admin" || userRole === "owner";
+// The navigation is self-contained: it asks /api/nav for the menu types,
+// their categories and whether the visitor is an admin, so it works the same
+// on every page (static or on-demand) without any props.
 ---
 
 <div
     id="nav"
     class="nav-header"
-    x-data="{
-        mobileMenuOpen: false,
-        menuDropdownOpen: false,
-        typesDropdownOpen: false,
-        categoriesDropdownOpen: false,
-        activeMobileAccordion: null,
-        toggleMobileMenu() {
-            this.mobileMenuOpen = !this.mobileMenuOpen;
-            document.body.style.overflow = this.mobileMenuOpen ? 'hidden' : '';
-        },
-        closeMobileMenu() {
-            this.mobileMenuOpen = false;
-            document.body.style.overflow = '';
-        },
-        toggleAccordion(name) {
-            this.activeMobileAccordion = this.activeMobileAccordion === name ? null : name;
-        }
-    }"
-    @keydown.escape.window="closeMobileMenu()"
+    x-data="siteNav"
+    @keydown.escape.window="closeAll()"
 >
     <nav class="nav-container">
         <!-- Logo -->
@@ -53,7 +20,7 @@ const isAdminOrOwner = userRole === "admin" || userRole === "owner";
             <LogoSrcMobile class="logo-img-mobile" />
         </a>
 
-        <!-- Desktop Navigation Links -->
+        <!-- Desktop Navigation Links: Home, Menu (dropdown), Contact -->
         <div class="nav-links-desktop">
             <a href="/" class="nav-link">
                 <span class="nav-link-text">Home</span>
@@ -62,17 +29,23 @@ const isAdminOrOwner = userRole === "admin" || userRole === "owner";
             <!-- Menu Dropdown -->
             <div
                 class="nav-item-wrapper"
-                @mouseenter="menuDropdownOpen = true"
-                @mouseleave="menuDropdownOpen = false"
+                @mouseenter="menuOpen = true"
+                @mouseleave="menuOpen = false; openType = null"
+                @focusin="menuOpen = true"
+                @focusout="if (!$el.contains($event.relatedTarget)) { menuOpen = false; openType = null }"
             >
                 <a href="/menu" class="nav-link">
                     <span class="nav-link-text">Menu</span>
-                    <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+                    <i
+                        class="fa-solid fa-chevron-down dropdown-arrow"
+                        x-show="menuTypes.length > 0"
+                        x-cloak
+                    ></i>
                 </a>
 
                 <div
                     class="nav-dropdown-menu"
-                    x-show="menuDropdownOpen"
+                    x-show="menuOpen && menuTypes.length > 0"
                     x-transition:enter="transition ease-out duration-200"
                     x-transition:enter-start="opacity-0 translate-y-2 scale-95"
                     x-transition:enter-end="opacity-100 translate-y-0 scale-100"
@@ -81,111 +54,78 @@ const isAdminOrOwner = userRole === "admin" || userRole === "owner";
                     x-transition:leave-end="opacity-0 translate-y-2 scale-95"
                     x-cloak
                 >
-                    <a href="/menu" class="dropdown-item">
-                        <i class="fa-solid fa-book-open"></i>
-                        <span>View Full Menu</span>
-                    </a>
+                    <template x-for="type in menuTypes" :key="type.id">
+                        <div
+                            class="dropdown-row"
+                            @mouseenter="openType = type.id"
+                            @mouseleave="openType = null"
+                        >
+                            <!-- Drinks / Food: item with its own category dropdown -->
+                            <template x-if="hasSub(type)">
+                                <div>
+                                    <a
+                                        :href="'/menu#type-' + type.id"
+                                        class="dropdown-item"
+                                        @click="closeAll()"
+                                        @focus="openType = type.id"
+                                    >
+                                        <i
+                                            :class="typeIcon(type.id) + ' item-icon'"
+                                        ></i>
+                                        <span x-text="type.label"></span>
+                                        <i
+                                            class="fa-solid fa-chevron-right sub-arrow"
+                                        ></i>
+                                    </a>
+                                    <div
+                                        class="nav-submenu"
+                                        x-show="openType === type.id"
+                                        x-cloak
+                                    >
+                                        <template
+                                            x-for="cat in type.categories"
+                                            :key="cat.id"
+                                        >
+                                            <a
+                                                :href="'/menu#cat-' + cat.id"
+                                                class="dropdown-item"
+                                                @click="closeAll()"
+                                                x-text="labelOf(cat)"
+                                            ></a>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
 
-                    {isAdminOrOwner && (
-                        <>
-                            <div class="dropdown-divider"></div>
-                            <a
-                                href="/admin/menu-editor"
-                                class="dropdown-item editor-link"
-                            >
-                                <i class="fa-solid fa-pen-to-square"></i>
-                                <span>Menu Editor</span>
-                                <span class="role-badge">{userRole}</span>
-                            </a>
-                        </>
-                    )}
+                            <!-- Specials / Platters: plain link, no dropdown -->
+                            <template x-if="!hasSub(type)">
+                                <a
+                                    :href="'/menu#type-' + type.id"
+                                    class="dropdown-item"
+                                    @click="closeAll()"
+                                >
+                                    <i
+                                        :class="typeIcon(type.id) + ' item-icon'"
+                                    ></i>
+                                    <span x-text="type.label"></span>
+                                </a>
+                            </template>
+                        </div>
+                    </template>
                 </div>
             </div>
-
-            <!-- Types Dropdown -->
-            {types.length > 0 && (
-                <div
-                    class="nav-item-wrapper"
-                    @mouseenter="typesDropdownOpen = true"
-                    @mouseleave="typesDropdownOpen = false"
-                >
-                    <button class="nav-link nav-link-btn">
-                        <span class="nav-link-text">Types</span>
-                        <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
-                    </button>
-
-                    <div
-                        class="nav-dropdown-menu"
-                        x-show="typesDropdownOpen"
-                        x-transition:enter="transition ease-out duration-200"
-                        x-transition:enter-start="opacity-0 translate-y-2 scale-95"
-                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                        x-transition:leave="transition ease-in duration-150"
-                        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-                        x-transition:leave-end="opacity-0 translate-y-2 scale-95"
-                        x-cloak
-                    >
-                        <div class="dropdown-header">Menu Types</div>
-                        <div class="dropdown-list">
-                            {types.map((type) => (
-                                <a
-                                    href={`/menu#type-${type.id}`}
-                                    class="dropdown-item"
-                                >
-                                    <i class="fa-solid fa-layer-group item-icon"></i>
-                                    <span>{type.label}</span>
-                                </a>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <!-- Categories Dropdown -->
-            {categories.length > 0 && (
-                <div
-                    class="nav-item-wrapper"
-                    @mouseenter="categoriesDropdownOpen = true"
-                    @mouseleave="categoriesDropdownOpen = false"
-                >
-                    <button class="nav-link nav-link-btn">
-                        <span class="nav-link-text">Categories</span>
-                        <i class="fa-solid fa-angles-down dropdown-arrow"></i>
-                        <!-- <i class="fa-solid fa-chevron-down dropdown-arrow"></i> -->
-                    </button>
-
-                    <div
-                        class="nav-dropdown-menu"
-                        x-show="categoriesDropdownOpen"
-                        x-transition:enter="transition ease-out duration-200"
-                        x-transition:enter-start="opacity-0 translate-y-2 scale-95"
-                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                        x-transition:leave="transition ease-in duration-150"
-                        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-                        x-transition:leave-end="opacity-0 translate-y-2 scale-95"
-                        x-cloak
-                    >
-                        <div class="dropdown-header">
-                            Food & Drink Categories
-                        </div>
-                        <div class="dropdown-list scrollable">
-                            {categories.map((cat) => (
-                                <a
-                                    href={`/menu#cat-${cat.id}`}
-                                    class="dropdown-item"
-                                >
-                                    <i class="fa-solid fa-utensils item-icon"></i>
-                                    <span>{cat.label.replace(/_/g, " ")}</span>
-                                </a>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
 
             <a href="/contact" class="nav-link">
                 <span class="nav-link-text">Contact</span>
             </a>
+
+            <!-- Only added to the page for a signed-in admin -->
+            <template x-if="isAdmin">
+                <a href="/admin/menu-editor" class="nav-link nav-editor-btn">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span class="nav-link-text">Menu Editor</span>
+                </a>
+            </template>
         </div>
 
         <!-- Animated Mobile Hamburger Button -->
@@ -221,119 +161,105 @@ const isAdminOrOwner = userRole === "admin" || userRole === "owner";
                 <span>Home</span>
             </a>
 
-            <!-- Menu Accordion Section -->
+            <!-- Menu accordion: the label goes to /menu, the arrow opens it -->
             <div class="mobile-accordion-card">
-                <button
-                    class="accordion-trigger"
-                    @click="toggleAccordion('menu')"
-                    :class="{ 'is-active': activeMobileAccordion === 'menu' }"
-                >
-                    <span class="trigger-title">
-                        <i class="fa-solid fa-book-open"></i> Menu Options
-                    </span>
-                    <i
-                        class="fa-solid fa-chevron-down accordion-arrow"
-                        :class="{ 'rotate': activeMobileAccordion === 'menu' }"
-                    ></i>
-                </button>
+                <div class="accordion-trigger accordion-trigger-row">
+                    <a
+                        href="/menu"
+                        class="trigger-title accordion-link"
+                        @click="closeMobileMenu()"
+                    >
+                        <i class="fa-solid fa-book-open"></i> Menu
+                    </a>
+                    <button
+                        type="button"
+                        class="accordion-toggle"
+                        x-show="menuTypes.length > 0"
+                        x-cloak
+                        @click="toggleAccordion('menu')"
+                        :aria-expanded="activeMobileAccordion === 'menu'"
+                        aria-label="Show menu sections"
+                    >
+                        <i
+                            class="fa-solid fa-chevron-down accordion-arrow"
+                            :class="{ 'rotate': activeMobileAccordion === 'menu' }"
+                        ></i>
+                    </button>
+                </div>
+
                 <div
                     class="accordion-panel"
-                    x-show="activeMobileAccordion === 'menu'"
+                    x-show="activeMobileAccordion === 'menu' && menuTypes.length > 0"
                     x-collapse
+                    x-cloak
                 >
                     <div class="panel-content">
-                        <a
-                            href="/menu"
-                            class="mobile-sub-link"
-                            @click="closeMobileMenu()"
-                        >
-                            <i class="fa-solid fa-utensils"></i> View Full Menu
-                        </a>
-                        {isAdminOrOwner && (
-                            <a
-                                href="/admin/menu-editor"
-                                class="mobile-sub-link editor-highlight"
-                                @click="closeMobileMenu()"
-                            >
-                                <i class="fa-solid fa-pen-to-square"></i> Menu
-                                Editor ({userRole})
-                            </a>
-                        )}
+                        <template x-for="type in menuTypes" :key="type.id">
+                            <div>
+                                <!-- Drinks / Food: their own dropdown -->
+                                <template x-if="hasSub(type)">
+                                    <div class="mobile-subgroup">
+                                        <button
+                                            type="button"
+                                            class="mobile-sub-trigger"
+                                            @click="toggleMobileType(type.id)"
+                                            :aria-expanded="mobileType === type.id"
+                                        >
+                                            <span class="sub-trigger-title">
+                                                <i
+                                                    :class="typeIcon(type.id)"
+                                                ></i>
+                                                <span x-text="type.label"></span>
+                                            </span>
+                                            <i
+                                                class="fa-solid fa-chevron-down accordion-arrow"
+                                                :class="{ 'rotate': mobileType === type.id }"
+                                            ></i>
+                                        </button>
+                                        <div
+                                            class="chip-grid"
+                                            x-show="mobileType === type.id"
+                                            x-collapse
+                                            x-cloak
+                                        >
+                                            <a
+                                                :href="'/menu#type-' + type.id"
+                                                class="mobile-chip mobile-chip-all"
+                                                @click="closeMobileMenu()"
+                                            >
+                                                All
+                                            </a>
+                                            <template
+                                                x-for="cat in type.categories"
+                                                :key="cat.id"
+                                            >
+                                                <a
+                                                    :href="'/menu#cat-' + cat.id"
+                                                    class="mobile-chip"
+                                                    @click="closeMobileMenu()"
+                                                    x-text="labelOf(cat)"
+                                                ></a>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Specials / Platters: plain link -->
+                                <template x-if="!hasSub(type)">
+                                    <a
+                                        :href="'/menu#type-' + type.id"
+                                        class="mobile-sub-link"
+                                        @click="closeMobileMenu()"
+                                    >
+                                        <i :class="typeIcon(type.id)"></i>
+                                        <span x-text="type.label"></span>
+                                    </a>
+                                </template>
+                            </div>
+                        </template>
                     </div>
                 </div>
             </div>
-
-            <!-- Types Accordion Section -->
-            {types.length > 0 && (
-                <div class="mobile-accordion-card">
-                    <button
-                        class="accordion-trigger"
-                        @click="toggleAccordion('types')"
-                        :class="{ 'is-active': activeMobileAccordion === 'types' }"
-                    >
-                        <span class="trigger-title">
-                            <i class="fa-solid fa-layer-group"></i> Types
-                        </span>
-                        <i
-                            class="fa-solid fa-chevron-down accordion-arrow"
-                            :class="{ 'rotate': activeMobileAccordion === 'types' }"
-                        ></i>
-                    </button>
-                    <div
-                        class="accordion-panel"
-                        x-show="activeMobileAccordion === 'types'"
-                        x-collapse
-                    >
-                        <div class="chip-grid">
-                            {types.map((type) => (
-                                <a
-                                    href={`/menu#type-${type.id}`}
-                                    class="mobile-chip"
-                                    @click="closeMobileMenu()"
-                                >
-                                    {type.label}
-                                </a>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <!-- Categories Accordion Section -->
-            {categories.length > 0 && (
-                <div class="mobile-accordion-card">
-                    <button
-                        class="accordion-trigger"
-                        @click="toggleAccordion('categories')"
-                        :class="{ 'is-active': activeMobileAccordion === 'categories' }"
-                    >
-                        <span class="trigger-title">
-                            <i class="fa-solid fa-list"></i> Categories
-                        </span>
-                        <i
-                            class="fa-solid fa-chevron-down accordion-arrow"
-                            :class="{ 'rotate': activeMobileAccordion === 'categories' }"
-                        ></i>
-                    </button>
-                    <div
-                        class="accordion-panel"
-                        x-show="activeMobileAccordion === 'categories'"
-                        x-collapse
-                    >
-                        <div class="chip-grid">
-                            {categories.map((cat) => (
-                                <a
-                                    href={`/menu#cat-${cat.id}`}
-                                    class="mobile-chip"
-                                    @click="closeMobileMenu()"
-                                >
-                                    {cat.label.replace(/_/g, " ")}
-                                </a>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
 
             <a
                 href="/contact"
@@ -343,6 +269,18 @@ const isAdminOrOwner = userRole === "admin" || userRole === "owner";
                 <i class="fa-solid fa-envelope"></i>
                 <span>Contact</span>
             </a>
+
+            <!-- Only added to the page for a signed-in admin -->
+            <template x-if="isAdmin">
+                <a
+                    href="/admin/menu-editor"
+                    class="mobile-nav-item mobile-editor-btn"
+                    @click="closeMobileMenu()"
+                >
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span>Menu Editor</span>
+                </a>
+            </template>
         </div>
     </div>
 
@@ -360,6 +298,103 @@ const isAdminOrOwner = userRole === "admin" || userRole === "owner";
         x-cloak
     ></div>
 </div>
+
+<script is:inline>
+    document.addEventListener("alpine:init", () => {
+        // Types that are a single link (no dropdown of categories).
+        const FLAT_TYPES = ["specials", "platters"];
+        // Order of the Menu dropdown; anything else follows in database order.
+        const TYPE_ORDER = ["drinks", "food", "specials", "platters"];
+        const ICONS = {
+            food: "fa-solid fa-burger",
+            drinks: "fa-solid fa-beer-mug-empty",
+            platters: "fa-solid fa-utensils",
+            specials: "fa-solid fa-star",
+        };
+        const keyOf = (type) => String(type.id).toLowerCase();
+
+        Alpine.data("siteNav", () => ({
+            mobileMenuOpen: false,
+            menuOpen: false,
+            openType: null,
+            activeMobileAccordion: null,
+            mobileType: null,
+            types: [],
+            isAdmin: false,
+
+            init() {
+                this.loadNav();
+            },
+
+            get menuTypes() {
+                const rank = (type) => {
+                    const i = TYPE_ORDER.indexOf(keyOf(type));
+                    return i === -1 ? TYPE_ORDER.length : i;
+                };
+                return this.types
+                    .map((type, index) => ({ type, index }))
+                    .sort((a, b) => rank(a.type) - rank(b.type) || a.index - b.index)
+                    .map((entry) => entry.type);
+            },
+
+            hasSub(type) {
+                return (
+                    (type.categories || []).length > 0 &&
+                    !FLAT_TYPES.includes(keyOf(type))
+                );
+            },
+
+            labelOf(category) {
+                return String(category.label).replace(/_/g, " ");
+            },
+
+            typeIcon(typeId) {
+                return ICONS[String(typeId).toLowerCase()] || "fa-solid fa-list";
+            },
+
+            async loadNav() {
+                try {
+                    const res = await fetch("/api/nav", {
+                        credentials: "same-origin",
+                        headers: { Accept: "application/json" },
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    this.types = Array.isArray(data.types) ? data.types : [];
+                    this.isAdmin = data.isAdmin === true;
+                } catch (err) {
+                    // The nav still works (Home / Menu / Contact) without it.
+                    console.warn("Navigation data could not be loaded:", err);
+                }
+            },
+
+            toggleMobileMenu() {
+                this.mobileMenuOpen = !this.mobileMenuOpen;
+                document.body.style.overflow = this.mobileMenuOpen ? "hidden" : "";
+            },
+
+            closeMobileMenu() {
+                this.mobileMenuOpen = false;
+                document.body.style.overflow = "";
+            },
+
+            closeAll() {
+                this.closeMobileMenu();
+                this.menuOpen = false;
+                this.openType = null;
+            },
+
+            toggleAccordion(name) {
+                this.activeMobileAccordion =
+                    this.activeMobileAccordion === name ? null : name;
+            },
+
+            toggleMobileType(id) {
+                this.mobileType = this.mobileType === id ? null : id;
+            },
+        }));
+    });
+</script>
 
 <script>
     const THRESHOLD = 5;
@@ -510,7 +545,44 @@ const isAdminOrOwner = userRole === "admin" || userRole === "owner";
         box-shadow: 0 12px 30px var(--nav-bg-shadowA);
         padding: 0.5rem 0;
         z-index: 1200;
-        margin-top: 0.35rem;
+        margin-top: 0;
+    }
+
+    .dropdown-row {
+        position: relative;
+    }
+
+    .sub-arrow {
+        margin-left: auto;
+        font-size: 0.7rem;
+        opacity: 0.7;
+    }
+
+    /* Flyout with the categories of Drinks / Food */
+    .nav-submenu {
+        position: absolute;
+        top: 0;
+        left: 100%;
+        min-width: 220px;
+        max-height: 70vh;
+        overflow-y: auto;
+        background: var(--bg-color-light);
+        border: 1px solid var(--nav-bg-shadowA);
+        border-radius: 12px;
+        box-shadow: 0 12px 30px var(--nav-bg-shadowA);
+        padding: 0.5rem 0;
+        z-index: 1300;
+    }
+
+    /* "Menu Editor" button, admins only */
+    .nav-editor-btn {
+        background: var(--bg-color-btn);
+        color: var(--text-color);
+
+        &:hover {
+            background: var(--text-color-hover);
+            color: var(--text-color);
+        }
     }
 
     .dropdown-header {
@@ -757,6 +829,73 @@ const isAdminOrOwner = userRole === "admin" || userRole === "owner";
             color: var(--text-color);
             font-weight: 600;
         }
+    }
+
+    .mobile-accordion-card .accordion-trigger.accordion-trigger-row {
+        padding: 0;
+        cursor: default;
+
+        .accordion-link {
+            flex: 1;
+            padding: 0.85rem 1rem;
+            color: var(--text-color);
+            text-decoration: none;
+        }
+
+        .accordion-toggle {
+            align-self: stretch;
+            padding: 0 1rem;
+            background: transparent;
+            border: none;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+            cursor: pointer;
+        }
+    }
+
+    .mobile-subgroup {
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        margin-bottom: 0.25rem;
+
+        .chip-grid {
+            padding: 0.25rem 0.75rem 0.75rem;
+        }
+    }
+
+    .mobile-sub-trigger {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.65rem 0.85rem;
+        background: transparent;
+        border: none;
+        color: var(--text-color);
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+
+        .sub-trigger-title {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .accordion-arrow {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            transition: transform 0.25s ease;
+
+            &.rotate {
+                transform: rotate(180deg);
+            }
+        }
+    }
+
+    .mobile-editor-btn {
+        background: var(--bg-color-btn);
+        font-weight: 700;
     }
 
     .chip-grid {

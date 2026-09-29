@@ -2,6 +2,7 @@
 // src/components/MenuSlider.astro
 // Slider for the weekly specials. Same pattern as MenuMain.astro.
 import { getPublicImageUrl } from "../../lib/supabaseStorage";
+import { SPECIALS, SPECIALS_FOLDER } from "../../lib/menuImages";
 
 export interface Special {
     filename: string;
@@ -14,19 +15,11 @@ interface Props {
     title?: string;
 }
 
-// Edit this array to add, remove, relabel, or re-order specials.
-const defaultSpecials: Special[] = [
-    { filename: "mondaySpecial.jpg", label: "Monday Special" },
-    { filename: "tuesdaySpecial.jpg", label: "Tuesday Special" },
-    { filename: "wednesdaySpecial.jpg", label: "Wednesday Special" },
-    { filename: "thursdaySpecial-1.jpg", label: "Thursday Special 1" },
-    { filename: "thursdaySpecial-2.jpg", label: "Thursday Special 2" },
-    { filename: "R150deal.jpg", label: "R150 Deal" },
-];
-
+// The default specials (and their order) live in src/lib/menuImages.ts so the
+// admin image editor edits exactly what is shown here.
 const {
-    specials = defaultSpecials,
-    folder = "MenuSpecials",
+    specials = SPECIALS,
+    folder = SPECIALS_FOLDER,
     title = "Weekly Specials",
 } = Astro.props;
 

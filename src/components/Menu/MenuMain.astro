@@ -2,9 +2,10 @@
 // src/components/MenuMain.astro
 //
 // Slider for the multi-page main menu. Images are loaded from Supabase
-// Storage and shown in the order defined in `defaultParts` below (or
+// Storage and shown in the order defined in src/lib/menuImages.ts (or
 // via the `parts` prop if you want to override it per-page).
 import { getPublicImageUrl } from "../../lib/supabaseStorage";
+import { MAIN_MENU_PARTS, MAIN_MENU_FOLDER } from "../../lib/menuImages";
 
 export interface MenuPart {
     filename: string;
@@ -16,19 +17,12 @@ interface Props {
     folder?: string;
 }
 
-// Edit this array to add, remove, relabel, or re-order main menu pages.
-// The order here is the order they'll appear in the slider.
-const defaultParts: MenuPart[] = [
-    { filename: "MenuPage1.jpg", label: "Page 1" },
-    { filename: "MenuPage2.jpg", label: "Page 2" },
-    { filename: "MenuL&L.jpg", label: "Lords & Legends" },
-    { filename: "MenuDrinks.jpg", label: "Drinks" },
-    { filename: "MenuColdDrinks.jpg", label: "Cold Drinks" },
-    { filename: "MenuAlcDrinks.jpg", label: "Alcoholic Drinks" },
-    { filename: "MenuShooters.jpg", label: "Shooters" },
-];
-
-const { parts = defaultParts, folder = "Menu" } = Astro.props;
+// The default pages (and their order) live in src/lib/menuImages.ts so the
+// admin image editor edits exactly what is shown here.
+const {
+    parts = MAIN_MENU_PARTS,
+    folder = MAIN_MENU_FOLDER,
+} = Astro.props;
 
 // Build full public URLs here, on the server. This is the part that
 // used to fail — computing storage URLs in the browser via `window`.

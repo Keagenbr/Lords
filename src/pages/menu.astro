@@ -2,44 +2,13 @@
 // src/pages/menu.astro
 import Layout from "../layouts/Layout.astro";
 import Menu from "../components/Menu/index.astro";
-import Navigation from "../components/Nav.astro";
-import { getMenu } from "../lib/menu";
 
-const menuData = await getMenu();
-
-// Extract types and categories for navigation
-const types = menuData.map((t) => ({ id: t.id, label: t.label }));
-const categories = menuData.flatMap((t) =>
-    t.categories.map((c) => ({ id: c.id, label: c.label, type_id: t.id })),
-);
-
-// Determine logged-in user role (from session / Astro.locals / Supabase Auth)
-const userRole = Astro.locals?.user?.role || "admin";
+// Render on request so a menu change saved in the admin editor shows up
+// immediately, instead of being frozen at the last build. (The navigation is
+// part of Layout and loads its own data, so nothing else is needed here.)
+export const prerender = false;
 ---
 
 <Layout title="Menu - Lords & Legends">
-    <Navigation userRole={userRole} types={types} categories={categories} />
-    <!-- Main Menu Content -->
     <Menu />
 </Layout>
-
-<style>
-    .admin-image-components {
-        margin-top: 3rem;
-        padding: 2rem 1rem;
-        background: #f7fafc;
-        border-top: 2px dashed #cbd5e0;
-    }
-    .admin-badge {
-        text-align: center;
-        display: block;
-        max-width: 300px;
-        margin: 0 auto 2rem auto;
-        padding: 0.4rem 1rem;
-        background: #2b6cb0;
-        color: white;
-        border-radius: 20px;
-        font-weight: 700;
-        font-size: 0.85rem;
-    }
-</style>

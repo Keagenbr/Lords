@@ -1,16 +1,19 @@
 ---
-// src/pages/admin/menu-editor.astro
+// src/pages/admin/menu-editor.astro  ->  /admin/menu-editor
 import Layout from "../../layouts/Layout.astro";
 import MenuEditor from "../../components/MenuEditor.astro";
+import MenuEditorNav from "../../components/MenuEditorNav.astro";
+import { guardAdminPage } from "../../lib/adminAuth";
 
-const userRole = Astro.locals?.user?.role || "admin";
+// Must render per request: it reads the login cookies and the live menu.
+export const prerender = false;
 
-// Ensure non-admins are redirected
-if (userRole !== "admin" && userRole !== "owner") {
-    return Astro.redirect("/menu");
-}
+// Signed out -> /admin/login, signed in but not an admin -> 403.
+const { response } = await guardAdminPage(Astro.cookies, Astro.redirect);
+if (response) return response;
 ---
 
 <Layout title="Menu Editor">
+    <MenuEditorNav active="items" />
     <MenuEditor />
 </Layout>

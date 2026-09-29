@@ -1,0 +1,351 @@
+---
+// src/components/MenuImageEditor.astro
+//
+// Lets an admin replace the pictures used by the Main Menu slider, the
+// Specials slider and the Platter image. Each picture is uploaded over the
+// existing file in Supabase Storage (through /admin/upload-image), so the
+// public components need no code or database change.
+import { getPublicImageUrl } from "../lib/supabaseStorage";
+import { IMAGE_SECTIONS, type ImageSectionKey } from "../lib/menuImages";
+
+interface Props {
+    section: ImageSectionKey;
+}
+
+const { section: sectionKey } = Astro.props;
+const section = IMAGE_SECTIONS[sectionKey];
+
+// Public URLs are built here on the server (no `window` involved).
+const images = section.images.map((image) => ({
+    ...image,
+    url: getPublicImageUrl(`${section.folder}/${image.filename}`),
+}));
+
+const editorConfig = JSON.stringify({ folder: section.folder, images });
+---
+
+<section class="image-editor" x-data="menuImageEditor" data-config={editorConfig}>
+    <div class="editor-header">
+        <div class="header-titles">
+            <h1><i class="fa-solid fa-images"></i> {section.title}</h1>
+            <p class="tagline">{section.blurb}</p>
+        </div>
+    </div>
+
+    <p class="cache-note">
+        A replaced picture goes live straight away. Visitors who already have
+        the old one open may see it for up to 5 minutes.
+    </p>
+
+    <div class="image-grid">
+        <template x-for="(img, index) in images" :key="img.filename">
+            <article class="image-card">
+                <div class="image-frame">
+                    <img
+                        :src="img.url + '?v=' + img.version"
+                        :alt="img.label"
+                        @error="img.missing = true"
+                        @load="img.missing = false"
+                    />
+                    <div class="image-missing" x-show="img.missing" x-cloak>
+                        <i class="fa-solid fa-image"></i>
+                        <span>No picture uploaded yet</span>
+                    </div>
+                    <div class="busy" x-show="img.busy" x-cloak>
+                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    </div>
+                </div>
+
+                <div class="image-meta">
+                    <h3 x-text="img.label"></h3>
+                    <code x-text="img.filename"></code>
+                </div>
+
+                <div class="image-actions">
+                    <button
+                        type="button"
+                        class="replace-btn"
+                        :disabled="img.busy"
+                        @click="pick(index)"
+                    >
+                        <i class="fa-solid fa-arrows-rotate"></i> Replace picture
+                    </button>
+                    <a
+                        class="open-link"
+                        :href="img.url + '?v=' + img.version"
+                        target="_blank"
+                        rel="noopener"
+                    >
+                        <i class="fa-solid fa-up-right-from-square"></i> Open
+                    </a>
+                </div>
+
+                <p
+                    class="card-message"
+                    :class="img.messageType"
+                    x-show="img.message"
+                    x-cloak
+                    x-text="img.message"
+                >
+                </p>
+            </article>
+        </template>
+    </div>
+
+    <input
+        type="file"
+        accept="image/*"
+        class="hidden-input"
+        x-ref="fileInput"
+        @change="handleFile($event)"
+    />
+</section>
+
+<script is:inline>
+    document.addEventListener("alpine:init", () => {
+        Alpine.data("menuImageEditor", () => ({
+            folder: "",
+            images: [],
+            pickIndex: null,
+
+            init() {
+                let config = { folder: "", images: [] };
+                try {
+                    config = JSON.parse(this.$el.dataset.config || "{}");
+                } catch (err) {
+                    console.error("Image editor config could not be read:", err);
+                }
+                this.folder = config.folder;
+                this.images = (config.images || []).map((img) => ({
+                    ...img,
+                    version: Date.now(), // cache-buster for the admin preview
+                    busy: false,
+                    missing: false,
+                    message: "",
+                    messageType: "",
+                }));
+            },
+
+            pick(index) {
+                this.pickIndex = index;
+                this.$refs.fileInput.click();
+            },
+
+            async handleFile(event) {
+                const input = event.target;
+                const file = input.files[0];
+                const img = this.images[this.pickIndex];
+                input.value = "";
+                if (!file || !img) return;
+
+                if (!file.type.startsWith("image/")) {
+                    return this.setMessage(img, "error", "Please choose an image file.");
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                    return this.setMessage(img, "error", "Image must be under 5MB.");
+                }
+                if (
+                    !confirm(
+                        `Replace "${img.label}" with "${file.name}"?\nThe current picture will be overwritten.`,
+                    )
+                ) {
+                    return;
+                }
+
+                img.busy = true;
+                this.setMessage(img, "", "");
+                try {
+                    const form = new FormData();
+                    form.append("file", file);
+                    form.append("mode", "replace");
+                    form.append("folder", this.folder);
+                    form.append("filename", img.filename);
+
+                    const res = await fetch("/admin/upload-image", {
+                        method: "POST",
+                        body: form,
+                        credentials: "same-origin",
+                    });
+                    const body = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                        throw new Error(
+                            res.status === 401 || res.status === 403
+                                ? "Your admin session has expired. Please sign in again."
+                                : body.error || `Upload failed (${res.status})`,
+                        );
+                    }
+
+                    img.version = Date.now();
+                    img.missing = false;
+                    this.setMessage(img, "success", "Picture replaced.");
+                } catch (err) {
+                    this.setMessage(img, "error", err.message);
+                } finally {
+                    img.busy = false;
+                }
+            },
+
+            setMessage(img, type, message) {
+                img.messageType = type;
+                img.message = message;
+            },
+        }));
+    });
+</script>
+
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .image-editor {
+        display: block;
+        position: relative;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 1.5rem;
+        color: var(--txt-color);
+        top: var(--nav-header);
+    }
+
+    .editor-header {
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid var(--nav-bg);
+    }
+
+    .header-titles h1 {
+        font-size: 2rem;
+        color: var(--bg-color-btn);
+        margin: 0;
+    }
+
+    .cache-note {
+        font-size: 0.85rem;
+        opacity: 0.75;
+        margin: 0 0 1.5rem;
+    }
+
+    .image-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 1.25rem;
+    }
+
+    .image-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: #fff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+    }
+
+    .image-frame {
+        position: relative;
+        aspect-ratio: 3 / 4;
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--bg-color-light);
+        border: 1px solid var(--nav-bg);
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+    }
+
+    .image-missing,
+    .busy {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        color: #718096;
+        background: var(--bg-color-light);
+    }
+
+    .busy {
+        background: rgba(255, 255, 255, 0.75);
+        font-size: 1.8rem;
+        color: var(--bg-color-btn);
+    }
+
+    .image-meta {
+        h3 {
+            margin: 0 0 0.2rem;
+            font-size: 1rem;
+        }
+        code {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            word-break: break-all;
+        }
+    }
+
+    .image-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .replace-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.5rem 0.9rem;
+        background: var(--bg-color-btn);
+        color: var(--text-color);
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    }
+
+    .open-link {
+        font-size: 0.8rem;
+        color: var(--bg-color-btn);
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .card-message {
+        margin: 0;
+        font-size: 0.8rem;
+        padding: 0.4rem 0.6rem;
+        border-radius: 6px;
+
+        &.success {
+            background: #f0fff4;
+            color: #22543d;
+        }
+        &.error {
+            background: #fff5f5;
+            color: #742a2a;
+        }
+    }
+
+    .hidden-input {
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        .image-editor {
+            top: var(--nav-headerM);
+        }
+    }
+</style>

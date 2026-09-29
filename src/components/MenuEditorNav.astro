@@ -1,0 +1,115 @@
+---
+// src/components/MenuEditorNav.astro
+// Sub-navigation shown at the top of every Menu Editor page.
+interface Props {
+    active: "items" | "main-menu" | "specials" | "platter";
+}
+
+const { active } = Astro.props;
+
+const links = [
+    {
+        key: "items",
+        href: "/admin/menu-editor",
+        label: "Menu Items",
+        icon: "fa-solid fa-pen-to-square",
+    },
+    {
+        key: "main-menu",
+        href: "/admin/menu-editor/main-menu",
+        label: "Main Menu Pages",
+        icon: "fa-solid fa-book-open",
+    },
+    {
+        key: "specials",
+        href: "/admin/menu-editor/specials",
+        label: "Specials Slider",
+        icon: "fa-solid fa-star",
+    },
+    {
+        key: "platter",
+        href: "/admin/menu-editor/platter",
+        label: "Platter Menu",
+        icon: "fa-solid fa-utensils",
+    },
+];
+---
+
+<nav class="editor-subnav" aria-label="Menu editor sections">
+    <div class="subnav-inner">
+        {
+            links.map((link) => (
+                <a
+                    href={link.href}
+                    class:list={["subnav-btn", { active: link.key === active }]}
+                    aria-current={link.key === active ? "page" : undefined}
+                >
+                    <i class={link.icon} />
+                    <span>{link.label}</span>
+                </a>
+            ))
+        }
+        <a href="/admin" class="subnav-btn subnav-back">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Admin panel</span>
+        </a>
+    </div>
+</nav>
+
+<style>
+    .editor-subnav {
+        position: relative;
+        top: var(--nav-header);
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 1.5rem 1.5rem 0;
+    }
+
+    .subnav-inner {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
+
+    .subnav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.55rem 1.1rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 20px;
+        background: #fff;
+        color: var(--txt-color);
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-decoration: none;
+        transition:
+            background 0.15s ease,
+            color 0.15s ease;
+
+        &:hover {
+            background: var(--nav-bg-highlight);
+            color: var(--text-color-hover);
+        }
+
+        &.active {
+            background: var(--bg-color-btn);
+            border-color: var(--bg-color-btn);
+            color: var(--text-color);
+        }
+    }
+
+    .subnav-back {
+        margin-left: auto;
+        border-style: dashed;
+    }
+
+    @media (max-width: 768px) {
+        .editor-subnav {
+            top: var(--nav-headerM);
+        }
+        .subnav-back {
+            margin-left: 0;
+        }
+    }
+</style>

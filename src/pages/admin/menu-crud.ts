@@ -1,6 +1,6 @@
-import type { APIRoute, AstroCookies } from "astro";
-import { supabase } from "../../lib/supabase";
+import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
+import { getAdminUser } from "../../lib/adminAuth";
 
 export const prerender = false;
 
@@ -11,7 +11,6 @@ export const prerender = false;
 // writing to some other table in your database.
 // ─────────────────────────────────────────────────────────────
 const ALLOWED_TABLES: Record<string, { pk: string[]; columns: string[] }> = {
-  // ... existing tables (menu_types, menu_categories, menu_items, etc.)[cite: 33]
   site_settings: {
     pk: ["key"],
     columns: ["key", "value"],
@@ -53,30 +52,16 @@ const ALLOWED_TABLES: Record<string, { pk: string[]; columns: string[] }> = {
   },
 };
 
-async function requireAdmin(cookies: AstroCookies) {
-  const accessToken = cookies.get("sb-access-token")?.value;
-  const refreshToken = cookies.get("sb-refresh-token")?.value;
-  if (!accessToken || !refreshToken) return null;
-
-  const { data, error } = await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
   });
-  if (error || !data.user) return null;
-
-  const isAdmin =
-    data.user.app_metadata?.role === "admin" ||
-    data.user.user_metadata?.role === "admin";
-
-  return isAdmin ? data.user : null;
-}
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const user = await requireAdmin(cookies);
+  const user = await getAdminUser(cookies);
   if (!user) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
-      status: 403,
-    });
+    return json({ error: "Forbidden" }, 403);
   }
 
   let body: any;
@@ -120,7 +105,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     if (action === "update") {
-      let query = supabaseAdmin.from(table).update(cleanData);
+      // Never write the primary key back onto itself: identity/generated
+      // id columns reject "SET id = ..." even when the value is unchanged.
+      const updateData: Record<string, unknown> = { ...cleanData };
+      for (const pkCol of meta.pk) delete updateData[pkCol];
+      if (Object.keys(updateData).length === 0) {
+        return json({ error: "Nothing to update" }, 400);
+      }
+      let query = supabaseAdmin.from(table).update(updateData);
       for (const pkCol of meta.pk) {
         if (data?.[pkCol] === undefined) {
           return new Response(

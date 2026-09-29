@@ -1,88 +1,89 @@
-import type { APIRoute, AstroCookies } from "astro";
-import { supabase } from "../../lib/supabase";
+import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
+import { getAdminUser } from "../../lib/adminAuth";
+import { STORAGE_BUCKET } from "../../lib/supabaseStorage";
+import { findManagedImage } from "../../lib/menuImages";
 
 export const prerender = false;
 
-async function requireAdmin(cookies: AstroCookies) {
-  const accessToken = cookies.get("sb-access-token")?.value;
-  const refreshToken = cookies.get("sb-refresh-token")?.value;
-  if (!accessToken || !refreshToken) return null;
-
-  const { data, error } = await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
   });
-  if (error || !data.user) return null;
 
-  const isAdmin =
-    data.user.app_metadata?.role === "admin" ||
-    data.user.user_metadata?.role === "admin";
-
-  return isAdmin ? data.user : null;
-}
-
-// Only these folders are allowed — matches the buckets/folders your
-// site already reads from (see getCategoryImage / getItemImage in
-// MenuIndex.astro). Add more here if you introduce new ones.
-const ALLOWED_FOLDERS = ["Categories", "MenuItems"];
-const BUCKET = "LordsImg";
+// Two modes:
+//
+//  1. "new"     (default) - item / category pictures. Saved under a unique,
+//                timestamped name; the public URL is returned and stored in
+//                menu_items.image_url / menu_categories.image_url.
+//  2. "replace" - the fixed images used by the Main Menu, Specials slider and
+//                Platter components (see src/lib/menuImages.ts). The file
+//                is written over the existing path, so the components keep
+//                working without any code or database change.
+const NEW_IMAGE_FOLDERS = ["Categories", "MenuItems"];
+const MAX_BYTES = 5 * 1024 * 1024; // 5MB
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const user = await requireAdmin(cookies);
-  if (!user) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
-      status: 403,
-    });
+  const user = await getAdminUser(cookies);
+  if (!user) return json({ error: "Forbidden" }, 403);
+
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return json({ error: "Expected multipart/form-data" }, 400);
   }
 
-  const formData = await request.formData();
   const file = formData.get("file");
   const folder = String(formData.get("folder") || "");
+  const mode = String(formData.get("mode") || "new");
 
-  if (!(file instanceof File)) {
-    return new Response(JSON.stringify({ error: "No file provided" }), {
-      status: 400,
-    });
-  }
-  if (!ALLOWED_FOLDERS.includes(folder)) {
-    return new Response(
-      JSON.stringify({
-        error: `folder must be one of: ${ALLOWED_FOLDERS.join(", ")}`,
-      }),
-      { status: 400 },
-    );
-  }
+  if (!(file instanceof File)) return json({ error: "No file provided" }, 400);
   if (!file.type.startsWith("image/")) {
-    return new Response(JSON.stringify({ error: "File must be an image" }), {
-      status: 400,
-    });
+    return json({ error: "File must be an image" }, 400);
   }
-  const MAX_BYTES = 5 * 1024 * 1024; // 5MB
   if (file.size > MAX_BYTES) {
-    return new Response(JSON.stringify({ error: "Image must be under 5MB" }), {
-      status: 400,
-    });
+    return json({ error: "Image must be under 5MB" }, 400);
   }
 
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const path = `${folder}/${Date.now()}_${safeName}`;
+  let path: string;
+  let cacheControl = "3600";
+
+  if (mode === "replace") {
+    const filename = String(formData.get("filename") || "");
+    // Only files that the public components actually display can be replaced.
+    if (!findManagedImage(folder, filename)) {
+      return json({ error: "That image is not managed by the editor" }, 400);
+    }
+    path = `${folder}/${filename}`;
+    // Same URL, new content: keep the browser-cache window short so visitors
+    // pick up the new picture quickly.
+    cacheControl = "300";
+  } else {
+    if (!NEW_IMAGE_FOLDERS.includes(folder)) {
+      return json(
+        { error: `folder must be one of: ${NEW_IMAGE_FOLDERS.join(", ")}` },
+        400,
+      );
+    }
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    path = `${folder}/${Date.now()}_${safeName}`;
+  }
 
   const { error: uploadError } = await supabaseAdmin.storage
-    .from(BUCKET)
-    .upload(path, file, { upsert: true, contentType: file.type });
-
-  if (uploadError) {
-    return new Response(JSON.stringify({ error: uploadError.message }), {
-      status: 500,
+    .from(STORAGE_BUCKET)
+    .upload(path, file, {
+      upsert: true,
+      contentType: file.type,
+      cacheControl,
     });
-  }
+
+  if (uploadError) return json({ error: uploadError.message }, 500);
 
   const { data: publicUrlData } = supabaseAdmin.storage
-    .from(BUCKET)
+    .from(STORAGE_BUCKET)
     .getPublicUrl(path);
 
-  return new Response(JSON.stringify({ url: publicUrlData.publicUrl }), {
-    status: 200,
-  });
+  return json({ url: publicUrlData.publicUrl, path });
 };

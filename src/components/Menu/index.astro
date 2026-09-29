@@ -73,7 +73,7 @@ const RESTAURANT_NAME = "Lords & Legends";
 
     <!-- Rendered server-side sections, filtered client-side -->
     <template x-for="type in filteredMenu" :key="type.id">
-        <section class="menu-type-section">
+        <section class="menu-type-section" :id="'type-' + type.id">
             <h2 class="type-header">
                 <i :class="getTypeIcon(type.id)"></i>
                 <span x-text="type.label"></span>
@@ -82,6 +82,7 @@ const RESTAURANT_NAME = "Lords & Legends";
             <template x-for="cat in type.categories" :key="cat.id">
                 <div
                     class="category-block"
+                    :id="'cat-' + cat.id"
                     :class="{ 'is-open': isCategoryOpen(cat.id) }"
                 >
                     <!-- Toggleable Dropdown Header -->
@@ -421,6 +422,47 @@ const RESTAURANT_NAME = "Lords & Legends";
                         this.openCategories[c.id] = true;
                     });
                 });
+
+                // The navigation links here as /menu#type-<id> and
+                // /menu#cat-<id>: show that section and scroll to it, both
+                // on page load and when the link is used on this page.
+                this.applyHash();
+                window.addEventListener("hashchange", () => this.applyHash());
+            },
+
+            applyHash() {
+                const hash = decodeURIComponent(
+                    window.location.hash.replace(/^#/, ""),
+                );
+                let targetId = null;
+
+                if (hash.startsWith("cat-")) {
+                    const catId = hash.slice(4);
+                    const type = this.menu.find((t) =>
+                        t.categories.some((c) => String(c.id) === catId),
+                    );
+                    if (!type) return;
+                    this.selectedType = type.id;
+                    this.openCategories[catId] = true;
+                    targetId = hash;
+                } else if (hash.startsWith("type-")) {
+                    const type = this.menu.find(
+                        (t) => String(t.id) === hash.slice(5),
+                    );
+                    if (!type) return;
+                    this.selectedType = type.id;
+                    targetId = hash;
+                } else {
+                    return;
+                }
+
+                this.search = "";
+                // Wait for the filtered list to render before scrolling.
+                setTimeout(() => {
+                    document
+                        .getElementById(targetId)
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 60);
             },
 
             get types() {
@@ -673,6 +715,19 @@ const RESTAURANT_NAME = "Lords & Legends";
 <style>
     [x-cloak] {
         display: none !important;
+    }
+
+    /* Keep jump targets (from the navigation) clear of the fixed header. */
+    .menu-type-section,
+    .category-block {
+        scroll-margin-top: calc(var(--nav-header) + 1rem);
+    }
+
+    @media (max-width: 768px) {
+        .menu-type-section,
+        .category-block {
+            scroll-margin-top: calc(var(--nav-headerM) + 1rem);
+        }
     }
 
     .menu-container {
