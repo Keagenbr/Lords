@@ -1,8 +1,12 @@
 ---
 import Layout from "../layouts/Layout.astro"; // Import the main layout part
+// import Menu from "../components/Menu/MenuMain.astro"; // Import the menu component
+// import MenuSlider from "../components/Menu/MenuSlider.astro"; // Import the menu slider component
+// import MenuPlatter from "../components/Menu/MenuPlatter.astro"; // Import the menu platter component
+
 // import { Image } from "astro:assets";
 // import headerImg from "../../src/assets/headerImg2.webp";
-import HeaderBottom from "../../src/assets/headerBottom.svg";
+// import HeaderBottom from "../../src/assets/headerBottom.svg";
 
 // Gets the public URL for weekly specials image from Supabase Storage.
 import { getPublicImageUrl } from "../lib/supabaseStorage";
@@ -25,10 +29,10 @@ const imageUrl = getPublicImageUrl(`${folder}/${filename}`);
 // import MenuMain from "../components/Menu/MenuMain.astro";
 // import Special from "../components/Menu/MenuSlider.astro";
 
-const { title = "Home" } = Astro.props;
+// const { title = "Home" } = Astro.props;
 ---
 
-<Layout title={title}>
+<Layout title="Home">
     <main class="home">
         <header class="home-header">
             <h1>

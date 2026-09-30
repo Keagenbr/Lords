@@ -1,0 +1,57 @@
+# --------------------------------------------------------
+# 1. ALLOW AI Search & Retrieval (For Visibility & Citations)
+# --------------------------------------------------------
+# OpenAI / ChatGPT Search
+User-agent: OAI-SearchBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+
+# Anthropic / Claude Real-Time Search
+User-agent: Claude-SearchBot
+Allow: /
+User-agent: Claude-User
+Allow: /
+
+# Perplexity AI Search
+User-agent: PerplexityBot
+Allow: /
+
+# Standard Search Engines (Google, Bing, etc.)
+User-agent: Googlebot
+Allow: /
+User-agent: Bingbot
+Allow: /
+
+# --------------------------------------------------------
+# 2. BLOCK AI Bulk Training Data Crawlers (Protect Content)
+# --------------------------------------------------------
+# OpenAI Model Training
+User-agent: GPTBot
+Disallow: /
+
+# Anthropic Model Training
+User-agent: ClaudeBot
+Disallow: /
+
+# Google Generative AI Training (Does not impact normal Google Search)
+User-agent: Google-Extended
+Disallow: /
+
+# Common Crawl (Massive open dataset used to train many LLMs)
+User-agent: CCBot
+Disallow: /
+
+# ByteDance/TikTok AI Training
+User-agent: Bytespider
+Disallow: /
+
+# Meta AI Training
+User-agent: Meta-ExternalAgent
+Disallow: /
+User-agent: Meta-ExternalFetcher
+Disallow: /
+
+# Cohere AI Training
+User-agent: cohere-ai
+Disallow: /

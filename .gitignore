@@ -24,3 +24,11 @@ pnpm-debug.log*
 .idea/
 .vercel
 .env.local
+
+#general
+WebHook.md
+
+src/components/MetaData/Aeo.astro
+src/components/MetaData/Geo.astro
+src/components/MetaData/Llmo.astro
+src/components/MetaData/Seo.astro

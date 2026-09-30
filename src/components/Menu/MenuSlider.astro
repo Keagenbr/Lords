@@ -1,12 +1,21 @@
 ---
-// src/components/MenuSlider.astro
-// Slider for the weekly specials. Same pattern as MenuMain.astro.
+// src/components/Menu/MenuSlider.astro
+/**
+ * MenuSlider.astro
+ * Interactive Alpine.js weekly specials slider with lightbox support.
+ * Data Fallback Hierarchy:
+ *   1. Custom 'specials' array passed via Astro.props.
+ *   2. Native server-side fetch from Supabase Storage ('LordsImg' bucket).
+ *   3. Static fallback array (SPECIALS from src/lib/menuImages.ts).
+ */
+import { supabase } from "../../lib/supabase";
 import { getPublicImageUrl } from "../../lib/supabaseStorage";
 import { SPECIALS, SPECIALS_FOLDER } from "../../lib/menuImages";
 
 export interface Special {
     filename: string;
     label: string;
+    url?: string;
 }
 
 interface Props {
@@ -15,23 +24,59 @@ interface Props {
     title?: string;
 }
 
-// The default specials (and their order) live in src/lib/menuImages.ts so the
-// admin image editor edits exactly what is shown here.
+// Extract props with defaults from existing configuration
 const {
-    specials = SPECIALS,
+    specials,
     folder = SPECIALS_FOLDER,
     title = "Weekly Specials",
 } = Astro.props;
 
-const slides = specials.map((special) => ({
+let activeSpecials: Special[] = [];
+
+// Determine slide data source
+if (specials && specials.length > 0) {
+    // Priority 1: Props explicitly supplied by parent page
+    activeSpecials = specials;
+} else {
+    // Priority 2: Native dynamic fetch from Supabase Storage
+    const { data: storageFiles, error } = await supabase.storage
+        .from("LordsImg")
+        .list(folder);
+
+    if (!error && storageFiles && storageFiles.length > 0) {
+        activeSpecials = storageFiles
+            .filter(
+                (file) => file.name.toLowerCase() !== ".emptyfolderplaceholder",
+            )
+            .map((file) => {
+                const rawName = file.name
+                    .replace(/\.[^/.]+$/, "")
+                    .replace(/[-_]/g, " ");
+                return {
+                    filename: file.name,
+                    label: rawName.charAt(0).toUpperCase() + rawName.slice(1),
+                };
+            });
+    }
+
+    // Priority 3: Fallback to menuImages.ts default array if storage is empty/unreachable
+    if (activeSpecials.length === 0) {
+        activeSpecials = SPECIALS;
+    }
+}
+
+// Generate CDN URLs for each slide item
+const slides = activeSpecials.map((special) => ({
     ...special,
-    url: getPublicImageUrl(`${folder}/${special.filename}`),
+    url: special.url || getPublicImageUrl(`${folder}/${special.filename}`),
 }));
 ---
 
+<!-- Slider Outer Wrapper -->
 <div class="slider-wrapper">
     <h2 class="section-title">{title}</h2>
 
+    <!-- Alpine.js Carousel Container with JSON slides payload -->
     <div
         class="slider-container"
         x-data={`specialsSlider(${JSON.stringify(slides)})`}
@@ -69,11 +114,12 @@ const slides = specials.map((special) => ({
             </template>
         </div>
 
-        <!-- Navigation Arrows -->
+        <!-- Navigation Controls -->
         <button
             class="nav-btn prev-btn"
             @click="prev()"
             :disabled="currentSlide === 0"
+            aria-label="Previous slide"
         >
             &lt;
         </button>
@@ -81,11 +127,12 @@ const slides = specials.map((special) => ({
             class="nav-btn next-btn"
             @click="next()"
             :disabled="currentSlide === slides.length - 1"
+            aria-label="Next slide"
         >
             &gt;
         </button>
 
-        <!-- Slider Lightbox -->
+        <!-- Lightbox Modal -->
         <div
             class="lightbox-overlay"
             x-show="lightboxOpen"
@@ -96,16 +143,20 @@ const slides = specials.map((special) => ({
             x-transition:enter-end="opacity-100"
         >
             <div class="lightbox-content" @click.stop>
-                <button class="close-lightbox-btn" @click="closeLightbox()">
+                <button
+                    class="close-lightbox-btn"
+                    @click="closeLightbox()"
+                    aria-label="Close lightbox"
+                >
                     &times;
                 </button>
                 <img
-                    :src="slides[lightboxIndex].url"
-                    :alt="slides[lightboxIndex].label"
+                    :src="slides[lightboxIndex] ? slides[lightboxIndex].url : ''"
+                    :alt="slides[lightboxIndex] ? slides[lightboxIndex].label : ''"
                 />
                 <a
-                    :href="slides[lightboxIndex].url"
-                    :download="slides[lightboxIndex].filename"
+                    :href="slides[lightboxIndex] ? slides[lightboxIndex].url : '#'"
+                    :download="slides[lightboxIndex] ? slides[lightboxIndex].filename : ''"
                     class="download-btn lightbox-download"
                     @click.stop
                 >
@@ -116,11 +167,8 @@ const slides = specials.map((special) => ({
     </div>
 </div>
 
+<!-- Inline Script: Registers Alpine component before Alpine initializes -->
 <script is:inline>
-    // See the matching comment in MenuMain.astro: is:inline keeps this
-    // a plain classic script (runs in document order) instead of a
-    // bundled, deferred ES module — otherwise it can register
-    // "specialsSlider" too late, after Alpine has already started.
     document.addEventListener("alpine:init", () => {
         Alpine.data("specialsSlider", (slides = []) => ({
             slides,
@@ -149,6 +197,7 @@ const slides = specials.map((special) => ({
 </script>
 
 <style>
+    /* Component Layout & Typography */
     .slider-wrapper {
         max-width: 1000px;
         margin: 20% auto;
@@ -164,6 +213,7 @@ const slides = specials.map((special) => ({
         padding-bottom: 0.5rem;
     }
 
+    /* Slider Track Window */
     .slider-container {
         position: relative;
         overflow: hidden;
@@ -183,7 +233,6 @@ const slides = specials.map((special) => ({
 
     .slide {
         min-width: 100%;
-        /*height: 500px;*/
         position: relative;
         background-color: var(--bg-color);
     }
@@ -201,6 +250,7 @@ const slides = specials.map((special) => ({
         object-fit: cover;
     }
 
+    /* Overlay Controls & Actions */
     .slide-overlay {
         position: absolute;
         bottom: 0;
@@ -224,8 +274,6 @@ const slides = specials.map((special) => ({
     }
 
     .slide-download {
-        /*display: none;*/
-        /*visibility: hidden;*/
         color: var(--text-color-dark);
         background: var(--bg-color-btn);
         padding: 0.3rem 1rem;
@@ -274,7 +322,7 @@ const slides = specials.map((special) => ({
         right: 10px;
     }
 
-    /*Lightbox*/
+    /* Lightbox Modal CSS Layer */
     @layer {
         .lightbox-overlay {
             position: fixed;

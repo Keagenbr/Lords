@@ -1,9 +1,11 @@
 ---
 // import "../../src/style.css";
-import Fonts from "../../src/components/Fonts.astro";
+import Favicons from "../components/MetaData/Favicons.astro"; // Import the favicons component
+import Fonts from "../../src/components/Fonts.astro"; // Import the fonts component
 import Nav from "../components/Nav.astro"; // Import the navigation component
 import TopBtn from "../components/topBtn.astro"; // Import the top button component
 import Footer from "../components/Footer.astro"; // Import the footer component
+
 import "../styles/icons.css"; // Placeholder icon slots (see the file for how to add your SVGs)
 
 // import "../lib/nav.js";
@@ -17,27 +19,7 @@ const { title = "Lords and Legends" } = Astro.props;
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width" />
         <!-- favicons -->
-        <link
-            rel="apple-touch-icon"
-            sizes="180x180"
-            href="/favicon/apple-touch-icon.png"
-        />
-        <link
-            rel="icon"
-            type="image/png"
-            sizes="32x32"
-            href="/favicon/favicon-32x32.png"
-        />
-        <link
-            rel="icon"
-            type="image/png"
-            sizes="16x16"
-            href="/favicon/favicon-16x16.png"
-        />
-        <link rel="manifest" href="/favicon/site.webmanifest" />
-        <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
-        <link rel="icon" href="/favicon/favicon.ico" />
-
+        <Favicons />
         <!-- style sheets -->
 
         <!-- <meta name="generator" content={Astro.generator} /> -->
@@ -54,12 +36,12 @@ const { title = "Lords and Legends" } = Astro.props;
         ></script>
         <Fonts />
         <!-- font awesome icons -->
-        <script
+        <!-- <script
             src="https://kit.fontawesome.com/07324e9632.js"
             crossorigin="anonymous"
             is:inline
             defer
-        ></script>
+        ></script> -->
         <!-- <script is:inline src="../lib/nav.js"></script> -->
     </head>
     <style lang="scss">
