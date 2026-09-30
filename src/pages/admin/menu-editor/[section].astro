@@ -1,0 +1,27 @@
+---
+// src/pages/admin/menu-editor/[section].astro
+//   /admin/menu-editor/main-menu
+//   /admin/menu-editor/specials
+//   /admin/menu-editor/platter
+import Layout from "../../../layouts/Layout.astro";
+import MenuEditorNav from "../../../components/MenuEditorNav.astro";
+import MenuImageEditor from "../../../components/MenuImageEditor.astro";
+import { guardAdminPage } from "../../../lib/adminAuth";
+import { IMAGE_SECTIONS, type ImageSectionKey } from "../../../lib/menuImages";
+
+export const prerender = false;
+
+const { response } = await guardAdminPage(Astro.cookies, Astro.redirect);
+if (response) return response;
+
+const key = Astro.params.section as ImageSectionKey;
+if (!Object.prototype.hasOwnProperty.call(IMAGE_SECTIONS, key)) {
+    return Astro.redirect("/admin/menu-editor");
+}
+const section = IMAGE_SECTIONS[key];
+---
+
+<Layout title={`Menu Editor - ${section.title}`}>
+    <MenuEditorNav active={key} />
+    <MenuImageEditor section={key} />
+</Layout>

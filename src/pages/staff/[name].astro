@@ -1,17 +1,71 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import { getByStaff } from "../../lib/staffSales/storage";
+import { supabase } from "../../lib/supabase";
+import { getDisplayName } from "../../lib/adminAuth";
+import AuthSessionManager from "../../components/AuthSessionManager.astro";
 
-export const prerender = false; // one page per staff member, looked up on each request
+export const prerender = false;
 
-// Same slug rule as the links on the staff overview page.
-const slugOf = (name: string) => name.toLowerCase().replace(/\s+/g, "-");
+const slugOf = (str: string) =>
+    str
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-");
 
+// 1. Normalize the URL parameter to lowercase slug
+const targetSlug = slugOf(Astro.params.name || "");
+
+// 2. Load Staff Data and find staff member
 const staffData = await getByStaff();
 const data = Object.values(staffData).find(
-    (staff) => slugOf(staff.name) === Astro.params.name,
+    (staff) => slugOf(staff.name) === targetSlug,
 );
+
 if (!data) return new Response(null, { status: 404, statusText: "Not found" });
+
+// 3. Authentication & Security Check
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
+
+if (!accessToken || !refreshToken) {
+    return Astro.redirect("/staff/login");
+}
+
+const { data: sessionData, error: sessionError } =
+    await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+    });
+
+if (sessionError || !sessionData.user) {
+    return Astro.redirect("/staff/login");
+}
+
+const user = sessionData.user;
+const isAdmin =
+    user.app_metadata?.role === "admin" || user.user_metadata?.role === "admin";
+
+// Normalize user staff slug for exact matching
+const userStaffSlug = slugOf(
+    user.user_metadata?.staff_slug ||
+        user.user_metadata?.name ||
+        user.email?.split("@")[0] ||
+        "",
+);
+
+const isSelf =
+    userStaffSlug === targetSlug ||
+    userStaffSlug.includes(targetSlug) ||
+    targetSlug.includes(userStaffSlug);
+
+if (!isAdmin && !isSelf) {
+    return new Response(
+        "Forbidden: You only have access to view your own performance profile.",
+        { status: 403 },
+    );
+}
 
 const { name, years, allTime } = data;
 
@@ -30,7 +84,6 @@ for (const year in years) {
     }
 }
 
-// Sort by date (newest first)
 monthlyData.sort((a, b) => {
     const monthOrder = [
         "December",
@@ -50,7 +103,7 @@ monthlyData.sort((a, b) => {
     return monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month);
 });
 
-// Calculate weekly stats (group by week)
+// Calculate weekly stats
 const weeklyData = [];
 for (const month of monthlyData) {
     const weeks = {};
@@ -86,9 +139,18 @@ function getWeekNumber(date) {
 
 <Layout title={`${name} - Staff Details`}>
     <main class="container">
-        <a href="/staff" class="back-link">
-            ← Back to Staff Dashboard
-        </a>
+        <!-- Add session manager header -->
+        <AuthSessionManager
+            displayName={getDisplayName(user)}
+            userEmail={user.email}
+            loginPath="/admin/login"
+            timeoutMinutes={15}
+        />
+        {isAdmin && (
+            <a href="/staff" class="back-link">
+                ← Back to Staff Dashboard
+            </a>
+        )}
 
         <header class="staff-header">
             <h1>{name}</h1>
@@ -115,18 +177,6 @@ function getWeekNumber(date) {
                         R{(allTime.averageDailySales || 0).toLocaleString()}
                     </span>
                 </div>
-                <!-- <div class="stat-box">
-                    <span class="stat-label">Net Cash</span>
-                    <span class="stat-value">
-                        R{allTime.netCash.toLocaleString()}
-                    </span>
-                </div>
-                <div class="stat-box">
-                    <span class="stat-label">Total Deductions</span>
-                    <span class="stat-value">
-                        R{allTime.totalDeductions.toLocaleString()}
-                    </span>
-                </div> -->
                 <div class="stat-box">
                     <span class="stat-label">Tips Earned</span>
                     <span class="stat-value">
@@ -148,7 +198,6 @@ function getWeekNumber(date) {
                             <th>Days</th>
                             <th>Total Sales</th>
                             <th>Daily Avg</th>
-                            <!-- <th>Net Cash</th> -->
                             <th>Tips Earned</th>
                         </tr>
                     </thead>
@@ -165,7 +214,6 @@ function getWeekNumber(date) {
                                         month.totalSales / month.days_worked,
                                     ).toLocaleString()}
                                 </td>
-                                <!-- <td>R{month.netCash.toLocaleString()}</td> -->
                                 <td>R{month.cashPaid.toLocaleString()}</td>
                             </tr>
                         ))}
@@ -220,8 +268,6 @@ function getWeekNumber(date) {
                             <tr>
                                 <th>Date</th>
                                 <th>Sales</th>
-                                <!-- <th>Net Cash</th> -->
-                                <!-- <th>Deductions</th> -->
                                 <th>Tips Earned</th>
                             </tr>
                         </thead>
@@ -230,10 +276,6 @@ function getWeekNumber(date) {
                                 <tr>
                                     <td>{day.date}</td>
                                     <td>R{day.totalSales.toLocaleString()}</td>
-                                    <!-- <td>R{day.netCash.toLocaleString()}</td> -->
-                                    <td>
-                                        <!-- R{day.totalDeductions.toLocaleString()} -->
-                                    </td>
                                     <td>R{day.cashPaid.toLocaleString()}</td>
                                 </tr>
                             ))}
@@ -251,7 +293,6 @@ function getWeekNumber(date) {
         margin: 5rem auto 0 auto;
         padding: 20px;
     }
-
     .back-link {
         display: inline-block;
         margin-bottom: 20px;
@@ -259,40 +300,33 @@ function getWeekNumber(date) {
         text-decoration: none;
         font-weight: bold;
     }
-
     .staff-header {
         text-align: center;
         margin-bottom: 40px;
         padding-bottom: 20px;
         border-bottom: 3px solid #00d4aa;
     }
-
     .staff-header h1 {
         margin: 0;
         font-size: 2.5em;
     }
-
     .subtitle {
         color: #666;
         margin-top: 10px;
     }
-
     section {
         margin-bottom: 40px;
     }
-
     h2 {
         border-left: 4px solid #00d4aa;
         padding-left: 15px;
         margin-bottom: 20px;
     }
-
     .stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 20px;
     }
-
     .stat-box {
         background: #f8f9fa;
         padding: 20px;
@@ -300,67 +334,55 @@ function getWeekNumber(date) {
         text-align: center;
         border: 2px solid #e9ecef;
     }
-
     .stat-label {
         display: block;
         color: #666;
         font-size: 0.9em;
         margin-bottom: 8px;
     }
-
     .stat-value {
         display: block;
         font-size: 1.8em;
         font-weight: bold;
         color: #00d4aa;
     }
-
     .table-container {
         overflow-x: auto;
     }
-
     table {
         width: 100%;
         border-collapse: collapse;
         background: white;
     }
-
     th,
     td {
         padding: 12px;
         text-align: left;
         border-bottom: 1px solid #ddd;
     }
-
     th {
         background: #00d4aa;
         color: white;
         font-weight: bold;
     }
-
     tr:hover {
         background: #f5f5f5;
     }
-
     .month-details {
         margin: 10px 0;
         padding: 15px;
         background: #f8f9fa;
         border-radius: 8px;
     }
-
     .month-details summary {
         cursor: pointer;
         font-weight: bold;
         padding: 10px;
     }
-
     .month-details table {
         margin-top: 10px;
         font-size: 0.9em;
     }
-
-    /* mobile styles */
     @media (max-width: 768px) {
         .container {
             margin: 0 auto;

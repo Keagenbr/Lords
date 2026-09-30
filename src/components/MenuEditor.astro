@@ -1,0 +1,1495 @@
+---
+// src/components/MenuEditor.astro
+//
+// Edits menu items (text, price, picture, takeaway flag) and the picture of
+// each category. Changes are collected in the browser and written when the
+// admin presses "Save Menu", one row at a time, through /admin/menu-crud
+// (admin-only, allow-listed columns). Pictures are uploaded through
+// /admin/upload-image (admin-only).
+import { getMenu, type MenuType } from "../lib/menu";
+import { STORAGE_PUBLIC_BASE } from "../lib/supabaseStorage";
+
+let menuData: MenuType[] = [];
+let loadError = "";
+
+try {
+    menuData = await getMenu();
+} catch (e) {
+    console.error("Failed to load menu data for editor:", e);
+    loadError = "Could not load the menu from Supabase. Please refresh.";
+}
+
+const menuJson = JSON.stringify(menuData);
+---
+
+<section
+    class="menu-editor-container"
+    x-data="menuEditorApp"
+    data-menu={menuJson}
+    data-storage-base={STORAGE_PUBLIC_BASE}
+    data-load-error={loadError}
+>
+    <!-- Editor Control Header -->
+    <div class="editor-header">
+        <div class="header-titles">
+            <h1>
+                <i class="fa-solid fa-pen-to-square"></i> Menu Management Editor
+            </h1>
+            <p class="tagline">
+                Update menu items and their pictures, then press Save Menu.
+            </p>
+        </div>
+        <div class="header-actions">
+            <span
+                class="unsaved-note"
+                x-show="dirtyCount > 0"
+                x-cloak
+                x-text="dirtyCount + (dirtyCount === 1 ? ' unsaved change' : ' unsaved changes')"
+            ></span>
+            <button
+                type="button"
+                class="save-btn"
+                @click="saveAllChanges()"
+                :disabled="isSaving || dirtyCount === 0"
+            >
+                <i class="fa-solid fa-floppy-disk" x-show="!isSaving"></i>
+                <i
+                    class="fa-solid fa-spinner fa-spin"
+                    x-show="isSaving"
+                    x-cloak
+                ></i>
+                <span x-text="isSaving ? 'Saving Changes...' : 'Save Menu'"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Save / upload feedback -->
+    <div
+        class="status-banner"
+        :class="status.type"
+        x-show="status.message"
+        x-cloak
+        role="status"
+    >
+        <span x-text="status.message"></span>
+        <button
+            type="button"
+            class="status-close"
+            @click="status = { type: '', message: '' }"
+            aria-label="Dismiss message"
+        >
+            ✕
+        </button>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input
+            type="text"
+            x-model="search"
+            placeholder="Search item name, category, or description..."
+            class="search-input"
+        />
+        <button
+            x-show="search.length > 0"
+            @click="search = ''"
+            class="clear-search-btn"
+        >
+            ✕
+        </button>
+    </div>
+
+    <!-- Type Tabs -->
+    <div class="filter-buttons">
+        <button
+            class="filter-btn"
+            :class="{ active: selectedType === 'all' }"
+            @click="selectedType = 'all'"
+        >
+            <i class="fa-solid fa-utensils"></i> All Types
+        </button>
+        <template x-for="t in types" :key="t.id">
+            <button
+                class="filter-btn"
+                :class="{ active: selectedType === t.id }"
+                @click="selectedType = t.id"
+            >
+                <i :class="getTypeIcon(t.id)"></i>
+                <span x-text="t.label"></span>
+            </button>
+        </template>
+    </div>
+
+    <!-- Category Sections & Editable Item Grids -->
+    <template x-for="type in filteredMenu" :key="type.id">
+        <section class="menu-type-section">
+            <h2 class="type-header">
+                <i :class="getTypeIcon(type.id)"></i>
+                <span x-text="type.label"></span>
+            </h2>
+
+            <template x-for="cat in type.categories" :key="cat.id">
+                <div
+                    class="category-block"
+                    :class="{ 'is-open': isCategoryOpen(cat.id) }"
+                >
+                    <div class="category-header">
+                        <div
+                            class="category-title"
+                            @click="toggleCategory(cat.id)"
+                        >
+                            <!-- Editable Category Logo with Image Changer -->
+                            <div
+                                class="cat-logo-wrapper"
+                                @click.stop="openImagePicker('category', cat)"
+                            >
+                                <img
+                                    :src="getCategoryImage(cat)"
+                                    :alt="cat.label"
+                                    class="category-logo"
+                                />
+                                <div class="image-overlay-edit">
+                                    <i class="fa-solid fa-camera"></i>
+                                </div>
+                            </div>
+                            <span x-text="cat.label.replace(/_/g, ' ')"></span>
+                        </div>
+
+                        <div class="category-actions">
+                            <button
+                                class="add-item-btn"
+                                @click.stop="addNewItem(cat)"
+                                title="Add New Item to Category"
+                            >
+                                <i class="fa-solid fa-plus"></i> Add Item
+                            </button>
+                            <button
+                                class="toggle-cat-btn"
+                                @click="toggleCategory(cat.id)"
+                            >
+                                <i
+                                    class="fa-solid"
+                                    :class="isCategoryOpen(cat.id) ? 'fa-chevron-up' : 'fa-chevron-down'"
+                                ></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Collapsible Category Items -->
+                    <div
+                        class="category-content"
+                        x-show="isCategoryOpen(cat.id)"
+                        x-collapse
+                    >
+                        <ul class="item-list">
+                            <template
+                                x-for="(item, index) in cat.items"
+                                :key="item.id || index"
+                            >
+                                <li
+                                    class="menu-item-editor"
+                                    :data-item-id="item.id"
+                                >
+                                    <div class="item-layout">
+                                        <!-- Item Image Preview & Changer -->
+                                        <div
+                                            class="item-thumb-wrapper"
+                                            @click="openImagePicker('item', item)"
+                                        >
+                                            <div class="image-preview-container">
+                                                <img
+                                                    :src="getItemImage(item)"
+                                                    :alt="item.name"
+                                                    class="item-thumb"
+                                                    x-show="getItemImage(item)"
+                                                />
+                                                <div
+                                                    class="no-img-placeholder"
+                                                    x-show="!getItemImage(item)"
+                                                >
+                                                    <i class="fa-solid fa-image"></i>
+                                                    <span>No Img</span>
+                                                </div>
+                                                <div class="thumb-hover-edit">
+                                                    <i class="fa-solid fa-arrows-rotate"></i>{" "}
+                                                    Change
+                                                </div>
+                                            </div>
+                                            <button
+                                                class="view-lightbox-btn"
+                                                x-show="getItemImage(item)"
+                                                @click.stop="openLightbox(getItemImage(item), item.name)"
+                                                title="View Fullsize"
+                                            >
+                                                <i class="fa-solid fa-expand"></i>
+                                            </button>
+                                        </div>
+
+                                        <!-- Item Details Editor -->
+                                        <div class="item-details-fields">
+                                            <div class="field-row">
+                                                <label class="field field-name">
+                                                    <span class="field-label">Name</span>
+                                                    <input
+                                                        type="text"
+                                                        x-model="item.name"
+                                                        placeholder="Item name"
+                                                        class="edit-input name-input"
+                                                    />
+                                                </label>
+                                                <label class="field field-price">
+                                                    <span class="field-label">Price</span>
+                                                    <input
+                                                        type="text"
+                                                        x-model="item.price"
+                                                        placeholder="R95.00"
+                                                        inputmode="text"
+                                                        class="edit-input price-input"
+                                                    />
+                                                </label>
+                                            </div>
+
+                                            <label class="field field-desc">
+                                                <span class="field-label">Description</span>
+                                                <textarea
+                                                    x-model="item.description"
+                                                    placeholder="Description / ingredients..."
+                                                    class="edit-textarea"
+                                                    rows="2"
+                                                ></textarea>
+                                            </label>
+
+                                            <div class="field-tags">
+                                                <label class="field field-serves">
+                                                    <span class="field-label">Serves</span>
+                                                    <input
+                                                        type="text"
+                                                        x-model="item.serves"
+                                                        placeholder="e.g. Serves 2"
+                                                        class="edit-input serves-input"
+                                                    />
+                                                </label>
+                                                <label class="toggle-checkbox">
+                                                    <input
+                                                        type="checkbox"
+                                                        x-model="item.takeaway"
+                                                    />
+                                                    <span>Available takeaway</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Item Controls -->
+                                        <div class="item-actions">
+                                            <span
+                                                class="dirty-badge"
+                                                x-show="isItemDirty(item)"
+                                                x-cloak
+                                                x-text="isNewItem(item) ? 'New' : 'Edited'"
+                                            ></span>
+                                            <button
+                                                type="button"
+                                                class="delete-item-btn"
+                                                @click="removeItem(cat, index)"
+                                                title="Delete item"
+                                            >
+                                                <i class="fa-solid fa-trash-can"></i>
+                                                <span>Delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </div>
+            </template>
+        </section>
+    </template>
+
+    <!-- Lightbox Modal for Image Inspection -->
+    <div
+        class="lightbox-overlay"
+        x-show="lightboxOpen"
+        x-cloak
+        @click="lightboxOpen = false"
+    >
+        <div class="lightbox-content" @click.stop>
+            <button class="close-lightbox-btn" @click="lightboxOpen = false">
+                &times;
+            </button>
+            <img :src="lightboxUrl" :alt="lightboxTitle" />
+            <div class="lightbox-caption" x-text="lightboxTitle"></div>
+        </div>
+    </div>
+
+    <!-- Hidden File Input for Image Uploading -->
+    <input
+        type="file"
+        id="editorImageInput"
+        accept="image/*"
+        style="display: none;"
+        @change="handleImageUpload($event)"
+    />
+
+    <!-- Upload Progress Loader Modal -->
+    <div class="loader-overlay" x-show="isUploading" x-cloak>
+        <div class="loader-box">
+            <i class="fa-solid fa-circle-notch fa-spin loader-icon"></i>
+            <p>Uploading image to Supabase Storage...</p>
+        </div>
+    </div>
+</section>
+
+<script is:inline>
+    document.addEventListener("alpine:init", () => {
+        // Neutral placeholder (an inline SVG, so no third-party image host).
+        const NO_IMAGE =
+            "data:image/svg+xml;utf8," +
+            encodeURIComponent(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">' +
+                    '<rect width="120" height="120" fill="#e2e8f0"/>' +
+                    '<text x="60" y="64" font-family="sans-serif" font-size="12" ' +
+                    'text-anchor="middle" fill="#718096">No image</text></svg>',
+            );
+
+        Alpine.data("menuEditorApp", () => ({
+            menu: [],
+            storageBase: "",
+
+            // What the database currently holds, used to find unsaved edits.
+            baseline: {}, // item id -> JSON snapshot
+            categoryBaseline: {}, // category id -> image_url
+            deletedIds: [], // saved items the admin removed, pending delete
+
+            search: "",
+            selectedType: "all",
+            openCategories: {},
+            isSaving: false,
+            isUploading: false,
+            status: { type: "", message: "" },
+
+            // Which picture is being changed: { type, id }
+            activeUploadTarget: null,
+
+            // Lightbox
+            lightboxOpen: false,
+            lightboxUrl: "",
+            lightboxTitle: "",
+
+            init() {
+                const el = this.$el;
+                this.storageBase = el.dataset.storageBase || "";
+
+                if (el.dataset.loadError) {
+                    this.status = {
+                        type: "error",
+                        message: el.dataset.loadError,
+                    };
+                }
+
+                let parsed = [];
+                try {
+                    parsed = JSON.parse(el.dataset.menu || "[]");
+                } catch (err) {
+                    console.error("Menu data could not be read:", err);
+                }
+
+                // Normalise so the form controls always have a value to bind.
+                // (takeaway: only an explicit `false` means "not for takeaway".)
+                parsed.forEach((t) => {
+                    t.categories = t.categories || [];
+                    t.categories.forEach((c) => {
+                        c.items = c.items || [];
+                        c.items.forEach((i) => {
+                            i.name = i.name ?? "";
+                            i.price = i.price ?? "";
+                            i.description = i.description ?? "";
+                            i.serves = i.serves ?? "";
+                            i.image_url = i.image_url ?? "";
+                            i.takeaway = i.takeaway !== false;
+                        });
+                    });
+                });
+
+                this.menu = parsed;
+                this.takeSnapshot();
+                // Phones: start with the categories closed so the admin sees a
+                // short list and taps the one to edit. Larger screens: all open.
+                const isPhone = window.matchMedia("(max-width: 768px)").matches;
+                this.menu.forEach((t) =>
+                    t.categories.forEach((c) => {
+                        this.openCategories[c.id] = !isPhone;
+                    }),
+                );
+
+                window.addEventListener("beforeunload", (event) => {
+                    if (this.dirtyCount > 0) {
+                        event.preventDefault();
+                        event.returnValue = "";
+                    }
+                });
+            },
+
+            // ── Derived data ───────────────────────────────────────
+            get types() {
+                return this.menu.map((t) => ({ id: t.id, label: t.label }));
+            },
+
+            get filteredMenu() {
+                return this.menu
+                    .filter(
+                        (t) =>
+                            this.selectedType === "all" ||
+                            t.id === this.selectedType,
+                    )
+                    .map((t) => ({
+                        ...t,
+                        categories: t.categories.filter((c) => {
+                            if (!this.search.trim()) return true;
+                            const q = this.search.toLowerCase();
+                            return (
+                                c.label.toLowerCase().includes(q) ||
+                                c.items.some(
+                                    (i) =>
+                                        (i.name || "")
+                                            .toLowerCase()
+                                            .includes(q) ||
+                                        (i.description || "")
+                                            .toLowerCase()
+                                            .includes(q),
+                                )
+                            );
+                        }),
+                    }));
+            },
+
+            // ── Unsaved-change tracking ────────────────────────────
+            itemPayload(item) {
+                return {
+                    name: String(item.name ?? "").trim(),
+                    price: String(item.price ?? "").trim(),
+                    description: String(item.description ?? "").trim(),
+                    serves: String(item.serves ?? "").trim(),
+                    image_url: String(item.image_url ?? "").trim(),
+                    takeaway: !!item.takeaway,
+                };
+            },
+
+            takeSnapshot() {
+                this.baseline = {};
+                this.categoryBaseline = {};
+                this.deletedIds = [];
+                this.menu.forEach((t) =>
+                    t.categories.forEach((c) => {
+                        this.categoryBaseline[c.id] = c.image_url || "";
+                        c.items.forEach((i) => {
+                            this.baseline[i.id] = JSON.stringify(
+                                this.itemPayload(i),
+                            );
+                        });
+                    }),
+                );
+            },
+
+            isNewItem(item) {
+                return String(item.id).startsWith("new_");
+            },
+
+            isItemDirty(item) {
+                return (
+                    this.isNewItem(item) ||
+                    this.baseline[item.id] !==
+                        JSON.stringify(this.itemPayload(item))
+                );
+            },
+
+            isCategoryDirty(cat) {
+                return (
+                    (cat.image_url || "") !==
+                    (this.categoryBaseline[cat.id] ?? "")
+                );
+            },
+
+            get dirtyCount() {
+                let n = this.deletedIds.length;
+                this.menu.forEach((t) =>
+                    t.categories.forEach((c) => {
+                        if (this.isCategoryDirty(c)) n++;
+                        c.items.forEach((i) => {
+                            if (this.isItemDirty(i)) n++;
+                        });
+                    }),
+                );
+                return n;
+            },
+
+            // ── UI helpers ─────────────────────────────────────────
+            toggleCategory(catId) {
+                this.openCategories[catId] = !this.openCategories[catId];
+            },
+
+            isCategoryOpen(catId) {
+                if (this.search.trim().length > 0) return true;
+                return !!this.openCategories[catId];
+            },
+
+            getTypeIcon(typeId) {
+                const icons = {
+                    food: "fa-solid fa-burger",
+                    drinks: "fa-solid fa-beer-mug-empty",
+                    platters: "fa-solid fa-utensils",
+                    specials: "fa-solid fa-star",
+                };
+                return icons[typeId] || "fa-solid fa-list";
+            },
+
+            // A stored value is either a full URL (what uploads save) or a
+            // bare file name from older rows.
+            resolveImage(value, folder) {
+                if (!value) return "";
+                if (/^(https?:)?\/\//.test(value) || value.startsWith("/")) {
+                    return value;
+                }
+                return `${this.storageBase}/${folder}/${encodeURIComponent(value)}`;
+            },
+
+            getCategoryImage(cat) {
+                return this.resolveImage(cat.image_url, "Categories") || NO_IMAGE;
+            },
+
+            getItemImage(item) {
+                return this.resolveImage(item.image_url, "MenuItems");
+            },
+
+            // ── Item add / remove ──────────────────────────────────
+            addNewItem(category) {
+                const last = category.items.reduce(
+                    (max, i) => Math.max(max, Number(i.sort_order) || 0),
+                    0,
+                );
+                const tempId = "new_" + Date.now();
+                category.items.push({
+                    id: tempId,
+                    category_id: category.id,
+                    name: "New Menu Item",
+                    price: "",
+                    description: "",
+                    serves: "",
+                    takeaway: true,
+                    image_url: "",
+                    sort_order: last + 1,
+                });
+                this.openCategories[category.id] = true;
+                this.$nextTick(() => {
+                    const rows = this.$el.querySelectorAll(
+                        `[data-item-id="${tempId}"]`,
+                    );
+                    rows[0]?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                    });
+                });
+            },
+
+            removeItem(category, index) {
+                const item = category.items[index];
+                if (!item) return;
+                if (
+                    !confirm(
+                        `Delete "${item.name || "this item"}"? This is applied when you press Save Menu.`,
+                    )
+                ) {
+                    return;
+                }
+                if (!this.isNewItem(item)) this.deletedIds.push(item.id);
+                category.items.splice(index, 1);
+            },
+
+            // ── Pictures ───────────────────────────────────────────
+            openImagePicker(type, target) {
+                this.activeUploadTarget = { type, id: target.id };
+                document.getElementById("editorImageInput").click();
+            },
+
+            findUploadTarget() {
+                const t = this.activeUploadTarget;
+                if (!t) return null;
+                for (const type of this.menu) {
+                    for (const cat of type.categories) {
+                        if (
+                            t.type === "category" &&
+                            String(cat.id) === String(t.id)
+                        ) {
+                            return cat;
+                        }
+                        if (t.type === "item") {
+                            const hit = cat.items.find(
+                                (i) => String(i.id) === String(t.id),
+                            );
+                            if (hit) return hit;
+                        }
+                    }
+                }
+                return null;
+            },
+
+            async handleImageUpload(event) {
+                const input = event.target;
+                const file = input.files[0];
+                const target = this.findUploadTarget();
+                if (!file || !target) {
+                    input.value = "";
+                    return;
+                }
+
+                this.isUploading = true;
+                try {
+                    const form = new FormData();
+                    form.append("file", file);
+                    form.append(
+                        "folder",
+                        this.activeUploadTarget.type === "category"
+                            ? "Categories"
+                            : "MenuItems",
+                    );
+
+                    const res = await fetch("/admin/upload-image", {
+                        method: "POST",
+                        body: form,
+                        credentials: "same-origin",
+                    });
+                    const body = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(this.errorText(res, body));
+
+                    // Shows immediately; it is attached to the menu when the
+                    // admin presses "Save Menu".
+                    target.image_url = body.url;
+                    this.status = {
+                        type: "info",
+                        message:
+                            'Picture uploaded. Press "Save Menu" to attach it.',
+                    };
+                } catch (err) {
+                    this.status = {
+                        type: "error",
+                        message: "Image upload failed: " + err.message,
+                    };
+                } finally {
+                    this.isUploading = false;
+                    this.activeUploadTarget = null;
+                    input.value = "";
+                }
+            },
+
+            openLightbox(url, title) {
+                this.lightboxUrl = url;
+                this.lightboxTitle = title;
+                this.lightboxOpen = true;
+            },
+
+            // ── Saving ─────────────────────────────────────────────
+            errorText(res, body) {
+                if (res.status === 403 || res.status === 401) {
+                    return "Your admin session has expired. Please sign in again.";
+                }
+                return body?.error || `Request failed (${res.status})`;
+            },
+
+            async callCrud(action, table, data) {
+                const res = await fetch("/admin/menu-crud", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin",
+                    body: JSON.stringify({ action, table, data }),
+                });
+                const body = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(this.errorText(res, body));
+                return body;
+            },
+
+            async saveAllChanges() {
+                if (this.isSaving || this.dirtyCount === 0) return;
+
+                // Every changed or new item needs a name.
+                for (const type of this.menu) {
+                    for (const cat of type.categories) {
+                        const unnamed = cat.items.find(
+                            (i) =>
+                                this.isItemDirty(i) &&
+                                !String(i.name || "").trim(),
+                        );
+                        if (unnamed) {
+                            this.status = {
+                                type: "error",
+                                message: `Please give every item a name (check "${cat.label.replace(/_/g, " ")}").`,
+                            };
+                            return;
+                        }
+                    }
+                }
+
+                this.isSaving = true;
+                this.status = { type: "", message: "" };
+                const errors = [];
+                let saved = 0;
+
+                // 1. Deleted items
+                for (const id of [...this.deletedIds]) {
+                    try {
+                        await this.callCrud("delete", "menu_items", { id });
+                        this.deletedIds = this.deletedIds.filter(
+                            (x) => x !== id,
+                        );
+                        saved++;
+                    } catch (err) {
+                        errors.push(`Delete failed: ${err.message}`);
+                    }
+                }
+
+                for (const type of this.menu) {
+                    for (const cat of type.categories) {
+                        // 2. Category picture
+                        if (this.isCategoryDirty(cat)) {
+                            try {
+                                await this.callCrud("update", "menu_categories", {
+                                    id: cat.id,
+                                    image_url: cat.image_url || "",
+                                });
+                                this.categoryBaseline[cat.id] =
+                                    cat.image_url || "";
+                                saved++;
+                            } catch (err) {
+                                errors.push(
+                                    `Category "${cat.label}": ${err.message}`,
+                                );
+                            }
+                        }
+
+                        // 3. Items (iterate a copy: ids change on create)
+                        for (const item of [...cat.items]) {
+                            if (!this.isItemDirty(item)) continue;
+                            const payload = this.itemPayload(item);
+                            try {
+                                if (this.isNewItem(item)) {
+                                    const { row } = await this.callCrud(
+                                        "create",
+                                        "menu_items",
+                                        {
+                                            ...payload,
+                                            category_id: cat.id,
+                                            sort_order: item.sort_order,
+                                        },
+                                    );
+                                    item.id = row.id;
+                                } else {
+                                    await this.callCrud("update", "menu_items", {
+                                        ...payload,
+                                        id: item.id,
+                                    });
+                                }
+                                this.baseline[item.id] = JSON.stringify(
+                                    this.itemPayload(item),
+                                );
+                                saved++;
+                            } catch (err) {
+                                errors.push(
+                                    `"${payload.name}": ${err.message}`,
+                                );
+                            }
+                        }
+                    }
+                }
+
+                this.isSaving = false;
+                if (errors.length === 0) {
+                    this.status = {
+                        type: "success",
+                        message: `Menu saved (${saved} change${saved === 1 ? "" : "s"}).`,
+                    };
+                } else {
+                    this.status = {
+                        type: "error",
+                        message:
+                            (saved ? `${saved} saved, ` : "") +
+                            `${errors.length} failed. ` +
+                            errors.slice(0, 3).join(" · "),
+                    };
+                }
+            },
+        }));
+    });
+</script>
+
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .menu-editor-container {
+        display: block;
+        position: relative;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 1.5rem;
+        color: var(--txt-color);
+        top: var(--nav-header);
+    }
+
+    @media (max-width: 768px) {
+        .menu-editor-container {
+            top: var(--nav-headerM);
+        }
+        .editor-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+    }
+
+    .editor-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid var(--nav-bg);
+    }
+
+    .header-titles h1 {
+        font-size: 2rem;
+        color: var(--bg-color-btn);
+        margin: 0;
+    }
+
+    .save-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: #25d366;
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .unsaved-note {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--bg-color-btn);
+    }
+
+    .save-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .status-banner {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1.25rem;
+        border-radius: 8px;
+        border: 1px solid var(--nav-bg);
+        background: #fff;
+        font-size: 0.9rem;
+
+        &.success {
+            background: #f0fff4;
+            border-color: #9ae6b4;
+            color: #22543d;
+        }
+        &.error {
+            background: #fff5f5;
+            border-color: #feb2b2;
+            color: #742a2a;
+        }
+        &.info {
+            background: #ebf8ff;
+            border-color: #90cdf4;
+            color: #2a4365;
+        }
+    }
+
+    .status-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: inherit;
+        font-size: 1rem;
+    }
+
+    .search-box {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 0.85rem 2.5rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 12px;
+        font-size: 1rem;
+    }
+
+    .filter-buttons {
+        display: flex;
+        gap: 0.6rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        padding: 0.5rem 1.2rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 20px;
+        background: #fff;
+        cursor: pointer;
+
+        &.active {
+            background: var(--bg-color-btn);
+            color: #fff;
+        }
+    }
+
+    .category-block {
+        background: #fff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+        margin-bottom: 1.25rem;
+        padding: 1rem;
+    }
+
+    .category-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .cat-logo-wrapper {
+        position: relative;
+        cursor: pointer;
+
+        &:hover .image-overlay-edit {
+            opacity: 1;
+        }
+    }
+
+    .category-logo {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .image-overlay-edit {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .item-layout {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem 0;
+        border-bottom: 1px dashed var(--nav-bg);
+    }
+
+    .image-preview-container {
+        position: relative;
+        width: 72px;
+        height: 72px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--nav-bg);
+        cursor: pointer;
+
+        &:hover .thumb-hover-edit {
+            opacity: 1;
+        }
+    }
+
+    .item-thumb {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .thumb-hover-edit {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        color: #fff;
+        font-size: 0.7rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .no-img-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-color-light);
+        font-size: 0.7rem;
+        color: #718096;
+    }
+
+    .item-details-fields {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .field-row {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .edit-input,
+    .edit-textarea {
+        padding: 0.5rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 6px;
+        font-size: 0.9rem;
+    }
+
+    .name-input {
+        flex: 2;
+        font-weight: 700;
+    }
+    .price-input {
+        flex: 1;
+    }
+
+    .delete-item-btn {
+        background: none;
+        border: none;
+        color: #e53e3e;
+        cursor: pointer;
+        font-size: 1.1rem;
+    }
+
+    /* Lightbox & Loader */
+    .lightbox-overlay,
+    .loader-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .lightbox-content {
+        position: relative;
+        max-width: 90%;
+        max-height: 85vh;
+
+        img {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 8px;
+        }
+    }
+
+    .close-lightbox-btn {
+        position: absolute;
+        top: -30px;
+        right: 0;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 2rem;
+        cursor: pointer;
+    }
+
+    .loader-box {
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        text-align: center;
+
+        .loader-icon {
+            font-size: 2.5rem;
+            color: var(--bg-color-btn);
+            margin-bottom: 1rem;
+        }
+    }
+
+    /* ─────────────────────────────────────────────────────────────
+       Item rows ("table-like" grid) - shared styles
+       ───────────────────────────────────────────────────────────── */
+    .category-block {
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .category-header {
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+    }
+
+    .category-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex: 1;
+        min-width: 0;
+        min-height: 44px;
+        font-weight: 700;
+        cursor: pointer;
+
+        > span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
+
+    .category-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .add-item-btn,
+    .toggle-cat-btn {
+        min-height: 44px;
+        border-radius: 8px;
+        border: 1px solid var(--nav-bg);
+        background: var(--bg-color-light);
+        color: var(--txt-color);
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .add-item-btn {
+        padding: 0 0.9rem;
+    }
+
+    .toggle-cat-btn {
+        width: 44px;
+    }
+
+    .item-list {
+        list-style: none;
+        margin: 0;
+        padding: 0 1rem 0.5rem;
+    }
+
+    .item-thumb-wrapper {
+        position: relative;
+        flex: none;
+    }
+
+    .view-lightbox-btn {
+        position: absolute;
+        right: 4px;
+        bottom: 4px;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.6);
+        color: #fff;
+        font-size: 0.75rem;
+        cursor: pointer;
+    }
+
+    .field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        min-width: 0;
+    }
+
+    .field-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #718096;
+    }
+
+    .field-name {
+        flex: 2;
+    }
+    .field-price {
+        flex: 1;
+    }
+
+    .edit-input,
+    .edit-textarea {
+        width: 100%;
+        box-sizing: border-box;
+        font-family: inherit;
+    }
+
+    .field-tags {
+        display: flex;
+        align-items: flex-end;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .serves-input {
+        min-width: 10rem;
+    }
+
+    .toggle-checkbox {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 44px;
+        cursor: pointer;
+
+        input {
+            width: 22px;
+            height: 22px;
+            accent-color: var(--bg-color-btn);
+        }
+    }
+
+    .item-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .dirty-badge {
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        background: #fefcbf;
+        color: #744210;
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+
+    .delete-item-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-height: 44px;
+        padding: 0 0.75rem;
+        border: 1px solid #feb2b2;
+        border-radius: 8px;
+        background: #fff5f5;
+        font-size: 0.9rem;
+        font-weight: 600;
+
+        span {
+            display: none; /* icon only on wide screens */
+        }
+    }
+
+    .filter-btn {
+        min-height: 44px;
+    }
+
+    /* ─────────────────────────────────────────────────────────────
+       PHONE LAYOUT
+       - Save bar pinned to the bottom (always reachable, thumb friendly)
+       - Filters become one swipeable row
+       - Each item becomes a card: picture + name/price on top, then
+         description, serves/takeaway, then a full-width delete button
+       - 16px inputs (stops iOS zooming in) and 44px tap targets
+       ───────────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+        .menu-editor-container {
+            padding: 1rem 0.75rem 7rem; /* room for the pinned save bar */
+        }
+
+        .editor-header {
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+        }
+
+        .header-titles h1 {
+            font-size: 1.4rem;
+        }
+
+        .tagline {
+            margin: 0.25rem 0 0;
+            font-size: 0.9rem;
+        }
+
+        .header-actions {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 900; /* under the nav (1000) and lightbox (2000) */
+            justify-content: space-between;
+            gap: 0.75rem;
+            /* right padding leaves room for the round back-to-top button */
+            padding: 0.75rem 4.75rem calc(0.75rem + env(safe-area-inset-bottom))
+                1rem;
+            background: var(--bg-color-light);
+            border-top: 1px solid var(--nav-bg);
+            box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+        }
+
+        .unsaved-note {
+            flex: 1;
+            font-size: 0.8rem;
+            line-height: 1.2;
+        }
+
+        .save-btn {
+            min-height: 48px;
+            padding: 0.5rem 1.1rem;
+            flex: none;
+        }
+
+        .search-input,
+        .edit-input,
+        .edit-textarea {
+            font-size: 16px;
+        }
+
+        .search-input {
+            min-height: 48px;
+        }
+
+        .filter-buttons {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            margin: 0 -0.75rem 1.25rem;
+            padding: 0 0.75rem 0.25rem;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+        .filter-buttons::-webkit-scrollbar {
+            display: none;
+        }
+        .filter-btn {
+            flex: none;
+            white-space: nowrap;
+        }
+
+        .type-header {
+            font-size: 1.2rem;
+        }
+
+        .category-header {
+            padding: 0.5rem 0.75rem;
+        }
+
+        .add-item-btn {
+            padding: 0 0.7rem;
+        }
+
+        .item-list {
+            padding: 0 0.75rem 0.75rem;
+        }
+
+        /* The card: an explicit grid instead of a flex row */
+        .item-layout {
+            display: grid;
+            grid-template-columns: 84px 1fr;
+            grid-template-areas:
+                "thumb  namerow"
+                "desc   desc"
+                "tags   tags"
+                "actions actions";
+            gap: 0.75rem;
+            padding: 1rem 0;
+        }
+
+        /* Let the fields sit directly in the grid areas above */
+        .item-details-fields {
+            display: contents;
+        }
+
+        .item-thumb-wrapper {
+            grid-area: thumb;
+        }
+        .image-preview-container {
+            width: 84px;
+            height: 84px;
+        }
+        /* No hover on a phone: keep the "change" hint visible */
+        .thumb-hover-edit {
+            opacity: 1;
+            top: auto;
+            height: 24px;
+            font-size: 0.65rem;
+        }
+
+        .field-row {
+            grid-area: namerow;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .field-desc {
+            grid-area: desc;
+        }
+        .field-tags {
+            grid-area: tags;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.25rem;
+        }
+        .serves-input {
+            min-width: 0;
+        }
+
+        .item-actions {
+            grid-area: actions;
+            flex-direction: row-reverse;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .delete-item-btn {
+            flex: 1;
+            justify-content: center;
+            max-width: 12rem;
+
+            span {
+                display: inline;
+            }
+        }
+
+        /* Category pictures: also show the change hint without hovering */
+        .image-overlay-edit {
+            opacity: 0.85;
+            font-size: 0.7rem;
+        }
+
+        .status-banner {
+            margin-bottom: 1rem;
+        }
+    }
+</style>

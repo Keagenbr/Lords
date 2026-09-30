@@ -1,0 +1,138 @@
+---
+// src/components/MenuEditorNav.astro
+// Sub-navigation shown at the top of every Menu Editor page.
+interface Props {
+    active: "items" | "main-menu" | "specials" | "platter";
+}
+
+const { active } = Astro.props;
+
+const links = [
+    {
+        key: "items",
+        href: "/admin/menu-editor",
+        label: "Menu Items",
+        icon: "menu-items",
+    },
+    {
+        key: "main-menu",
+        href: "/admin/menu-editor/main-menu",
+        label: "Main Menu Pages",
+        icon: "main-menu",
+    },
+    {
+        key: "specials",
+        href: "/admin/menu-editor/specials",
+        label: "Specials Slider",
+        icon: "specials-slider",
+    },
+    {
+        key: "platter",
+        href: "/admin/menu-editor/platter",
+        label: "Platter Menu",
+        icon: "platter",
+    },
+];
+---
+
+<nav class="editor-subnav" aria-label="Menu editor sections">
+    <div class="subnav-inner">
+        {
+            links.map((link) => (
+                <a
+                    href={link.href}
+                    class:list={["subnav-btn", { active: link.key === active }]}
+                    data-icon={link.icon}
+                    aria-current={link.key === active ? "page" : undefined}
+                >
+                    <span>{link.label}</span>
+                </a>
+            ))
+        }
+        <a href="/admin" class="subnav-btn subnav-back" data-icon="back">
+            <span>Admin panel</span>
+        </a>
+    </div>
+</nav>
+
+<style>
+    .editor-subnav {
+        position: relative;
+        top: var(--nav-header);
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 1.5rem 1.5rem 0;
+    }
+
+    .subnav-inner {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
+
+    .subnav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.55rem 1.1rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 20px;
+        background: #fff;
+        color: var(--txt-color);
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-decoration: none;
+        transition:
+            background 0.15s ease,
+            color 0.15s ease;
+
+        &:hover {
+            background: var(--nav-bg-highlight);
+            color: var(--text-color-hover);
+        }
+
+        &.active {
+            background: var(--bg-color-btn);
+            border-color: var(--bg-color-btn);
+            color: var(--text-color);
+        }
+    }
+
+    .subnav-back {
+        margin-left: auto;
+        border-style: dashed;
+    }
+
+    .subnav-btn {
+        --icon-gap: 0;
+        gap: 0.5rem;
+        white-space: nowrap;
+    }
+
+    @media (max-width: 768px) {
+        .editor-subnav {
+            top: var(--nav-headerM);
+            padding: 1rem 0 0 1rem;
+        }
+        /* One swipeable row instead of pills wrapping onto several lines */
+        .subnav-inner {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding: 0 1rem 0.5rem 0;
+            scroll-snap-type: x proximity;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .subnav-inner::-webkit-scrollbar {
+            display: none;
+        }
+        .subnav-btn {
+            flex: none;
+            min-height: 44px;
+            scroll-snap-align: start;
+        }
+        .subnav-back {
+            margin-left: 0;
+        }
+    }
+</style>

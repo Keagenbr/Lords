@@ -5,6 +5,7 @@ import react from "@astrojs/react";
 import tailwindcss from "@tailwindcss/vite";
 
 import vercel from "@astrojs/vercel";
+// import node from "@astrojs/node"; // or your platform's adapter
 
 export default defineConfig({
   devToolbar: {
@@ -23,9 +24,12 @@ export default defineConfig({
     plugins: [tailwindcss()],
   },
 
+  // output: "hybrid", // or 'server'
   adapter: vercel({
+    // change back to vercel
     webAnalytics: {
       enabled: true,
+      // mode: "standalone",
     },
   }),
 });

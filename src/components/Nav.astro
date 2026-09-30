@@ -1,316 +1,17 @@
 ---
-// Navigation.astro - Responsive Navigation with Animated Hamburger Menu
-// Place in: src/components/Navigation.astro
-//
+import LogoSrcMobile from "../assets/L&LmobileLogo.svg";
+import LogoSrcDesktop from "../assets/LordsLogo.svg";
 
-import LogoSrcMobile from "../../src/assets/L&LmobileLogo.svg";
-import LogoSrcDesktop from "../../src/assets/LordsLogo.svg";
-
-interface Props {
-    logoSrc?: string;
-    logoAlt?: string;
-}
-
-// const {
-//     logoSrcDesktop = "../../src/assets/LordsLogo.png",
-//     logoAlt = "Restaurant Logo",
-// } = Astro.props;
-
-const navItems = [
-    { label: "Home", href: "/", icon: "home" },
-    { label: "Menu", href: "/menu", icon: "menu" },
-    { label: "Contact", href: "/contact", icon: "contact" },
-    { label: "Staff", href: "/staff", icon: "staff" },
-];
+// The navigation is self-contained: it asks /api/nav for the menu types,
+// their categories and whether the visitor is an admin, so it works the same
+// on every page (static or on-demand) without any props.
 ---
 
-<style lang="scss">
-    /* Header & Navigation Container */
-
-    // .menu-is-open {
-    //     overflow: hidden;
-
-    //     .nav-header {
-    //         filter: none;
-    //     }
-    // }
-
-    .nav-header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 1000;
-        max-height: var(--nav-header);
-        background: var(--nav-bg);
-        border-bottom: 1px solid var(--nav-bg-shadow);
-        transform: none; // not translateY(0), so fixed children aren't trapped
-        transition:
-            transform 300ms ease-in-out,
-            box-shadow 300ms ease-in-out; // not "all"
-        will-change: transform;
-        &.nav-hidden {
-            transform: translateY(-100%);
-        }
-
-        &.nav-scrolled {
-            box-shadow: 0 2px 10px var(--nav-bg-shadowA);
-        }
-    }
-
-    .nav-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 1rem 1.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    /* Logo */
-    .nav-logo {
-        display: flex;
-        align-items: center;
-        text-decoration: none;
-        z-index: 1001;
-    }
-
-    .logo-img {
-        height: 6em;
-        width: auto;
-        object-fit: cover;
-        &-mobile {
-            display: none;
-        }
-    }
-
-    /* Desktop Navigation */
-    .nav-links-desktop {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .nav-link {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.625rem 1.25rem;
-        color: var(--txt-color);
-        text-decoration: none;
-        font-weight: 500;
-        font-size: 0.9375rem;
-        border-radius: 8px;
-        transition: all 0.2s ease;
-        position: relative;
-    }
-
-    .nav-link:hover {
-        background: var(--nav-bg-highlight);
-        color: var(--text-color-hover);
-    }
-
-    .nav-link::after {
-        content: "";
-        position: absolute;
-        bottom: 0;
-        left: 50%;
-        width: 0;
-        height: 2px;
-        background: var(--nav-bg-highlight);
-        transition: all 0.3s ease;
-        transform: translateX(-50%);
-    }
-
-    .nav-link:hover::after {
-        width: 60%;
-    }
-
-    .lock-icon {
-        width: 14px;
-        height: 14px;
-        opacity: 0.6;
-    }
-
-    /* Hamburger Button */
-    .hamburger-btn {
-        display: none;
-        background: none;
-        border: none;
-        padding: 0.5rem;
-        cursor: pointer;
-        z-index: 1101;
-    }
-
-    .hamburger-lines {
-        width: 28px;
-        height: 20px;
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-    }
-
-    .line {
-        display: block;
-        width: 100%;
-        height: 3px;
-        background: var(--ham-color);
-        border-radius: 2px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        transform-origin: center;
-    }
-
-    .hamburger-lines.open .line {
-        background: var(--ham-color-active);
-    }
-
-    /* Hamburger Animation */
-    .hamburger-lines.open .line-1 {
-        transform: translateY(8.5px) rotate(45deg);
-    }
-
-    .hamburger-lines.open .line-2 {
-        opacity: 0;
-        transform: scaleX(0);
-    }
-
-    .hamburger-lines.open .line-3 {
-        transform: translateY(-8.5px) rotate(-45deg);
-    }
-    .hamburger-btn.open {
-        transform: translateY(50%);
-    }
-
-    /* Mobile Menu */
-    .mobile-menu {
-        display: none;
-        position: fixed;
-        top: 25%;
-        left: 0;
-        right: 0;
-        z-index: 1100;
-        max-height: calc(100vh - 80px);
-        overflow-y: auto;
-    }
-
-    .mobile-menu-content {
-        padding: 1rem;
-    }
-
-    .mobile-nav-link {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem 1rem;
-        margin-bottom: 0.5rem;
-        color: var(--text-color);
-        text-decoration: none;
-        font-weight: 500;
-        font-size: 1.125rem;
-        border-radius: 12px;
-        transition: all 0.2s ease;
-        opacity: 0;
-        transform: translateY(-10px);
-        animation: slideIn 0.5s ease forwards;
-    }
-
-    @keyframes slideIn {
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .mobile-nav-link:hover {
-        background: var(--MenuColorA);
-        color: var(--text-color-hover);
-    }
-
-    .mobile-lock-icon {
-        width: 18px;
-        height: 18px;
-        opacity: 0.5;
-    }
-
-    /* Mobile Backdrop */
-    .mobile-backdrop {
-        display: none;
-        position: fixed;
-        inset: 0;
-        height: 100vh;
-        background: var(--MenuColorA);
-        z-index: 1000;
-    }
-
-    /* Responsive Styles */
-    @media (max-width: 768px) {
-        .nav-links-desktop {
-            display: none;
-        }
-
-        .hamburger-btn {
-            display: block;
-        }
-
-        .mobile-menu {
-            display: block;
-        }
-
-        .mobile-backdrop {
-            display: block;
-        }
-
-        .logo-img {
-            display: none;
-            &-mobile {
-                display: block;
-                height: 3.5em;
-            }
-        }
-
-        .nav-container {
-            max-height: var(--nav-headerM);
-            padding: 0.875rem 1rem;
-        }
-    }
-
-    /* Add padding to body to account for fixed header */
-    :global(body) {
-        padding-top: 80px;
-    }
-
-    @media (max-width: 768px) {
-        :global(body) {
-            padding-top: 72px;
-        }
-    }
-
-    /* For people who prefer reduced motion */
-    @media (prefers-reduced-motion: reduce) {
-        .nav-header {
-            transition: none;
-        }
-    }
-</style>
 <div
     id="nav"
     class="nav-header"
-    x-data="{
-  mobileMenuOpen: false,
-
-  toggleMobileMenu() {
-    this.mobileMenuOpen = !this.mobileMenuOpen;
-    document.body.style.overflow = this.mobileMenuOpen ? 'hidden' : '';
-  },
-
-  closeMobileMenu() {
-    this.mobileMenuOpen = false;
-    document.body.style.overflow = '';
-  },
-
-}"
-    @keydown.escape.window="closeMobileMenu()"
+    x-data="siteNav"
+    @keydown.escape.window="closeAll()"
 >
     <nav class="nav-container">
         <!-- Logo -->
@@ -319,21 +20,126 @@ const navItems = [
             <LogoSrcMobile class="logo-img-mobile" />
         </a>
 
-        <!-- Desktop Navigation -->
+        <!-- Desktop Navigation Links: Home, Menu (dropdown), Contact -->
         <div class="nav-links-desktop">
-            {navItems.map((item) => (
-                <a href={item.href} class="nav-link">
-                    <span class="nav-link-text">{item.label}</span>
+            <a href="/" class="nav-link" data-icon="home">
+                <span class="nav-link-text">Home</span>
+            </a>
+
+            <!-- Menu Dropdown -->
+            <div
+                class="nav-item-wrapper"
+                @mouseenter="hoverIn()"
+                @mouseleave="hoverOut()"
+                @focusin="menuOpen = true"
+                @focusout="if (!$el.contains($event.relatedTarget)) { menuOpen = false; openType = null }"
+                @click.outside="menuOpen = false; openType = null"
+            >
+                <a
+                    href="/menu"
+                    class="nav-link"
+                    data-icon="menu"
+                    @click="onMenuLinkClick($event)"
+                >
+                    <span class="nav-link-text">Menu</span>
+                    <span
+                        class="dropdown-arrow ico-only"
+                        data-icon="chevron-down"
+                        x-show="menuTypes.length > 0"
+                        x-cloak
+                    ></span>
                 </a>
-            ))}
+
+                <div
+                    class="nav-dropdown-menu"
+                    x-show="menuOpen && menuTypes.length > 0"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+                    x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                    x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+                    x-cloak
+                >
+                    <template x-for="type in menuTypes" :key="type.id">
+                        <div
+                            class="dropdown-row"
+                            @mouseenter="subIn(type.id)"
+                        >
+                            <!-- Drinks / Food: item with its own category dropdown -->
+                            <template x-if="hasSub(type)">
+                                <div>
+                                    <a
+                                        :href="'/menu#type-' + type.id"
+                                        class="dropdown-item"
+                                        :data-icon="iconOf(type.id)"
+                                        @click="onTypeClick($event, type)"
+                                        @focus="openType = type.id"
+                                    >
+                                        <span x-text="type.label"></span>
+                                        <span
+                                            class="sub-arrow ico-only"
+                                            data-icon="chevron-right"
+                                        ></span>
+                                    </a>
+                                    <div
+                                        class="nav-submenu"
+                                        x-show="openType === type.id"
+                                        x-cloak
+                                    >
+                                        <template
+                                            x-for="cat in type.categories"
+                                            :key="cat.id"
+                                        >
+                                            <a
+                                                :href="'/menu#cat-' + cat.id"
+                                                class="dropdown-item"
+                                                @click="closeAll()"
+                                                x-text="labelOf(cat)"
+                                            ></a>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Specials / Platters: plain link, no dropdown -->
+                            <template x-if="!hasSub(type)">
+                                <a
+                                    :href="'/menu#type-' + type.id"
+                                    class="dropdown-item"
+                                    :data-icon="iconOf(type.id)"
+                                    @click="closeAll()"
+                                >
+                                    <span x-text="type.label"></span>
+                                </a>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <a href="/contact" class="nav-link" data-icon="contact">
+                <span class="nav-link-text">Contact</span>
+            </a>
+
+            <!-- Only added to the page for a signed-in admin -->
+            <template x-if="isAdmin">
+                <a
+                    href="/admin/menu-editor"
+                    class="nav-link nav-editor-btn"
+                    data-icon="menu-editor"
+                >
+                    <span class="nav-link-text">Menu Editor</span>
+                </a>
+            </template>
         </div>
 
-        <!-- Mobile Menu Button (Hamburger) -->
+        <!-- Animated Mobile Hamburger Button -->
         <button
             class="hamburger-btn"
             @click="toggleMobileMenu()"
             :aria-expanded="mobileMenuOpen"
-            aria-label="Toggle menu"
+            aria-label="Toggle Navigation Menu"
         >
             <div class="hamburger-lines" :class="{ 'open': mobileMenuOpen }">
                 <span class="line line-1"></span>
@@ -343,46 +149,328 @@ const navItems = [
         </button>
     </nav>
 
-    <!-- Mobile Menu Dropdown -->
+    <!-- Animated Mobile Menu Drawer -->
     <div
         class="mobile-menu"
-        :class="{ 'open': mobileMenuOpen }"
         x-show="mobileMenuOpen"
-        x-transition:enter="transition ease-out duration-300"
-        x-transition:enter-start="opacity-0 -translate-y-4"
-        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:enter="transition cubic-bezier(0.16, 1, 0.3, 1) duration-300"
+        x-transition:enter-start="opacity-0 -translate-y-6 scale-98"
+        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
         x-transition:leave="transition ease-in duration-200"
-        x-transition:leave-start="opacity-100 translate-y-0"
-        x-transition:leave-end="opacity-0 -translate-y-4"
+        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+        x-transition:leave-end="opacity-0 -translate-y-4 scale-98"
+        x-cloak
     >
-        <div class="mobile-menu-content">
-            {navItems.map((item, index) => (
-                <a
-                    href={item.href}
-                    class="mobile-nav-link"
-                    style={`animation-delay: ${index * 50}ms`}
+        <div class="mobile-menu-inner">
+            <a
+                href="/"
+                class="mobile-nav-item"
+                data-icon="home"
+                @click="closeMobileMenu()"
+            >
+                <span>Home</span>
+            </a>
+
+            <!-- Menu accordion: the label goes to /menu, the arrow opens it -->
+            <div class="mobile-accordion-card">
+                <div class="accordion-trigger accordion-trigger-row">
+                    <a
+                        href="/menu"
+                        class="trigger-title accordion-link"
+                        data-icon="menu"
+                        @click="closeMobileMenu()"
+                    >
+                        Menu
+                    </a>
+                    <button
+                        type="button"
+                        class="accordion-toggle"
+                        x-show="menuTypes.length > 0"
+                        x-cloak
+                        @click="toggleAccordion('menu')"
+                        :aria-expanded="activeMobileAccordion === 'menu'"
+                        aria-label="Show menu sections"
+                    >
+                        <span
+                            class="accordion-arrow ico-only"
+                            data-icon="chevron-down"
+                            :class="{ 'rotate': activeMobileAccordion === 'menu' }"
+                        ></span>
+                    </button>
+                </div>
+
+                <div
+                    class="accordion-panel"
+                    x-show="activeMobileAccordion === 'menu' && menuTypes.length > 0"
+                    x-collapse
+                    x-cloak
                 >
-                    <span class="mobile-nav-link-text">{item.label}</span>
+                    <div class="panel-content">
+                        <template x-for="type in menuTypes" :key="type.id">
+                            <div>
+                                <!-- Drinks / Food: their own dropdown -->
+                                <template x-if="hasSub(type)">
+                                    <div class="mobile-subgroup">
+                                        <button
+                                            type="button"
+                                            class="mobile-sub-trigger"
+                                            @click="toggleMobileType(type.id)"
+                                            :aria-expanded="mobileType === type.id"
+                                        >
+                                            <span
+                                                class="sub-trigger-title"
+                                                :data-icon="iconOf(type.id)"
+                                            >
+                                                <span x-text="type.label"></span>
+                                            </span>
+                                            <span
+                                                class="accordion-arrow ico-only"
+                                                data-icon="chevron-down"
+                                                :class="{ 'rotate': mobileType === type.id }"
+                                            ></span>
+                                        </button>
+                                        <div
+                                            class="chip-grid"
+                                            x-show="mobileType === type.id"
+                                            x-collapse
+                                            x-cloak
+                                        >
+                                            <a
+                                                :href="'/menu#type-' + type.id"
+                                                class="mobile-chip mobile-chip-all"
+                                                @click="closeMobileMenu()"
+                                            >
+                                                All
+                                            </a>
+                                            <template
+                                                x-for="cat in type.categories"
+                                                :key="cat.id"
+                                            >
+                                                <a
+                                                    :href="'/menu#cat-' + cat.id"
+                                                    class="mobile-chip"
+                                                    @click="closeMobileMenu()"
+                                                    x-text="labelOf(cat)"
+                                                ></a>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Specials / Platters: plain link -->
+                                <template x-if="!hasSub(type)">
+                                    <a
+                                        :href="'/menu#type-' + type.id"
+                                        class="mobile-sub-link"
+                                        :data-icon="iconOf(type.id)"
+                                        @click="closeMobileMenu()"
+                                    >
+                                        <span x-text="type.label"></span>
+                                    </a>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <a
+                href="/contact"
+                class="mobile-nav-item"
+                data-icon="contact"
+                @click="closeMobileMenu()"
+            >
+                <span>Contact</span>
+            </a>
+
+            <!-- Only added to the page for a signed-in admin -->
+            <template x-if="isAdmin">
+                <a
+                    href="/admin/menu-editor"
+                    class="mobile-nav-item mobile-editor-btn"
+                    data-icon="menu-editor"
+                    @click="closeMobileMenu()"
+                >
+                    <span>Menu Editor</span>
                 </a>
-            ))}
+            </template>
         </div>
     </div>
 
-    <!-- Backdrop for mobile menu -->
+    <!-- Mobile Backdrop -->
     <div
         class="mobile-backdrop"
         x-show="mobileMenuOpen"
         @click="closeMobileMenu()"
         x-transition:enter="transition ease-out duration-300"
         x-transition:enter-start="opacity-0"
-        x-transition:enter-end="opacity-20"
+        x-transition:enter-end="opacity-100"
         x-transition:leave="transition ease-in duration-200"
-        x-transition:leave-start="opacity-20"
+        x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
+        x-cloak
     ></div>
 </div>
+
+<script is:inline>
+    document.addEventListener("alpine:init", () => {
+        // Types that are a single link (no dropdown of categories).
+        const FLAT_TYPES = ["specials", "platters"];
+        // Order of the Menu dropdown; anything else follows in database order.
+        const TYPE_ORDER = ["drinks", "food", "specials", "platters"];
+        // How long (ms) the desktop dropdown waits before opening / closing
+        // on hover. Increase CLOSE_DELAY if it feels too eager to vanish.
+        const OPEN_DELAY = 100;
+        const CLOSE_DELAY = 250;
+        const SUB_DELAY = 90;
+        // data-icon names for the menu types (see src/styles/icons.css).
+        // Unknown types get their own id as the icon name.
+        const keyOf = (type) => String(type.id).toLowerCase();
+
+        Alpine.data("siteNav", () => ({
+            mobileMenuOpen: false,
+            menuOpen: false,
+            openType: null,
+            activeMobileAccordion: null,
+            mobileType: null,
+            types: [],
+            isAdmin: false,
+
+            init() {
+                this.loadNav();
+            },
+
+            get menuTypes() {
+                const rank = (type) => {
+                    const i = TYPE_ORDER.indexOf(keyOf(type));
+                    return i === -1 ? TYPE_ORDER.length : i;
+                };
+                return this.types
+                    .map((type, index) => ({ type, index }))
+                    .sort((a, b) => rank(a.type) - rank(b.type) || a.index - b.index)
+                    .map((entry) => entry.type);
+            },
+
+            hasSub(type) {
+                return (
+                    (type.categories || []).length > 0 &&
+                    !FLAT_TYPES.includes(keyOf(type))
+                );
+            },
+
+            labelOf(category) {
+                return String(category.label).replace(/_/g, " ");
+            },
+
+            iconOf(typeId) {
+                return String(typeId).toLowerCase();
+            },
+
+            // ── Desktop: hover with a short delay ─────────────────
+            _openTimer: null,
+            _closeTimer: null,
+            _subTimer: null,
+
+            canHover() {
+                return window.matchMedia("(hover: hover) and (pointer: fine)")
+                    .matches;
+            },
+
+            hoverIn() {
+                if (!this.canHover()) return;
+                clearTimeout(this._closeTimer);
+                if (this.menuOpen) return;
+                clearTimeout(this._openTimer);
+                this._openTimer = setTimeout(() => {
+                    this.menuOpen = true;
+                }, OPEN_DELAY);
+            },
+
+            hoverOut() {
+                if (!this.canHover()) return;
+                clearTimeout(this._openTimer);
+                clearTimeout(this._subTimer);
+                this._closeTimer = setTimeout(() => {
+                    this.menuOpen = false;
+                    this.openType = null;
+                }, CLOSE_DELAY);
+            },
+
+            // Moving between rows: the flyout follows after a tiny delay so a
+            // diagonal move towards it does not flick through other rows.
+            subIn(id) {
+                if (!this.canHover()) return;
+                clearTimeout(this._subTimer);
+                this._subTimer = setTimeout(() => {
+                    this.openType = id;
+                }, SUB_DELAY);
+            },
+
+            // ── Touch devices wider than the mobile drawer (tablets) ──
+            // First tap opens the dropdown, second tap follows the link.
+            onMenuLinkClick(event) {
+                if (this.canHover() || this.menuTypes.length === 0) return;
+                if (!this.menuOpen) {
+                    event.preventDefault();
+                    this.menuOpen = true;
+                }
+            },
+
+            onTypeClick(event, type) {
+                if (!this.canHover() && this.hasSub(type) && this.openType !== type.id) {
+                    event.preventDefault();
+                    this.openType = type.id;
+                    return;
+                }
+                this.closeAll();
+            },
+
+            async loadNav() {
+                try {
+                    const res = await fetch("/api/nav", {
+                        credentials: "same-origin",
+                        headers: { Accept: "application/json" },
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    this.types = Array.isArray(data.types) ? data.types : [];
+                    this.isAdmin = data.isAdmin === true;
+                } catch (err) {
+                    // The nav still works (Home / Menu / Contact) without it.
+                    console.warn("Navigation data could not be loaded:", err);
+                }
+            },
+
+            toggleMobileMenu() {
+                this.mobileMenuOpen = !this.mobileMenuOpen;
+                document.body.style.overflow = this.mobileMenuOpen ? "hidden" : "";
+            },
+
+            closeMobileMenu() {
+                this.mobileMenuOpen = false;
+                document.body.style.overflow = "";
+            },
+
+            closeAll() {
+                this.closeMobileMenu();
+                this.menuOpen = false;
+                this.openType = null;
+            },
+
+            toggleAccordion(name) {
+                this.activeMobileAccordion =
+                    this.activeMobileAccordion === name ? null : name;
+            },
+
+            toggleMobileType(id) {
+                this.mobileType = this.mobileType === id ? null : id;
+            },
+        }));
+    });
+</script>
+
 <script>
-    const THRESHOLD = 5; // ignore tiny scroll jitters
+    const THRESHOLD = 5;
     let lastY = window.scrollY;
     let ticking = false;
 
@@ -391,7 +479,7 @@ const navItems = [
         ticking = false;
         if (!nav) return;
 
-        const y = Math.max(window.scrollY, 0); // ignore iOS overscroll bounce
+        const y = Math.max(window.scrollY, 0);
         const menuOpen =
             nav
                 .querySelector(".hamburger-btn")
@@ -403,7 +491,6 @@ const navItems = [
             nav.classList.remove("nav-hidden");
         } else if (Math.abs(y - lastY) > THRESHOLD) {
             const goingDown = y > lastY;
-            // only hide once we've scrolled past the nav's own height
             nav.classList.toggle(
                 "nav-hidden",
                 goingDown && y > nav.offsetHeight,
@@ -425,3 +512,530 @@ const navItems = [
 
     update();
 </script>
+
+<style lang="scss">
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .nav-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        height: var(--nav-header);
+        background: var(--nav-bg);
+        border-bottom: 1px solid var(--nav-bg-shadowA);
+        transition:
+            transform 300ms cubic-bezier(0.4, 0, 0.2, 1),
+            box-shadow 300ms ease;
+
+        &.nav-hidden {
+            transform: translateY(-100%);
+        }
+
+        &.nav-scrolled {
+            box-shadow: 0 4px 20px var(--nav-bg-shadowA);
+        }
+    }
+
+    .nav-container {
+        max-width: 1200px;
+        height: 100%;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .nav-logo {
+        display: flex;
+        align-items: center;
+        z-index: 1101;
+    }
+
+    .logo-img {
+        height: 4.5em;
+        width: auto;
+        object-fit: contain;
+        transition: transform 0.2s ease;
+
+        &:hover {
+            transform: scale(1.02);
+        }
+
+        &-mobile {
+            display: none;
+        }
+    }
+
+    .nav-links-desktop {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .nav-item-wrapper {
+        position: relative;
+    }
+
+    .nav-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.6rem 1rem;
+        color: var(--txt-color);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1rem;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+
+        &:hover {
+            background: var(--nav-bg-highlight);
+            color: var(--text-color-hover);
+        }
+    }
+
+    .dropdown-arrow {
+        font-size: 0.75rem;
+        transition: transform 0.2s ease;
+    }
+
+    .nav-dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        min-width: 230px;
+        background: var(--bg-color-light);
+        border: 1px solid var(--nav-bg-shadowA);
+        border-radius: 12px;
+        box-shadow: 0 12px 30px var(--nav-bg-shadowA);
+        padding: 0.5rem 0;
+        z-index: 1200;
+        margin-top: 0;
+    }
+
+    /* These are flex containers with their own `gap`, so the icon needs no
+       extra margin of its own. */
+    .nav-link,
+    .dropdown-item,
+    .mobile-nav-item,
+    .mobile-sub-link,
+    .trigger-title,
+    .sub-trigger-title {
+        --icon-gap: 0;
+    }
+
+    .dropdown-row {
+        position: relative;
+    }
+
+    .sub-arrow {
+        margin-left: auto;
+        font-size: 0.7rem;
+        opacity: 0.7;
+    }
+
+    /* Flyout with the categories of Drinks / Food */
+    .nav-submenu {
+        position: absolute;
+        top: 0;
+        left: 100%;
+        min-width: 220px;
+        max-height: 70vh;
+        overflow-y: auto;
+        background: var(--bg-color-light);
+        border: 1px solid var(--nav-bg-shadowA);
+        border-radius: 12px;
+        box-shadow: 0 12px 30px var(--nav-bg-shadowA);
+        padding: 0.5rem 0;
+        z-index: 1300;
+    }
+
+    /* "Menu Editor" button, admins only */
+    .nav-editor-btn {
+        background: var(--bg-color-btn);
+        color: var(--text-color);
+
+        &:hover {
+            background: var(--text-color-hover);
+            color: var(--text-color);
+        }
+    }
+
+    .dropdown-header {
+        padding: 0.5rem 1rem 0.25rem;
+        font-size: 0.725rem;
+        font-weight: 700;
+        color: var(--txt-color);
+        opacity: 0.7;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .dropdown-list {
+        padding: 0.25rem 0;
+
+        &.scrollable {
+            max-height: 260px;
+            overflow-y: auto;
+        }
+    }
+
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0.6rem 1rem;
+        color: var(--txt-color);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition:
+            background 0.15s ease,
+            color 0.15s ease;
+
+        .item-icon {
+            font-size: 0.85rem;
+            color: var(--bg-color-btn);
+        }
+
+        &:hover {
+            background: var(--nav-bg-highlight);
+            color: var(--text-color-hover);
+        }
+    }
+
+    .dropdown-divider {
+        height: 1px;
+        background: var(--nav-bg-shadowA);
+        margin: 0.4rem 0;
+    }
+
+    .editor-link {
+        color: var(--bg-color-btn);
+        font-weight: 600;
+
+        .role-badge {
+            margin-left: auto;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            padding: 0.15rem 0.45rem;
+            background: var(--nav-bg);
+            color: var(--txt-color);
+            border-radius: 4px;
+            border: 1px solid var(--nav-bg-shadowA);
+        }
+
+        &:hover {
+            background: var(--nav-bg-highlight);
+        }
+    }
+
+    /* Hamburger Toggle Button */
+    .hamburger-btn {
+        display: none;
+        background: transparent;
+        border: none;
+        padding: 0.5rem;
+        cursor: pointer;
+        z-index: 1101;
+        border-radius: 8px;
+        transition: background 0.2s ease;
+
+        &:active {
+            background: var(--nav-bg-highlight);
+        }
+    }
+
+    .hamburger-lines {
+        width: 26px;
+        height: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+
+        .line {
+            display: block;
+            width: 100%;
+            height: 3px;
+            background: var(--ham-color);
+            border-radius: 4px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        &.open .line {
+            background: var(--ham-color-active);
+        }
+
+        &.open .line-1 {
+            transform: translateY(8.5px) rotate(45deg);
+        }
+
+        &.open .line-2 {
+            opacity: 0;
+            transform: scaleX(0);
+        }
+
+        &.open .line-3 {
+            transform: translateY(-8.5px) rotate(-45deg);
+        }
+    }
+
+    /* Mobile Navigation Container & Drawer */
+    .mobile-menu {
+        display: none;
+        position: fixed;
+        top: calc(var(--nav-headerM) + 0.5rem);
+        left: 0.75rem;
+        right: 0.75rem;
+        background: var(--MenuColorA);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--nav-bg-shadowA);
+        border-radius: 16px;
+        z-index: 1100;
+        max-height: calc(85vh - var(--nav-headerM));
+        overflow-y: auto;
+        box-shadow: 0 16px 36px var(--nav-bg-shadow);
+    }
+
+    .mobile-menu-inner {
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .mobile-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.85rem 1rem;
+        color: var(--text-color);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1rem;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.08);
+        transition:
+            background 0.2s ease,
+            transform 0.15s ease;
+
+        &:active {
+            transform: scale(0.98);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        i {
+            color: var(--MenuColor);
+        }
+    }
+
+    /* Accordion Cards */
+    .mobile-accordion-card {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        overflow: hidden;
+
+        .accordion-trigger {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.85rem 1rem;
+            background: transparent;
+            border: none;
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-color);
+            cursor: pointer;
+
+            .trigger-title {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+
+                i {
+                    color: var(--MenuColor);
+                }
+            }
+
+            .accordion-arrow {
+                font-size: 0.8rem;
+                color: var(--text-color);
+                opacity: 0.7;
+                transition: transform 0.25s ease;
+
+                &.rotate {
+                    transform: rotate(180deg);
+                }
+            }
+        }
+
+        .accordion-panel {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.15);
+            padding: 0.75rem;
+        }
+    }
+
+    .panel-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .mobile-sub-link {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.65rem 0.85rem;
+        color: var(--text-color);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        border-radius: 8px;
+
+        &:hover,
+        &:active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        &.editor-highlight {
+            background: var(--bg-color-btn);
+            color: var(--text-color);
+            font-weight: 600;
+        }
+    }
+
+    .mobile-accordion-card .accordion-trigger.accordion-trigger-row {
+        padding: 0;
+        cursor: default;
+
+        .accordion-link {
+            flex: 1;
+            padding: 0.85rem 1rem;
+            color: var(--text-color);
+            text-decoration: none;
+        }
+
+        .accordion-toggle {
+            align-self: stretch;
+            padding: 0 1rem;
+            background: transparent;
+            border: none;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+            cursor: pointer;
+        }
+    }
+
+    .mobile-subgroup {
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        margin-bottom: 0.25rem;
+
+        .chip-grid {
+            padding: 0.25rem 0.75rem 0.75rem;
+        }
+    }
+
+    .mobile-sub-trigger {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.65rem 0.85rem;
+        background: transparent;
+        border: none;
+        color: var(--text-color);
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+
+        .sub-trigger-title {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .accordion-arrow {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            transition: transform 0.25s ease;
+
+            &.rotate {
+                transform: rotate(180deg);
+            }
+        }
+    }
+
+    .mobile-editor-btn {
+        background: var(--bg-color-btn);
+        font-weight: 700;
+    }
+
+    .chip-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+
+    .mobile-chip {
+        font-size: 0.825rem;
+        padding: 0.4rem 0.8rem;
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 20px;
+        color: var(--text-color);
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.15s ease;
+
+        &:active {
+            background: var(--bg-color-btn);
+            color: var(--text-color);
+            transform: scale(0.95);
+        }
+    }
+
+    .mobile-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        height: 100vh;
+        background: var(--img-overlay);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+    }
+
+    @media (max-width: 768px) {
+        .nav-header {
+            height: var(--nav-headerM);
+        }
+
+        .nav-links-desktop {
+            display: none;
+        }
+
+        .hamburger-btn,
+        .mobile-menu,
+        .mobile-backdrop {
+            display: inline-block;
+        }
+
+        .logo-img {
+            display: none;
+            &-mobile {
+                display: block;
+                height: 3em;
+            }
+        }
+    }
+</style>

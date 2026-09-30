@@ -4,6 +4,7 @@ import Fonts from "../../src/components/Fonts.astro";
 import Nav from "../components/Nav.astro"; // Import the navigation component
 import TopBtn from "../components/topBtn.astro"; // Import the top button component
 import Footer from "../components/Footer.astro"; // Import the footer component
+import "../styles/icons.css"; // Placeholder icon slots (see the file for how to add your SVGs)
 
 // import "../lib/nav.js";
 
@@ -41,8 +42,13 @@ const { title = "Lords and Legends" } = Astro.props;
 
         <!-- <meta name="generator" content={Astro.generator} /> -->
         <title>{title}</title>
+        <!-- 1. Collapse Plugin (MUST be placed before Alpine core) -->
         <script
-            is:inline
+            defer
+            src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"
+        ></script>
+        <!-- 2. Alpine Core -->
+        <script
             defer
             src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
         ></script>
@@ -51,6 +57,8 @@ const { title = "Lords and Legends" } = Astro.props;
         <script
             src="https://kit.fontawesome.com/07324e9632.js"
             crossorigin="anonymous"
+            is:inline
+            defer
         ></script>
         <!-- <script is:inline src="../lib/nav.js"></script> -->
     </head>
@@ -102,48 +110,50 @@ const { title = "Lords and Legends" } = Astro.props;
             //         }
         }
 
-        .lightbox-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        .lightbox-content {
-            position: relative;
-            max-width: 90%;
-            max-height: 85vh;
-        }
-        .lightbox-content img {
-            max-width: 100%;
-            max-height: 85vh;
-            border-radius: 8px;
-            border: 2px solid white;
-        }
-        .close-lightbox-btn {
-            position: absolute;
-            top: -40px;
-            right: 0;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 2rem;
-            cursor: pointer;
-        }
-        .lightbox-download {
-            position: absolute;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 0.5rem 1.5rem;
-            background: white;
-            color: black;
-            border-radius: 20px;
-            text-decoration: none;
-            font-weight: bold;
-        }
+        // @layer {
+        //     .lightbox-overlay {
+        //         position: fixed;
+        //         inset: 0;
+        //         background: rgba(0, 0, 0, 0.25);
+        //         display: flex;
+        //         align-items: center;
+        //         justify-content: center;
+        //         z-index: 1000;
+        //     }
+        //     .lightbox-content {
+        //         position: relative;
+        //         max-width: 90%;
+        //         max-height: 100%;
+        //     }
+        //     .lightbox-content img {
+        //         max-width: 95%;
+        //         max-height: 85vh;
+        //         border-radius: 8px;
+        //         border: 2px solid white;
+        //     }
+        //     .close-lightbox-btn {
+        //         position: absolute;
+        //         top: -40px;
+        //         right: 0;
+        //         background: var(--bg-color-dark);
+        //         border: none;
+        //         color: var(--text-color-dark);
+        //         font-size: 2rem;
+        //         cursor: pointer;
+        //     }
+        //     .lightbox-download {
+        //         position: absolute;
+        //         bottom: 2rem;
+        //         left: 50%;
+        //         transform: translateX(-50%);
+        //         padding: 0.5rem 1.5rem;
+        //         background: var(--bg-color-dark);
+        //         color: var(--text-color-dark);
+        //         border-radius: 20px;
+        //         text-decoration: none;
+        //         font-weight: bold;
+        //     }
+        // }
     </style>
 
     <body>

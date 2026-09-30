@@ -1,0 +1,213 @@
+---
+// src/pages/admin/index.astro  ->  /admin
+import Layout from "../../layouts/Layout.astro";
+import AuthSessionManager from "../../components/AuthSessionManager.astro";
+import { guardAdminPage, getDisplayName } from "../../lib/adminAuth";
+
+export const prerender = false;
+
+// Signed out -> /admin/login, signed in but not an admin -> 403.
+const { user, response } = await guardAdminPage(Astro.cookies, Astro.redirect);
+if (response) return response;
+
+// One row per editable page. `icon` is a placeholder slot (src/styles/icons.css).
+const shortcuts = [
+    {
+        icon: "menu-items",
+        title: "Menu Items",
+        blurb: "Names, prices, descriptions and pictures of every dish and drink.",
+        href: "/admin/menu-editor",
+    },
+    {
+        icon: "main-menu",
+        title: "Main Menu Pages",
+        blurb: "The multi-page menu slider images.",
+        href: "/admin/menu-editor/main-menu",
+    },
+    {
+        icon: "specials-slider",
+        title: "Specials Slider",
+        blurb: "The weekly specials pictures.",
+        href: "/admin/menu-editor/specials",
+    },
+    {
+        icon: "platter",
+        title: "Platter Menu",
+        blurb: "The platter menu picture.",
+        href: "/admin/menu-editor/platter",
+    },
+    {
+        icon: "staff",
+        title: "Staff Dashboard",
+        blurb: "Weekly sales and tips for all staff.",
+        href: "/staff",
+    },
+    {
+        icon: "live-menu",
+        title: "View Live Menu",
+        blurb: "See the menu the way customers do.",
+        href: "/menu",
+    },
+];
+---
+
+<Layout title="Admin Portal">
+    <main class="admin-container">
+        <AuthSessionManager
+            displayName={getDisplayName(user)}
+            userEmail={user.email}
+            loginPath="/admin/login"
+            timeoutMinutes={15}
+        />
+
+        <header class="admin-header">
+            <h1>Admin Control Panel</h1>
+            <p>Choose what you would like to edit.</p>
+        </header>
+
+        <!-- Table-like rows: icon | what it is | open button -->
+        <div class="shortcut-table" role="list">
+            {
+                shortcuts.map((item) => (
+                    <div class="shortcut-row" role="listitem">
+                        <span class="shortcut-icon" data-icon={item.icon} aria-hidden="true" />
+                        <div class="shortcut-text">
+                            <h2>{item.title}</h2>
+                            <p>{item.blurb}</p>
+                        </div>
+                        <a
+                            href={item.href}
+                            class="shortcut-btn"
+                            data-icon="open"
+                            aria-label={`Open ${item.title}`}
+                        >
+                            Open
+                        </a>
+                    </div>
+                ))
+            }
+        </div>
+    </main>
+</Layout>
+
+<style>
+    .admin-container {
+        display: block;
+        position: relative;
+        top: calc(var(--nav-header) / 30%);
+        max-width: 900px;
+        margin: 5rem auto 2rem auto;
+        padding: 20px;
+        color: var(--txt-color);
+    }
+
+    .admin-header {
+        border-bottom: 3px solid var(--MenuColor, #00d4aa);
+        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+
+        h1 {
+            margin: 0 0 0.25rem;
+        }
+        p {
+            margin: 0;
+            opacity: 0.75;
+        }
+    }
+
+    .shortcut-table {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+        background: #fff;
+        overflow: hidden;
+    }
+
+    .shortcut-row {
+        display: grid;
+        grid-template-columns: 2.75rem 1fr auto;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--nav-bg);
+
+        &:last-child {
+            border-bottom: none;
+        }
+    }
+
+    .shortcut-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 10px;
+        background: var(--nav-bg);
+        color: var(--bg-color-btn);
+        font-size: 1.4rem;
+        --icon-gap: 0;
+        --icon-size: 1em;
+    }
+
+    .shortcut-text {
+        min-width: 0;
+
+        h2 {
+            margin: 0;
+            font-size: 1.05rem;
+        }
+        p {
+            margin: 0.15rem 0 0;
+            font-size: 0.85rem;
+            opacity: 0.75;
+        }
+    }
+
+    .shortcut-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        min-height: 44px;
+        padding: 0 1.1rem;
+        background: var(--bg-color-btn, #00d4aa);
+        color: var(--text-color, #fff);
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 700;
+        --icon-gap: 0;
+
+        &:hover {
+            background: var(--text-color-hover);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .admin-container {
+            top: calc(var(--nav-headerM) - 1rem);
+            margin-top: 1rem;
+            padding: 12px;
+        }
+
+        /* Phone: icon + text on the first line, full-width button below */
+        .shortcut-row {
+            grid-template-columns: 2.75rem 1fr;
+            grid-template-areas:
+                "icon text"
+                "btn btn";
+            gap: 0.75rem 1rem;
+        }
+        .shortcut-icon {
+            grid-area: icon;
+        }
+        .shortcut-text {
+            grid-area: text;
+        }
+        .shortcut-btn {
+            grid-area: btn;
+            width: 100%;
+        }
+    }
+</style>

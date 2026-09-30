@@ -1,10 +1,17 @@
 {
-  "name": "lords",
-  "type": "module",
-  "version": "0.0.1",
-  "engines": {
-    "node": ">=22.12.0"
+  "name": "lords-and-legends",
+  "version": "0.5.1",
+  "description": "Lords and Legends is a family restaurant based in Amazimtoti",
+  "homepage": "https://github.com/Keagenbr/Lords#readme",
+  "bugs": {
+    "url": "https://github.com/Keagenbr/Lords/issues"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Keagenbr/Lords.git"
+  },
+  "author": "KeagenBR",
+  "type": "Website",
   "scripts": {
     "sass": "sass --watch --poll --no-source-map src/styles/scss/index.scss:src/style.css",
     "dev": "astro dev ",
@@ -13,19 +20,23 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/react": "^6.0.6",
+    "@astrojs/react": "^7.0.0",
     "@astrojs/ts-plugin": "^1.10.12",
     "@astrojs/vercel": "^11.0.11",
-    "@supabase/supabase-js": "^2.116.0",
+    "@supabase/supabase-js": "^2.117.2",
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "astro": "^7.3.3",
+    "astro": "^7.3.5",
+    "lucide-static": "^1.49.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "sass": "^1.102.0",
+    "sass": "^1.105.1",
     "tailwindcss": "^4.3.3",
     "xlsx": "file:vendor/xlsx-0.20.3.tgz"
+  },
+  "engines": {
+    "node": "24.x"
   },
   "allowScripts": {
     "esbuild@0.28.2": true
