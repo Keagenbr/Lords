@@ -65,7 +65,7 @@
 [data-icon="home"] {
     --_ico: url("/icons/home.svg");
 }
-*/ [data-icon="menu"] {
+[data-icon="menu"] {
     --_ico: url("/icons/menu.svg");
 }
 [data-icon="contact"] {
@@ -76,6 +76,9 @@
 }
 [data-icon="chevron-down"] {
     --_ico: url("/icons/chevron-down.svg");
+}
+[data-icon="double-chevron-down"] {
+    --_ico: url("/icons/double-chevron-down.svg");
 }
 [data-icon="chevron-right"] {
     --_ico: url("/icons/chevron-right.svg");
