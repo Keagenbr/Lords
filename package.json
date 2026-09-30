@@ -36,7 +36,7 @@
     "xlsx": "file:vendor/xlsx-0.20.3.tgz"
   },
   "engines": {
-    "node": ">=26.10.0"
+    "node": "24.x"
   },
   "allowScripts": {
     "esbuild@0.28.2": true
