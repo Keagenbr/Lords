@@ -1,41 +1,70 @@
 ---
 interface Props {
+    /** Name to show (see getDisplayName() in src/lib/adminAuth.ts). */
+    displayName?: string;
+    /** Used as a tooltip and as the fallback when no display name is given. */
     userEmail?: string;
     loginPath?: string;
     timeoutMinutes?: number;
+    /** Show the small "edit name" button. */
+    editableName?: boolean;
 }
 
 const {
-    userEmail = "User",
+    displayName,
+    userEmail = "",
     loginPath = "/staff/login",
     timeoutMinutes = 15,
+    editableName = true,
 } = Astro.props;
+
+const shownName = displayName?.trim() || userEmail.split("@")[0] || "User";
 
 const totalTimeoutMs = timeoutMinutes * 60 * 1000;
 const warningWindowMs = 60 * 1000; // Warning shown at 14 minutes (60 seconds remaining)
 ---
 
 <div class="session-manager-bar">
-    <div class="user-info">
+    <div class="user-info" data-name-editor>
         <span class="status-indicator"></span>
-        <span class="user-email">{userEmail}</span>
+
+        <!-- Normal view -->
+        <span class="user-name" data-icon="user" title={userEmail} data-name-text>
+            {shownName}
+        </span>
+        {
+            editableName && (
+                <button
+                    type="button"
+                    class="name-edit-btn"
+                    data-name-edit
+                    aria-label="Change display name"
+                    title="Change display name"
+                >
+                    <span class="ico-only" data-icon="edit"></span>
+                </button>
+            )
+        }
+
+        <!-- Edit view (hidden until the edit button is used) -->
+        <form class="name-form" data-name-form hidden>
+            <input
+                type="text"
+                class="name-input"
+                data-name-input
+                maxlength="40"
+                value={shownName}
+                aria-label="Display name"
+                autocomplete="nickname"
+            />
+            <button type="submit" class="name-save-btn">Save</button>
+            <button type="button" class="name-cancel-btn" data-name-cancel>
+                Cancel
+            </button>
+            <span class="name-error" data-name-error role="alert"></span>
+        </form>
     </div>
-    <button id="manual-logout-btn" class="signout-btn">
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-        >
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-            <polyline points="16 17 21 12 16 7"></polyline>
-            <line x1="21" y1="12" x2="9" y2="12"></line>
-        </svg>
+    <button id="manual-logout-btn" class="signout-btn" data-icon="logout">
         Sign Out
     </button>
 </div>
@@ -62,6 +91,63 @@ const warningWindowMs = 60 * 1000; // Warning shown at 14 minutes (60 seconds re
         </div>
     </div>
 </div>
+
+<script>
+    // Inline "change display name" for the session bar.
+    // Saves through POST /api/auth/display-name (user_metadata.display_name).
+    const root = document.querySelector<HTMLElement>("[data-name-editor]");
+    if (root) {
+        const text = root.querySelector<HTMLElement>("[data-name-text]")!;
+        const editBtn = root.querySelector<HTMLButtonElement>("[data-name-edit]");
+        const form = root.querySelector<HTMLFormElement>("[data-name-form]")!;
+        const input = root.querySelector<HTMLInputElement>("[data-name-input]")!;
+        const cancel = root.querySelector<HTMLButtonElement>("[data-name-cancel]")!;
+        const error = root.querySelector<HTMLElement>("[data-name-error]")!;
+
+        const setEditing = (editing: boolean) => {
+            form.hidden = !editing;
+            text.hidden = editing;
+            if (editBtn) editBtn.hidden = editing;
+            error.textContent = "";
+            if (editing) {
+                input.value = text.textContent?.trim() ?? "";
+                input.focus();
+                input.select();
+            } else {
+                editBtn?.focus();
+            }
+        };
+
+        editBtn?.addEventListener("click", () => setEditing(true));
+        cancel.addEventListener("click", () => setEditing(false));
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") setEditing(false);
+        });
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const submit = form.querySelector<HTMLButtonElement>(".name-save-btn")!;
+            submit.disabled = true;
+            error.textContent = "";
+            try {
+                const res = await fetch("/api/auth/display-name", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "same-origin",
+                    body: JSON.stringify({ displayName: input.value }),
+                });
+                const body = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(body.error || "Could not save the name.");
+                text.textContent = body.displayName;
+                setEditing(false);
+            } catch (err) {
+                error.textContent = err instanceof Error ? err.message : "Could not save the name.";
+            } finally {
+                submit.disabled = false;
+            }
+        });
+    }
+</script>
 
 <script
     data-total-timeout={totalTimeoutMs}
@@ -219,13 +305,108 @@ const warningWindowMs = 60 * 1000; // Warning shown at 14 minutes (60 seconds re
         box-shadow: 0 0 6px #00d4aa;
     }
 
-    .user-email {
+    .user-name {
         font-weight: 500;
         color: #e2e8f0;
+        display: inline-flex;
+        align-items: center;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .user-name[hidden],
+    .name-edit-btn[hidden] {
+        display: none;
+    }
+
+    .user-info {
+        min-width: 0;
+        flex-wrap: wrap;
+    }
+
+    .name-edit-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        color: #a0aec0;
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+    }
+
+    .name-form {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.4rem;
+
+        &[hidden] {
+            display: none;
+        }
+    }
+
+    .name-input {
+        padding: 0.35rem 0.6rem;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+        font-size: 1rem; /* 16px stops iOS zooming into the field */
+        width: 12rem;
+        max-width: 100%;
+    }
+
+    .name-save-btn,
+    .name-cancel-btn {
+        padding: 0.35rem 0.75rem;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+    }
+
+    .name-save-btn {
+        background: #00d4aa;
+        border-color: #00d4aa;
+        color: #fff;
+
+        &:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+    }
+
+    .name-cancel-btn {
+        background: transparent;
+        color: #e2e8f0;
+    }
+
+    .name-error {
+        flex-basis: 100%;
+        color: #feb2b2;
+        font-size: 0.8rem;
+
+        &:empty {
+            display: none;
+        }
     }
 
     .signout-btn {
         display: flex;
+        flex: none;
         align-items: center;
         gap: 6px;
         background: rgba(255, 255, 255, 0.1);

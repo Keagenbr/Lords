@@ -22,25 +22,32 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
 
         <!-- Desktop Navigation Links: Home, Menu (dropdown), Contact -->
         <div class="nav-links-desktop">
-            <a href="/" class="nav-link">
+            <a href="/" class="nav-link" data-icon="home">
                 <span class="nav-link-text">Home</span>
             </a>
 
             <!-- Menu Dropdown -->
             <div
                 class="nav-item-wrapper"
-                @mouseenter="menuOpen = true"
-                @mouseleave="menuOpen = false; openType = null"
+                @mouseenter="hoverIn()"
+                @mouseleave="hoverOut()"
                 @focusin="menuOpen = true"
                 @focusout="if (!$el.contains($event.relatedTarget)) { menuOpen = false; openType = null }"
+                @click.outside="menuOpen = false; openType = null"
             >
-                <a href="/menu" class="nav-link">
+                <a
+                    href="/menu"
+                    class="nav-link"
+                    data-icon="menu"
+                    @click="onMenuLinkClick($event)"
+                >
                     <span class="nav-link-text">Menu</span>
-                    <i
-                        class="fa-solid fa-chevron-down dropdown-arrow"
+                    <span
+                        class="dropdown-arrow ico-only"
+                        data-icon="chevron-down"
                         x-show="menuTypes.length > 0"
                         x-cloak
-                    ></i>
+                    ></span>
                 </a>
 
                 <div
@@ -57,8 +64,7 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                     <template x-for="type in menuTypes" :key="type.id">
                         <div
                             class="dropdown-row"
-                            @mouseenter="openType = type.id"
-                            @mouseleave="openType = null"
+                            @mouseenter="subIn(type.id)"
                         >
                             <!-- Drinks / Food: item with its own category dropdown -->
                             <template x-if="hasSub(type)">
@@ -66,16 +72,15 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                                     <a
                                         :href="'/menu#type-' + type.id"
                                         class="dropdown-item"
-                                        @click="closeAll()"
+                                        :data-icon="iconOf(type.id)"
+                                        @click="onTypeClick($event, type)"
                                         @focus="openType = type.id"
                                     >
-                                        <i
-                                            :class="typeIcon(type.id) + ' item-icon'"
-                                        ></i>
                                         <span x-text="type.label"></span>
-                                        <i
-                                            class="fa-solid fa-chevron-right sub-arrow"
-                                        ></i>
+                                        <span
+                                            class="sub-arrow ico-only"
+                                            data-icon="chevron-right"
+                                        ></span>
                                     </a>
                                     <div
                                         class="nav-submenu"
@@ -102,11 +107,9 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                                 <a
                                     :href="'/menu#type-' + type.id"
                                     class="dropdown-item"
+                                    :data-icon="iconOf(type.id)"
                                     @click="closeAll()"
                                 >
-                                    <i
-                                        :class="typeIcon(type.id) + ' item-icon'"
-                                    ></i>
                                     <span x-text="type.label"></span>
                                 </a>
                             </template>
@@ -115,14 +118,17 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                 </div>
             </div>
 
-            <a href="/contact" class="nav-link">
+            <a href="/contact" class="nav-link" data-icon="contact">
                 <span class="nav-link-text">Contact</span>
             </a>
 
             <!-- Only added to the page for a signed-in admin -->
             <template x-if="isAdmin">
-                <a href="/admin/menu-editor" class="nav-link nav-editor-btn">
-                    <i class="fa-solid fa-pen-to-square"></i>
+                <a
+                    href="/admin/menu-editor"
+                    class="nav-link nav-editor-btn"
+                    data-icon="menu-editor"
+                >
                     <span class="nav-link-text">Menu Editor</span>
                 </a>
             </template>
@@ -156,8 +162,12 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
         x-cloak
     >
         <div class="mobile-menu-inner">
-            <a href="/" class="mobile-nav-item" @click="closeMobileMenu()">
-                <i class="fa-solid fa-house"></i>
+            <a
+                href="/"
+                class="mobile-nav-item"
+                data-icon="home"
+                @click="closeMobileMenu()"
+            >
                 <span>Home</span>
             </a>
 
@@ -167,9 +177,10 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                     <a
                         href="/menu"
                         class="trigger-title accordion-link"
+                        data-icon="menu"
                         @click="closeMobileMenu()"
                     >
-                        <i class="fa-solid fa-book-open"></i> Menu
+                        Menu
                     </a>
                     <button
                         type="button"
@@ -180,10 +191,11 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                         :aria-expanded="activeMobileAccordion === 'menu'"
                         aria-label="Show menu sections"
                     >
-                        <i
-                            class="fa-solid fa-chevron-down accordion-arrow"
+                        <span
+                            class="accordion-arrow ico-only"
+                            data-icon="chevron-down"
                             :class="{ 'rotate': activeMobileAccordion === 'menu' }"
-                        ></i>
+                        ></span>
                     </button>
                 </div>
 
@@ -205,16 +217,17 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                                             @click="toggleMobileType(type.id)"
                                             :aria-expanded="mobileType === type.id"
                                         >
-                                            <span class="sub-trigger-title">
-                                                <i
-                                                    :class="typeIcon(type.id)"
-                                                ></i>
+                                            <span
+                                                class="sub-trigger-title"
+                                                :data-icon="iconOf(type.id)"
+                                            >
                                                 <span x-text="type.label"></span>
                                             </span>
-                                            <i
-                                                class="fa-solid fa-chevron-down accordion-arrow"
+                                            <span
+                                                class="accordion-arrow ico-only"
+                                                data-icon="chevron-down"
                                                 :class="{ 'rotate': mobileType === type.id }"
-                                            ></i>
+                                            ></span>
                                         </button>
                                         <div
                                             class="chip-grid"
@@ -249,9 +262,9 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                                     <a
                                         :href="'/menu#type-' + type.id"
                                         class="mobile-sub-link"
+                                        :data-icon="iconOf(type.id)"
                                         @click="closeMobileMenu()"
                                     >
-                                        <i :class="typeIcon(type.id)"></i>
                                         <span x-text="type.label"></span>
                                     </a>
                                 </template>
@@ -264,9 +277,9 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
             <a
                 href="/contact"
                 class="mobile-nav-item"
+                data-icon="contact"
                 @click="closeMobileMenu()"
             >
-                <i class="fa-solid fa-envelope"></i>
                 <span>Contact</span>
             </a>
 
@@ -275,9 +288,9 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                 <a
                     href="/admin/menu-editor"
                     class="mobile-nav-item mobile-editor-btn"
+                    data-icon="menu-editor"
                     @click="closeMobileMenu()"
                 >
-                    <i class="fa-solid fa-pen-to-square"></i>
                     <span>Menu Editor</span>
                 </a>
             </template>
@@ -305,12 +318,13 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
         const FLAT_TYPES = ["specials", "platters"];
         // Order of the Menu dropdown; anything else follows in database order.
         const TYPE_ORDER = ["drinks", "food", "specials", "platters"];
-        const ICONS = {
-            food: "fa-solid fa-burger",
-            drinks: "fa-solid fa-beer-mug-empty",
-            platters: "fa-solid fa-utensils",
-            specials: "fa-solid fa-star",
-        };
+        // How long (ms) the desktop dropdown waits before opening / closing
+        // on hover. Increase CLOSE_DELAY if it feels too eager to vanish.
+        const OPEN_DELAY = 100;
+        const CLOSE_DELAY = 250;
+        const SUB_DELAY = 90;
+        // data-icon names for the menu types (see src/styles/icons.css).
+        // Unknown types get their own id as the icon name.
         const keyOf = (type) => String(type.id).toLowerCase();
 
         Alpine.data("siteNav", () => ({
@@ -348,8 +362,67 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                 return String(category.label).replace(/_/g, " ");
             },
 
-            typeIcon(typeId) {
-                return ICONS[String(typeId).toLowerCase()] || "fa-solid fa-list";
+            iconOf(typeId) {
+                return String(typeId).toLowerCase();
+            },
+
+            // ── Desktop: hover with a short delay ─────────────────
+            _openTimer: null,
+            _closeTimer: null,
+            _subTimer: null,
+
+            canHover() {
+                return window.matchMedia("(hover: hover) and (pointer: fine)")
+                    .matches;
+            },
+
+            hoverIn() {
+                if (!this.canHover()) return;
+                clearTimeout(this._closeTimer);
+                if (this.menuOpen) return;
+                clearTimeout(this._openTimer);
+                this._openTimer = setTimeout(() => {
+                    this.menuOpen = true;
+                }, OPEN_DELAY);
+            },
+
+            hoverOut() {
+                if (!this.canHover()) return;
+                clearTimeout(this._openTimer);
+                clearTimeout(this._subTimer);
+                this._closeTimer = setTimeout(() => {
+                    this.menuOpen = false;
+                    this.openType = null;
+                }, CLOSE_DELAY);
+            },
+
+            // Moving between rows: the flyout follows after a tiny delay so a
+            // diagonal move towards it does not flick through other rows.
+            subIn(id) {
+                if (!this.canHover()) return;
+                clearTimeout(this._subTimer);
+                this._subTimer = setTimeout(() => {
+                    this.openType = id;
+                }, SUB_DELAY);
+            },
+
+            // ── Touch devices wider than the mobile drawer (tablets) ──
+            // First tap opens the dropdown, second tap follows the link.
+            onMenuLinkClick(event) {
+                if (this.canHover() || this.menuTypes.length === 0) return;
+                if (!this.menuOpen) {
+                    event.preventDefault();
+                    this.menuOpen = true;
+                }
+            },
+
+            onTypeClick(event, type) {
+                if (!this.canHover() && this.hasSub(type) && this.openType !== type.id) {
+                    event.preventDefault();
+                    this.openType = type.id;
+                    return;
+                }
+                this.closeAll();
             },
 
             async loadNav() {
@@ -546,6 +619,17 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
         padding: 0.5rem 0;
         z-index: 1200;
         margin-top: 0;
+    }
+
+    /* These are flex containers with their own `gap`, so the icon needs no
+       extra margin of its own. */
+    .nav-link,
+    .dropdown-item,
+    .mobile-nav-item,
+    .mobile-sub-link,
+    .trigger-title,
+    .sub-trigger-title {
+        --icon-gap: 0;
     }
 
     .dropdown-row {

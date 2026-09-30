@@ -1,0 +1,145 @@
+/* ──────────────────────────────────────────────────────────────
+   PLACEHOLDER ICON SLOTS
+   ──────────────────────────────────────────────────────────────
+   Any element with a  data-icon="name"  attribute gets an icon drawn
+   in front of its content (via ::before). Right now every icon is a
+   dashed-square placeholder.
+
+   To add a real icon:
+     1. Put the SVG in  /public/icons/  (e.g. /public/icons/home.svg).
+        It is used as a mask, so it is coloured by the text colour
+        (currentColor) - use a single-colour SVG.
+     2. Uncomment (or copy) its line in the list further down.
+
+   Icon-only buttons add the class  ico-only  (no gap after the icon).
+   Size every icon at once with  --icon-size  (default 1.1em).
+   ────────────────────────────────────────────────────────────── */
+
+:root {
+    --icon-size: 1.1em;
+    --icon-gap: 0.5em;
+    --icon-placeholder: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='3' width='18' height='18' rx='4' fill='none' stroke='black' stroke-width='2' stroke-dasharray='3 2'/%3E%3C/svg%3E");
+}
+
+[data-icon] {
+    --_ico: var(--icon-placeholder);
+}
+
+[data-icon]::before {
+    content: "";
+    display: inline-block;
+    flex: none;
+    width: var(--icon-size);
+    height: var(--icon-size);
+    margin-inline-end: var(--icon-gap);
+    vertical-align: -0.15em;
+    background-color: currentColor;
+    -webkit-mask: var(--_ico) center / contain no-repeat;
+    mask: var(--_ico) center / contain no-repeat;
+}
+
+[data-icon].ico-only::before {
+    margin-inline-end: 0;
+}
+
+/* Icons that sit AFTER the label (dropdown arrows) */
+[data-icon].ico-after::before {
+    content: none;
+}
+[data-icon].ico-after::after {
+    content: "";
+    display: inline-block;
+    flex: none;
+    width: var(--icon-size);
+    height: var(--icon-size);
+    margin-inline-start: var(--icon-gap);
+    background-color: currentColor;
+    -webkit-mask: var(--_ico) center / contain no-repeat;
+    mask: var(--_ico) center / contain no-repeat;
+}
+
+/* ── Your icons ─────────────────────────────────────────────────
+   Uncomment a line once its SVG is in /public/icons/.            */
+
+/* Navigation */
+[data-icon="home"] {
+    --_ico: url("/icons/home.svg");
+}
+*/ [data-icon="menu"] {
+    --_ico: url("/icons/menu.svg");
+}
+[data-icon="contact"] {
+    --_ico: url("/icons/contact.svg");
+}
+[data-icon="menu-editor"] {
+    --_ico: url("/icons/menu-editor.svg");
+}
+[data-icon="chevron-down"] {
+    --_ico: url("/icons/chevron-down.svg");
+}
+[data-icon="chevron-right"] {
+    --_ico: url("/icons/chevron-right.svg");
+}
+
+/* Menu types (Drinks / Food / Specials / Platters) */
+[data-icon="drinks"] {
+    --_ico: url("/icons/drinks.svg");
+}
+[data-icon="food"] {
+    --_ico: url("/icons/food.svg");
+}
+[data-icon="specials"] {
+    --_ico: url("/icons/specials.svg");
+}
+[data-icon="platters"] {
+    --_ico: url("/icons/platters.svg");
+}
+
+/* Login + session bar */
+[data-icon="email"] {
+    --_ico: url("/icons/email.svg");
+}
+[data-icon="password"] {
+    --_ico: url("/icons/password.svg");
+}
+[data-icon="eye"] {
+    --_ico: url("/icons/eye.svg");
+}
+[data-icon="eye-off"] {
+    --_ico: url("/icons/eye-off.svg");
+}
+[data-icon="user"] {
+    --_ico: url("/icons/user.svg");
+}
+[data-icon="edit"] {
+    --_ico: url("/icons/edit.svg");
+}
+[data-icon="logout"] {
+    --_ico: url("/icons/logout.svg");
+}
+
+/* Admin shortcuts + editor tabs */
+[data-icon="menu-items"] {
+    --_ico: url("/icons/menu-items.svg");
+}
+[data-icon="main-menu"] {
+    --_ico: url("/icons/main-menu.svg");
+}
+[data-icon="specials-slider"] {
+    --_ico: url("/icons/specials-slider.svg");
+}
+[data-icon="platter"] {
+    --_ico: url("/icons/platter.svg");
+}
+[data-icon="staff"] {
+    --_ico: url("/icons/staff.svg");
+}
+[data-icon="live-menu"] {
+    --_ico: url("/icons/live-menu.svg");
+}
+[data-icon="back"] {
+    --_ico: url("/icons/back.svg");
+}
+[data-icon="open"] {
+    --_ico: url("/icons/open.svg");
+}

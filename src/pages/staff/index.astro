@@ -3,6 +3,7 @@ import Layout from "../../layouts/Layout.astro";
 import ExcelUploader from "../../components/ExcelUploader.astro";
 import { getByStaff } from "../../lib/staffSales/storage";
 import { supabase } from "../../lib/supabase";
+import { getDisplayName } from "../../lib/adminAuth";
 import AuthSessionManager from "../../components/AuthSessionManager.astro";
 
 export const prerender = false;
@@ -72,6 +73,7 @@ const totalAllStaff = staffList.reduce((sum, s) => sum + s.totalSales, 0);
     <main class="container">
         <!-- Add session manager header -->
         <AuthSessionManager
+            displayName={getDisplayName(user)}
             userEmail={user.email}
             loginPath="/admin/login"
             timeoutMinutes={15}

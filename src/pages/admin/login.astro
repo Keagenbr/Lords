@@ -1,10 +1,14 @@
 ---
 import Layout from "../../layouts/Layout.astro";
+import { getSessionUser } from "../../lib/adminAuth";
+import "../../styles/password-toggle.css";
 
 export const prerender = false;
 
-const accessToken = Astro.cookies.get("sb-access-token")?.value;
-if (accessToken) {
+// Only skip the form for a session that is actually valid. A leftover
+// (expired) cookie used to send /admin/login -> /admin -> /admin/login
+// in a loop.
+if (await getSessionUser(Astro.cookies)) {
     return Astro.redirect("/admin");
 }
 ---
@@ -17,7 +21,7 @@ if (accessToken) {
 
             <form action="/api/auth/signin" method="POST">
                 <div class="form-group">
-                    <label for="email">Email</label>
+                    <label for="email" data-icon="email">Email</label>
                     <input
                         type="email"
                         id="email"
@@ -28,13 +32,26 @@ if (accessToken) {
                 </div>
 
                 <div class="form-group">
-                    <label for="password">Password</label>
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        required
-                    />
+                    <label for="password" data-icon="password">Password</label>
+                    <div class="pw-wrap" data-pw-field>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            class="pw-input"
+                            autocomplete="current-password"
+                            required
+                        />
+                        <button
+                            type="button"
+                            class="pw-toggle"
+                            aria-label="Show password"
+                            aria-pressed="false"
+                        >
+                            <span class="pw-eye ico-only" data-icon="eye"></span>
+                            <span class="pw-eye-off ico-only" data-icon="eye-off"></span>
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit" class="submit-btn">
@@ -44,6 +61,10 @@ if (accessToken) {
         </div>
     </main>
 </Layout>
+
+<script>
+    import "../../scripts/passwordToggle";
+</script>
 
 <style>
     .login-container {
@@ -78,6 +99,10 @@ if (accessToken) {
         margin-bottom: 6px;
         font-weight: bold;
         color: #333;
+    }
+    label[data-icon] {
+        display: flex;
+        align-items: center;
     }
     input {
         width: 100%;

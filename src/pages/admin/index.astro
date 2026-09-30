@@ -1,82 +1,92 @@
 ---
+// src/pages/admin/index.astro  ->  /admin
 import Layout from "../../layouts/Layout.astro";
-import { supabase } from "../../lib/supabase";
-import MenuMain from "../../components/Menu/MenuMain.astro";
-import MenuSlider from "../../components/Menu/MenuSlider.astro";
-import MenuPlatter from "../../components/Menu/MenuPlatter.astro";
-import Menu from "../../components/Menu/index.astro";
 import AuthSessionManager from "../../components/AuthSessionManager.astro";
+import { guardAdminPage, getDisplayName } from "../../lib/adminAuth";
 
 export const prerender = false;
 
-// 1. Session Verification
-const accessToken = Astro.cookies.get("sb-access-token")?.value;
-const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
+// Signed out -> /admin/login, signed in but not an admin -> 403.
+const { user, response } = await guardAdminPage(Astro.cookies, Astro.redirect);
+if (response) return response;
 
-if (!accessToken || !refreshToken) {
-    return Astro.redirect("/admin/login");
-}
-
-const { data: sessionData, error: sessionError } =
-    await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-    });
-
-if (sessionError || !sessionData.user) {
-    return Astro.redirect("/admin/login");
-}
-
-const user = sessionData.user;
-const isAdmin =
-    user.app_metadata?.role === "admin" || user.user_metadata?.role === "admin";
-
-if (!isAdmin) {
-    return new Response("Forbidden: Admin access required.", { status: 403 });
-}
+// One row per editable page. `icon` is a placeholder slot (src/styles/icons.css).
+const shortcuts = [
+    {
+        icon: "menu-items",
+        title: "Menu Items",
+        blurb: "Names, prices, descriptions and pictures of every dish and drink.",
+        href: "/admin/menu-editor",
+    },
+    {
+        icon: "main-menu",
+        title: "Main Menu Pages",
+        blurb: "The multi-page menu slider images.",
+        href: "/admin/menu-editor/main-menu",
+    },
+    {
+        icon: "specials-slider",
+        title: "Specials Slider",
+        blurb: "The weekly specials pictures.",
+        href: "/admin/menu-editor/specials",
+    },
+    {
+        icon: "platter",
+        title: "Platter Menu",
+        blurb: "The platter menu picture.",
+        href: "/admin/menu-editor/platter",
+    },
+    {
+        icon: "staff",
+        title: "Staff Dashboard",
+        blurb: "Weekly sales and tips for all staff.",
+        href: "/staff",
+    },
+    {
+        icon: "live-menu",
+        title: "View Live Menu",
+        blurb: "See the menu the way customers do.",
+        href: "/menu",
+    },
+];
 ---
 
-<Layout title="Admin Portal - Menu Views & Editor">
+<Layout title="Admin Portal">
     <main class="admin-container">
-        <!-- Add session manager header -->
         <AuthSessionManager
+            displayName={getDisplayName(user)}
             userEmail={user.email}
             loginPath="/admin/login"
             timeoutMinutes={15}
         />
+
         <header class="admin-header">
             <h1>Admin Control Panel</h1>
-            <p>Welcome back, {user.email}</p>
-            <div class="admin-nav">
-                <a href="/staff" class="admin-btn">
-                    Manage Staff Dashboard
-                </a>
-            </div>
+            <p>Choose what you would like to edit.</p>
         </header>
 
-        <section class="menu-preview-section">
-            <h2>Live Menu Components Preview</h2>
-
-            <div class="component-block">
-                <h3>Main Menu Slider</h3>
-                <MenuMain />
-            </div>
-
-            <div class="component-block">
-                <h3>Specials Slider</h3>
-                <MenuSlider />
-            </div>
-
-            <div class="component-block">
-                <h3>Platter Special</h3>
-                <MenuPlatter />
-            </div>
-
-            <div class="component-block">
-                <h3>Interactive Menu & WhatsApp Order Builder</h3>
-                <Menu />
-            </div>
-        </section>
+        <!-- Table-like rows: icon | what it is | open button -->
+        <div class="shortcut-table" role="list">
+            {
+                shortcuts.map((item) => (
+                    <div class="shortcut-row" role="listitem">
+                        <span class="shortcut-icon" data-icon={item.icon} aria-hidden="true" />
+                        <div class="shortcut-text">
+                            <h2>{item.title}</h2>
+                            <p>{item.blurb}</p>
+                        </div>
+                        <a
+                            href={item.href}
+                            class="shortcut-btn"
+                            data-icon="open"
+                            aria-label={`Open ${item.title}`}
+                        >
+                            Open
+                        </a>
+                    </div>
+                ))
+            }
+        </div>
     </main>
 </Layout>
 
@@ -85,57 +95,119 @@ if (!isAdmin) {
         display: block;
         position: relative;
         top: calc(var(--nav-header) / 30%);
-        max-width: 1200px;
+        max-width: 900px;
         margin: 5rem auto 2rem auto;
         padding: 20px;
+        color: var(--txt-color);
     }
+
     .admin-header {
         border-bottom: 3px solid var(--MenuColor, #00d4aa);
-        padding-bottom: 1.5rem;
-        margin-bottom: 2rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
+        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+
+        h1 {
+            margin: 0 0 0.25rem;
+        }
+        p {
+            margin: 0;
+            opacity: 0.75;
+        }
     }
-    .admin-btn {
+
+    .shortcut-table {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+        background: #fff;
+        overflow: hidden;
+    }
+
+    .shortcut-row {
+        display: grid;
+        grid-template-columns: 2.75rem 1fr auto;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--nav-bg);
+
+        &:last-child {
+            border-bottom: none;
+        }
+    }
+
+    .shortcut-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 10px;
+        background: var(--nav-bg);
+        color: var(--bg-color-btn);
+        font-size: 1.4rem;
+        --icon-gap: 0;
+        --icon-size: 1em;
+    }
+
+    .shortcut-text {
+        min-width: 0;
+
+        h2 {
+            margin: 0;
+            font-size: 1.05rem;
+        }
+        p {
+            margin: 0.15rem 0 0;
+            font-size: 0.85rem;
+            opacity: 0.75;
+        }
+    }
+
+    .shortcut-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        min-height: 44px;
+        padding: 0 1.1rem;
         background: var(--bg-color-btn, #00d4aa);
-        color: white;
-        padding: 0.6rem 1.2rem;
+        color: var(--text-color, #fff);
         border-radius: 8px;
         text-decoration: none;
-        font-weight: bold;
+        font-weight: 700;
+        --icon-gap: 0;
+
+        &:hover {
+            background: var(--text-color-hover);
+        }
     }
-    .component-block {
-        background: #ffffff;
-        border: 2px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 2.5rem;
-    }
-    .component-block h3 {
-        margin-top: 0;
-        color: var(--bg-color-btn, #2d3748);
-        border-bottom: 2px solid #edf2f7;
-        padding-bottom: 0.5rem;
-    }
+
     @media (max-width: 768px) {
         .admin-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-            top: calc(var(--nav-header) - 30%);
-            max-width: 1200px;
-            margin: 5rem auto 2rem auto;
-            padding: 20px;
+            top: calc(var(--nav-headerM) - 1rem);
+            margin-top: 1rem;
+            padding: 12px;
         }
-        admin-header {
-            padding-bottom: 1.5rem;
-            margin-bottom: 2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+
+        /* Phone: icon + text on the first line, full-width button below */
+        .shortcut-row {
+            grid-template-columns: 2.75rem 1fr;
+            grid-template-areas:
+                "icon text"
+                "btn btn";
+            gap: 0.75rem 1rem;
+        }
+        .shortcut-icon {
+            grid-area: icon;
+        }
+        .shortcut-text {
+            grid-area: text;
+        }
+        .shortcut-btn {
+            grid-area: btn;
+            width: 100%;
         }
     }
 </style>

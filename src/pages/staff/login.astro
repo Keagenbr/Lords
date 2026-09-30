@@ -1,6 +1,7 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import { supabase } from "../../lib/supabase";
+import "../../styles/password-toggle.css";
 
 export const prerender = false;
 
@@ -119,7 +120,7 @@ if (Astro.request.method === "POST") {
 
             <form method="POST" class="login-form">
                 <div class="form-group">
-                    <label for="email">Email Address</label>
+                    <label for="email" data-icon="email">Email Address</label>
                     <input
                         type="email"
                         id="email"
@@ -130,14 +131,27 @@ if (Astro.request.method === "POST") {
                 </div>
 
                 <div class="form-group">
-                    <label for="password">Password</label>
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        required
-                        placeholder="••••••••"
-                    />
+                    <label for="password" data-icon="password">Password</label>
+                    <div class="pw-wrap" data-pw-field>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            class="pw-input"
+                            autocomplete="current-password"
+                            placeholder="••••••••"
+                            required
+                        />
+                        <button
+                            type="button"
+                            class="pw-toggle"
+                            aria-label="Show password"
+                            aria-pressed="false"
+                        >
+                            <span class="pw-eye ico-only" data-icon="eye"></span>
+                            <span class="pw-eye-off ico-only" data-icon="eye-off"></span>
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit" class="submit-btn">
@@ -147,6 +161,10 @@ if (Astro.request.method === "POST") {
         </div>
     </main>
 </Layout>
+
+<script>
+    import "../../scripts/passwordToggle";
+</script>
 
 <style>
     .login-container {
@@ -195,6 +213,10 @@ if (Astro.request.method === "POST") {
         font-weight: 600;
         color: #4a5568;
         font-size: 0.9rem;
+    }
+    label[data-icon] {
+        display: flex;
+        align-items: center;
     }
     input {
         width: 100%;

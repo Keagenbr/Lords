@@ -62,6 +62,21 @@ export function isAdminUser(user: User | null | undefined): boolean {
 }
 
 /**
+ * The name to show for a signed-in user: the display name stored in Supabase
+ * Auth user_metadata.display_name, then user_metadata.name (which the staff
+ * pages already use), then the part of the email before the "@".
+ * user_metadata.name is never written by the display-name feature, so the
+ * staff URL matching that depends on it is unaffected.
+ */
+export function getDisplayName(user: User | null | undefined): string {
+  const meta = user?.user_metadata ?? {};
+  const fromMeta = [meta.display_name, meta.name].find(
+    (v) => typeof v === "string" && v.trim().length > 0,
+  ) as string | undefined;
+  return fromMeta?.trim() || user?.email?.split("@")[0] || "User";
+}
+
+/**
  * Returns the signed-in user for this request, or null. If the access token
  * has expired but the refresh token is still valid, the session is refreshed
  * and both cookies are rewritten so the next request keeps working.
@@ -103,13 +118,21 @@ export async function getAdminUser(
 /**
  * For admin PAGES. Returns either the admin user or a Response the page
  * should `return` straight away (redirect to login / 403).
+ *
+ * When the login cookies are present but no longer valid they are removed
+ * before redirecting; otherwise /admin/login (which redirects away whenever
+ * it sees a cookie) and /admin would bounce between each other forever.
  */
 export async function guardAdminPage(
   cookies: AstroCookies,
   redirect: (path: string) => Response,
 ): Promise<{ user: User; response: null } | { user: null; response: Response }> {
   const user = await getSessionUser(cookies);
-  if (!user) return { user: null, response: redirect("/admin/login") };
+  if (!user) {
+    cookies.delete(ACCESS_COOKIE, { path: "/" });
+    cookies.delete(REFRESH_COOKIE, { path: "/" });
+    return { user: null, response: redirect("/admin/login") };
+  }
   if (!isAdminUser(user)) {
     return {
       user: null,

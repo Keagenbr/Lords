@@ -12,25 +12,25 @@ const links = [
         key: "items",
         href: "/admin/menu-editor",
         label: "Menu Items",
-        icon: "fa-solid fa-pen-to-square",
+        icon: "menu-items",
     },
     {
         key: "main-menu",
         href: "/admin/menu-editor/main-menu",
         label: "Main Menu Pages",
-        icon: "fa-solid fa-book-open",
+        icon: "main-menu",
     },
     {
         key: "specials",
         href: "/admin/menu-editor/specials",
         label: "Specials Slider",
-        icon: "fa-solid fa-star",
+        icon: "specials-slider",
     },
     {
         key: "platter",
         href: "/admin/menu-editor/platter",
         label: "Platter Menu",
-        icon: "fa-solid fa-utensils",
+        icon: "platter",
     },
 ];
 ---
@@ -42,15 +42,14 @@ const links = [
                 <a
                     href={link.href}
                     class:list={["subnav-btn", { active: link.key === active }]}
+                    data-icon={link.icon}
                     aria-current={link.key === active ? "page" : undefined}
                 >
-                    <i class={link.icon} />
                     <span>{link.label}</span>
                 </a>
             ))
         }
-        <a href="/admin" class="subnav-btn subnav-back">
-            <i class="fa-solid fa-arrow-left"></i>
+        <a href="/admin" class="subnav-btn subnav-back" data-icon="back">
             <span>Admin panel</span>
         </a>
     </div>
@@ -104,9 +103,33 @@ const links = [
         border-style: dashed;
     }
 
+    .subnav-btn {
+        --icon-gap: 0;
+        gap: 0.5rem;
+        white-space: nowrap;
+    }
+
     @media (max-width: 768px) {
         .editor-subnav {
             top: var(--nav-headerM);
+            padding: 1rem 0 0 1rem;
+        }
+        /* One swipeable row instead of pills wrapping onto several lines */
+        .subnav-inner {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding: 0 1rem 0.5rem 0;
+            scroll-snap-type: x proximity;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .subnav-inner::-webkit-scrollbar {
+            display: none;
+        }
+        .subnav-btn {
+            flex: none;
+            min-height: 44px;
+            scroll-snap-align: start;
         }
         .subnav-back {
             margin-left: 0;

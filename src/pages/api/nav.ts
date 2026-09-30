@@ -24,10 +24,8 @@ interface NavType {
   categories: NavCategory[] | null;
 }
 
-const bySortOrder = (
-  a: { sort_order: number | null },
-  b: { sort_order: number | null },
-) => (a.sort_order ?? 0) - (b.sort_order ?? 0);
+const bySortOrder = (a: { sort_order: number | null }, b: { sort_order: number | null }) =>
+  (a.sort_order ?? 0) - (b.sort_order ?? 0);
 
 async function loadStructure() {
   const { data, error } = await supabase

@@ -2,6 +2,7 @@
 import Layout from "../../layouts/Layout.astro";
 import { getByStaff } from "../../lib/staffSales/storage";
 import { supabase } from "../../lib/supabase";
+import { getDisplayName } from "../../lib/adminAuth";
 import AuthSessionManager from "../../components/AuthSessionManager.astro";
 
 export const prerender = false;
@@ -140,6 +141,7 @@ function getWeekNumber(date) {
     <main class="container">
         <!-- Add session manager header -->
         <AuthSessionManager
+            displayName={getDisplayName(user)}
             userEmail={user.email}
             loginPath="/admin/login"
             timeoutMinutes={15}

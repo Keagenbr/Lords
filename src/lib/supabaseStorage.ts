@@ -1,5 +1,5 @@
 const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
-const DEFAULT_BUCKET = import.meta.env.PUBLIC_SUPABASE_BUCKET || "LordsImg";
+const DEFAULT_BUCKET = import.meta.env.PUBLIC_SUPABASE_BUCKET || "lordsImg";
 
 /** The bucket every public component and the admin editor read/write. */
 export const STORAGE_BUCKET: string = DEFAULT_BUCKET;
