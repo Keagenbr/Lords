@@ -376,7 +376,25 @@ const platterNotice = {
         <div class="modal-box cart-panel" x-show="showCartPanel" x-transition>
             <h3 data-icon="receipt">Your Order</h3>
 
-            <div class="empty-cart" x-show="cart.length === 0">
+            <!-- Shown after a successful Cloud API order -->
+            <div class="order-success" role="status" x-show="orderSent" x-cloak>
+                <span class="order-success-tick" aria-hidden="true"></span>
+                <h4>Order sent</h4>
+                <p>
+                    Thanks <span x-text="orderSent?.name"></span>, the kitchen has
+                    your order <strong x-text="orderSent?.ref"></strong>.
+                </p>
+                <p x-show="orderSent?.confirmation === 'sent'">
+                    We've sent a confirmation to your WhatsApp and will message
+                    you when it's ready to collect.
+                </p>
+                <p x-show="orderSent?.confirmation !== 'sent'">
+                    We'll let you know when it's ready to collect.
+                </p>
+                <button class="confirm-btn" @click="closeOrderSuccess()">Done</button>
+            </div>
+
+            <div class="empty-cart" x-show="cart.length === 0 && !orderSent">
                 <p>Your order is empty.</p>
             </div>
 
@@ -412,13 +430,58 @@ const platterNotice = {
                 </template>
             </ul>
 
+            <div x-show="!orderSent">
             <div class="modal-field">
-                <label>Name for order</label>
+                <label for="order-name">Name for order <span class="req">*</span></label>
                 <input
+                    id="order-name"
                     type="text"
                     x-model="orderName"
+                    @blur="touched.name = true"
+                    autocomplete="name"
                     placeholder="Your name"
+                    required
                 />
+                <p class="field-error" x-show="touched.name && !nameValid" x-cloak>
+                    Please enter a name for the order.
+                </p>
+            </div>
+
+            <!-- WhatsApp number + opt-in: REQUIRED for order updates -->
+            <div class="modal-field">
+                <label for="order-phone">WhatsApp number <span class="req">*</span></label>
+                <input
+                    id="order-phone"
+                    type="tel"
+                    inputmode="tel"
+                    autocomplete="tel"
+                    x-model="orderPhone"
+                    @blur="touched.phone = true"
+                    placeholder="e.g. 082 555 0142"
+                    :aria-invalid="touched.phone && !phoneValid"
+                    required
+                />
+                <p class="field-hint" x-show="phoneValid" x-cloak>
+                    We'll send updates to <strong x-text="phoneDisplay"></strong>
+                </p>
+                <p class="field-error" x-show="touched.phone && !phoneValid" x-cloak>
+                    Please enter a valid WhatsApp mobile number, e.g. 082 555 0142
+                    or +27 82 555 0142.
+                </p>
+            </div>
+            <div class="modal-field checkbox-field">
+                <label>
+                    <input
+                        type="checkbox"
+                        x-model="optIn"
+                        @change="touched.optIn = true"
+                        required
+                    />
+                    <span><span x-text="optInText"></span> <span class="req">*</span></span>
+                </label>
+                <p class="field-error" x-show="touched.optIn && !optIn" x-cloak>
+                    Please tick the box so we can send your order confirmation.
+                </p>
             </div>
 
             <!-- Any platter in the order: show the notice + ask for a date -->
@@ -460,6 +523,8 @@ const platterNotice = {
                 Estimated Total: R<span x-text="cartTotal.toFixed(2)"></span>
             </p>
 
+            <p class="field-error" role="alert" x-show="orderError" x-cloak x-text="orderError"></p>
+
             <div class="modal-actions">
                 <button class="cancel-btn" @click="showCartPanel = false">
                     Keep browsing
@@ -467,11 +532,12 @@ const platterNotice = {
                 <button
                     class="confirm-btn whatsapp-btn"
                     data-icon="whatsapp"
-                    :disabled="cart.length === 0 || dateTooSoon"
+                    :disabled="!canSubmitOrder"
                     @click="sendOrderViaWhatsApp"
                 >
-                    Send Order via WhatsApp
+                    <span x-text="sendingOrder ? 'Sending…' : 'Send Order'"></span>
                 </button>
+            </div>
             </div>
         </div>
     </div>
@@ -588,6 +654,18 @@ const platterNotice = {
             orderName: "",
             collectTime: "",
             collectDate: "",
+
+            // WhatsApp Cloud API ordering
+            orderPhone: "",
+            optIn: false,
+            optInText:
+                "I agree to receive order updates from " +
+                document.querySelector("[data-restaurant]").dataset.restaurant +
+                " on WhatsApp.",
+            touched: { name: false, phone: false, optIn: false },
+            sendingOrder: false,
+            orderSent: null, // { ref, name, confirmation } after success
+            orderError: "",
 
             init() {
                 // Initialize default category dropdown states (all expanded initially or default state)
@@ -872,6 +950,7 @@ const platterNotice = {
                 const lines = [];
                 lines.push(`*NEW ORDER – ${this.restaurantName}*`);
                 lines.push(`Name: ${this.orderName || "(not given)"}`);
+                if (this.phoneValid) lines.push(`WhatsApp: ${this.phoneDisplay}`);
 
                 if (this.hasPlatter) {
                     // Platters are never "ready in 20-30 mins".
@@ -925,11 +1004,122 @@ const platterNotice = {
                 return lines.join("\n");
             },
 
-            sendOrderViaWhatsApp() {
-                if (this.cart.length === 0 || this.dateTooSoon) return;
-                const message = this.buildOrderMessage();
-                const url = `https://wa.me/${this.whatsappNumber}?text=${encodeURIComponent(message)}`;
-                window.open(url, "_blank");
+            // ── WhatsApp number validation ─────────────────────────────
+            // Mirrors src/lib/phone.ts (the server re-checks everything).
+            normalisePhone(input) {
+                const raw = String(input || "").trim();
+                if (!raw || !/^\+?[\d\s\-().]+$/.test(raw)) return null;
+                let digits = raw.replace(/\D/g, "");
+                const international = raw.startsWith("+") || digits.startsWith("00");
+                if (digits.startsWith("00")) digits = digits.slice(2);
+                if (!international) {
+                    if (digits.startsWith("0")) digits = "27" + digits.slice(1);
+                    else if (!digits.startsWith("27")) return null;
+                }
+                if (digits.startsWith("27")) {
+                    return /^27[678]\d{8}$/.test(digits) ? digits : null;
+                }
+                return /^[1-9]\d{7,14}$/.test(digits) ? digits : null;
+            },
+
+            get normalisedPhone() {
+                return this.normalisePhone(this.orderPhone);
+            },
+            get phoneValid() {
+                return !!this.normalisedPhone;
+            },
+            get phoneDisplay() {
+                const d = this.normalisedPhone || "";
+                const m = /^27(\d{2})(\d{3})(\d{4})$/.exec(d);
+                return m ? `+27 ${m[1]} ${m[2]} ${m[3]}` : `+${d}`;
+            },
+            get nameValid() {
+                return this.orderName.trim().length > 0;
+            },
+            get canSubmitOrder() {
+                return (
+                    this.cart.length > 0 &&
+                    !this.dateTooSoon &&
+                    this.nameValid &&
+                    this.phoneValid &&
+                    this.optIn &&
+                    !this.sendingOrder
+                );
+            },
+
+            closeOrderSuccess() {
+                this.orderSent = null;
+                this.showCartPanel = false;
+            },
+
+            async sendOrderViaWhatsApp() {
+                this.touched = { name: true, phone: true, optIn: true };
+                if (!this.canSubmitOrder) return;
+
+                this.sendingOrder = true;
+                this.orderError = "";
+                const fallbackUrl = `https://wa.me/${this.whatsappNumber}?text=${encodeURIComponent(this.buildOrderMessage())}`;
+
+                try {
+                    const res = await fetch("/api/orders/whatsapp", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            name: this.orderName.trim(),
+                            phone: this.normalisedPhone,
+                            optIn: this.optIn === true,
+                            collectDate: this.collectDate,
+                            collectTime: this.collectTime,
+                            hasPlatter: this.hasPlatter,
+                            total: this.cartTotal,
+                            cart: this.cart.map((l) => ({
+                                name: l.name,
+                                qty: l.qty,
+                                price: l.price,
+                                note: l.note,
+                                options: l.options || [],
+                            })),
+                        }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+
+                    if (res.ok && data.ok) {
+                        this.orderSent = {
+                            ref: data.orderRef,
+                            name: this.orderName.trim(),
+                            confirmation: data.confirmation,
+                        };
+                        this.cart = [];
+                        this.collectDate = "";
+                        this.collectTime = "";
+                        this.touched = { name: false, phone: false, optIn: false };
+                        return;
+                    }
+
+                    // Problems the customer can fix: show them, don't fall back.
+                    if (data.error === "invalid_phone") {
+                        this.orderError = "That WhatsApp number doesn't look right – please check it.";
+                        return;
+                    }
+                    if (data.error === "opt_in_required" || data.error === "name_required") {
+                        this.orderError = "Please fill in all the required fields.";
+                        return;
+                    }
+                    if (data.error === "rate_limited") {
+                        this.orderError = "Too many orders in a short time – please wait a few minutes and try again.";
+                        return;
+                    }
+                    throw new Error(data.error || `HTTP ${res.status}`);
+                } catch (err) {
+                    // Server / WhatsApp problem: fall back to the old wa.me flow
+                    // so the order still reaches the restaurant.
+                    console.warn("Cloud API order failed, using wa.me fallback:", err);
+                    this.orderError = "We couldn't send your order automatically – opening WhatsApp instead…";
+                    // window.open() after an await is often blocked as a pop-up.
+                    setTimeout(() => (window.location.href = fallbackUrl), 1200);
+                } finally {
+                    this.sendingOrder = false;
+                }
             },
         }));
     });
