@@ -1,0 +1,1211 @@
+@layer menu {
+    [x-cloak] {
+        display: none !important;
+    }
+
+    /* Keep jump targets (from the navigation) clear of the fixed header. */
+    .menu-type-section,
+    .category-block {
+        scroll-margin-top: calc(var(--nav-header) + 1rem);
+    }
+
+    @media (max-width: 768px) {
+        .menu-type-section,
+        .category-block {
+            scroll-margin-top: calc(var(--nav-headerM) + 1rem);
+        }
+    }
+
+    .menu-container {
+        max-width: 960px;
+        margin: 0 auto;
+        margin-top: calc(var(--nav-headerM) + 1.5rem);
+        padding: 1.5rem;
+        color: var(--txt-color);
+    }
+
+    .menu-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .menu-header h1 {
+        font-size: 2.25rem;
+        color: var(--bg-color-btn);
+        margin: 0 0 0.25rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+    .tagline {
+        color: var(--text-color-hover);
+        font-style: italic;
+        font-size: 1.05rem;
+        margin: 0;
+    }
+
+    /* Search Box */
+    .search-box {
+        position: relative;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+    .search-icon {
+        position: absolute;
+        left: 1rem;
+        color: var(--bg-color-btn);
+        opacity: 0.7;
+    }
+    .search-input {
+        width: 100%;
+        padding: 0.85rem 2.5rem 0.85rem 2.75rem;
+        border: 2px solid var(--nav-bg);
+        background: #ffffff;
+        border-radius: 12px;
+        font-size: 1rem;
+        outline: none;
+        transition:
+            border-color 0.2s,
+            box-shadow 0.2s;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .search-input:focus {
+        border-color: var(--bg-color-btn);
+        box-shadow: 0 0 0 3px hsla(14, 45%, 30%, 0.15);
+    }
+    .clear-search-btn {
+        position: absolute;
+        right: 0.85rem;
+        background: transparent;
+        border: none;
+        font-size: 1.1rem;
+        color: var(--bg-color-btn);
+        cursor: pointer;
+    }
+
+    /* Filter Tabs */
+    .filter-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-bottom: 2rem;
+        justify-content: center;
+    }
+    .filter-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.55rem 1.25rem;
+        border: 2px solid var(--nav-bg);
+        background: #ffffff;
+        color: var(--bg-color-btn);
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 0.925rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    .filter-btn:hover {
+        background: var(--nav-bg);
+    }
+    .filter-btn.active {
+        background: var(--bg-color-btn);
+        color: #ffffff;
+        border-color: var(--bg-color-btn);
+        box-shadow: 0 4px 10px hsla(14, 45%, 30%, 0.25);
+    }
+
+    /* Menu Type Sections */
+    .menu-type-section {
+        margin-bottom: 2.5rem;
+    }
+    .type-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-size: 1.6rem;
+        color: var(--bg-color-btn);
+        border-bottom: 3px solid var(--nav-bg);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.25rem;
+        font-weight: 700;
+    }
+
+    /* Category Dropdown Block */
+    .category-block {
+        background: #ffffff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+        transition:
+            border-color 0.2s,
+            box-shadow 0.2s;
+    }
+    .category-block.is-open {
+        border-color: hsla(14, 45%, 30%, 0.3);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .category-header {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.85rem 1.2rem;
+        background: #ffffff;
+        border: none;
+        cursor: pointer;
+        text-align: left;
+        transition: background-color 0.2s;
+    }
+    .category-header:hover {
+        background: var(--bg-color-light);
+    }
+
+    .category-title {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--bg-color-btn);
+        text-transform: capitalize;
+    }
+
+    .category-logo {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--nav-bg);
+        background: #ffffff;
+        flex-shrink: 0;
+    }
+
+    .category-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .item-count-badge {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-color-hover);
+        background: var(--nav-bg);
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+    }
+    /* Category dropdown arrow: double-chevron-down.svg, flips when open */
+    .chevron-icon {
+        display: inline-flex;
+        color: var(--bg-color-btn);
+        --icon-size: 1.25rem;
+        --icon-gap: 0;
+        transition: transform 0.25s ease;
+    }
+    .chevron-icon.is-open {
+        transform: rotate(180deg);
+    }
+
+    /* Category Collapsible Items List */
+    .category-content {
+        padding: 0.5rem 1.25rem 1.25rem;
+        border-top: 1px solid var(--bg-color-light);
+    }
+
+    .item-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .menu-item {
+        padding: 0.9rem 0;
+        border-bottom: 1px dashed var(--nav-bg);
+    }
+    .menu-item:last-child {
+        border-bottom: none;
+    }
+
+    .item-layout {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    .item-thumb-wrapper {
+        flex-shrink: 0;
+    }
+    .item-thumb {
+        width: 64px;
+        height: 64px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid var(--nav-bg);
+    }
+
+    .item-details {
+        flex: 1;
+    }
+
+    .item-line {
+        display: flex;
+        align-items: baseline;
+    }
+    .item-name {
+        font-weight: 700;
+        color: #1a202c;
+        font-size: 1.025rem;
+    }
+    .dots {
+        flex: 1;
+        border-bottom: 1px dotted #cbd5e0;
+        margin: 0 0.5rem;
+    }
+    .price {
+        font-weight: 700;
+        color: var(--bg-color-btn);
+        white-space: nowrap;
+        font-size: 1.025rem;
+    }
+    .description {
+        color: #4a5568;
+        font-size: 0.88rem;
+        margin: 0.35rem 0 0.25rem;
+        line-height: 1.4;
+    }
+
+    .item-tags {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        margin-top: 0.3rem;
+    }
+    .serves-tag {
+        font-size: 0.75rem;
+        color: var(--text-color-hover);
+        font-style: italic;
+    }
+    .dine-in-tag {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #c05621;
+        background: #fffaf0;
+        border: 1px solid #fbd38d;
+        border-radius: 4px;
+        padding: 0.15rem 0.45rem;
+    }
+
+    /* SVG icon slots (src/styles/icons.css): the flex containers below
+   already have their own `gap`, so the icon needs no extra margin. */
+    .filter-btn,
+    .type-header,
+    .add-btn,
+    .dine-in-tag,
+    .notice-tag,
+    .cart-fab,
+    .whatsapp-btn,
+    .modal-box h3,
+    .notice-box {
+        --icon-gap: 0;
+    }
+    .dine-in-tag,
+    .notice-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+    .search-icon {
+        font-size: 1.15rem;
+        --icon-size: 1em;
+    }
+    .type-header {
+        --icon-size: 1em;
+    }
+    .empty-icon {
+        display: block;
+        --icon-size: 1em;
+    }
+    .modal-box h3[data-icon] {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Platter: "2 Day notice required" */
+    .notice-tag {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #c05621;
+        background: #fffaf0;
+        border: 1px solid #fbd38d;
+        border-radius: 4px;
+        padding: 0.15rem 0.45rem;
+    }
+    .notice-box {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        column-gap: 0.6rem;
+        align-items: start;
+        margin: 0 0 1rem;
+        padding: 0.75rem 1rem;
+        background: #fffaf0;
+        border: 1px solid #fbd38d;
+        border-radius: 8px;
+        color: #7b341e;
+        font-size: 0.9rem;
+        line-height: 1.4;
+    }
+    .notice-box::before {
+        grid-row: 1 / span 2;
+        margin-top: 0.1em;
+        --icon-size: 1.25em;
+    }
+    .notice-box strong {
+        grid-column: 2;
+    }
+    .notice-box span {
+        grid-column: 2;
+    }
+    .line-notice {
+        color: #c05621;
+        font-weight: 600;
+    }
+    .field-error {
+        margin: 0.35rem 0 0;
+        color: #c53030;
+        font-size: 0.8rem;
+    }
+
+    /* Add Button */
+    .add-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-top: 0.6rem;
+        padding: 0.4rem 0.95rem;
+        background: var(--bg-color-btn);
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.825rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+            background-color 0.2s,
+            transform 0.1s;
+    }
+    .add-btn:hover {
+        background: var(--text-color-hover);
+        transform: translateY(-1px);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #718096;
+    }
+    .empty-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.75rem;
+        color: var(--nav-bg);
+    }
+    .reset-btn {
+        margin-top: 0.75rem;
+        padding: 0.6rem 1.25rem;
+        background: var(--bg-color-btn);
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    /* Modal Overlay & Modal Box */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(2px);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .modal-box {
+        background: #ffffff;
+        width: 100%;
+        max-width: 520px;
+        max-height: 88vh;
+        overflow-y: auto;
+        border-radius: 16px 16px 0 0;
+        padding: 1.5rem;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    }
+    @media (min-width: 640px) {
+        .modal-overlay {
+            align-items: center;
+        }
+        .modal-box {
+            border-radius: 16px;
+        }
+    }
+
+    .modal-item-img-container {
+        width: 100%;
+        height: 160px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        border-radius: 10px;
+    }
+    .modal-item-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .modal-price {
+        color: var(--bg-color-btn);
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin: 0.25rem 0 1rem;
+    }
+
+    .modal-field {
+        margin-bottom: 1rem;
+    }
+    .modal-field label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #2d3748;
+        margin-bottom: 0.4rem;
+    }
+    .modal-field input[type="text"],
+    .modal-field input[type="time"],
+    .modal-field input[type="date"],
+    .modal-field textarea {
+        width: 100%;
+        padding: 0.65rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+
+    .choice-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .choice-pill {
+        border: 2px solid var(--nav-bg);
+        border-radius: 20px;
+        padding: 0.4rem 0.9rem;
+        font-size: 0.85rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: #ffffff;
+    }
+    .choice-pill input {
+        accent-color: var(--bg-color-btn);
+    }
+
+    .qty-stepper {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .qty-stepper button {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 2px solid var(--nav-bg);
+        background: #ffffff;
+        font-size: 1.1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+    }
+    .cancel-btn,
+    .confirm-btn {
+        flex: 1;
+        padding: 0.75rem;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+    }
+    .cancel-btn {
+        background: var(--bg-color-light);
+        color: #2d3748;
+    }
+    .confirm-btn {
+        background: var(--bg-color-btn);
+        color: #ffffff;
+    }
+    .confirm-btn:disabled {
+        background: #a0aec0;
+        cursor: not-allowed;
+    }
+    .whatsapp-btn {
+        background: #25d366;
+        color: #ffffff;
+    }
+
+    /* Cart Floating Action Button */
+    .cart-fab {
+        position: fixed;
+        bottom: 1.75rem;
+        right: 1.75rem;
+        background: #25d366;
+        color: white;
+        border: none;
+        padding: 0.9rem 1.4rem;
+        border-radius: 30px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        cursor: pointer;
+        z-index: 900;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Cart Panel Details */
+    .cart-list {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 1rem;
+    }
+    .cart-line {
+        border-bottom: 1px solid var(--nav-bg);
+        padding: 0.6rem 0;
+    }
+    .cart-line-top {
+        display: flex;
+        justify-content: space-between;
+        font-weight: 600;
+    }
+    .remove-btn {
+        background: none;
+        border: none;
+        color: #e53e3e;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+    .cart-line-details {
+        display: flex;
+        flex-direction: column;
+        font-size: 0.8rem;
+        color: #718096;
+        margin-top: 0.2rem;
+    }
+    .empty-cart {
+        text-align: center;
+        color: #718096;
+        padding: 1.5rem 0;
+    }
+    .cart-total {
+        font-weight: 700;
+        text-align: right;
+        color: var(--bg-color-btn);
+        margin: 0.5rem 0 0;
+        font-size: 1.1rem;
+    }
+}
+
+@layer menuDownloads {
+    .menu-downloads {
+        max-width: 960px;
+        margin: 0 auto 3rem;
+        padding: 0 1.5rem;
+        color: var(--txt-color);
+    }
+
+    .downloads-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+        min-height: 48px;
+        padding: 0.6rem 1.5rem;
+        background: var(--bg-color-btn);
+        color: var(--text-color);
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        list-style: none;
+        --icon-gap: 0;
+
+        &::-webkit-details-marker {
+            display: none;
+        }
+        &:hover {
+            background: var(--text-color-hover);
+        }
+        &:focus-visible {
+            outline: 3px solid var(--MenuColor);
+            outline-offset: 2px;
+        }
+    }
+
+    .downloads-chevron {
+        display: inline-flex;
+        transition: transform 0.25s ease;
+        --icon-size: 1.25rem;
+    }
+    .downloads[open] .downloads-chevron {
+        transform: rotate(180deg);
+    }
+
+    .downloads-body {
+        padding-top: 1.5rem;
+    }
+
+    .downloads-group {
+        margin-bottom: 2rem;
+
+        h3 {
+            color: var(--bg-color-btn);
+            border-bottom: 3px solid var(--nav-bg);
+            padding-bottom: 0.4rem;
+            margin: 0 0 1rem;
+        }
+    }
+
+    .download-grid {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .download-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        background: #ffffff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+    }
+
+    .download-thumb {
+        display: block;
+        aspect-ratio: 3 / 4;
+        overflow: hidden;
+        border-radius: 8px;
+        background: var(--bg-color-light);
+        border: 1px solid var(--nav-bg);
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+    }
+
+    .download-label {
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+
+    .download-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .download-link {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        min-height: 44px;
+        padding: 0 0.5rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 8px;
+        color: var(--bg-color-btn);
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        --icon-gap: 0;
+
+        &:hover {
+            background: var(--nav-bg);
+        }
+    }
+
+    .download-link-primary {
+        background: var(--bg-color-btn);
+        border-color: var(--bg-color-btn);
+        color: var(--text-color);
+
+        &:hover {
+            background: var(--text-color-hover);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .menu-downloads {
+            padding: 0 0.75rem;
+        }
+        /* Two pictures per row on a phone */
+        .download-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .download-card {
+            padding: 0.5rem;
+        }
+        .download-actions {
+            flex-direction: column;
+        }
+    }
+}
+
+@layer menuMain {
+    /* All colors/spacing reference the CSS variables defined in Layout.astro
+       (--MenuColor, --bg-color, --bg-color-btn, etc.) so you can restyle
+       every menu component at once by editing them in one place. */
+    .main-menu-wrapper {
+        max-width: 1000px;
+        margin: 0 auto 4rem auto;
+    }
+    .section-title {
+        font-size: 2rem;
+        color: var(--MenuColor);
+        margin-bottom: 1rem;
+        text-align: center;
+        border-bottom: 2px solid var(--MenuColor);
+        display: inline-block;
+        padding-bottom: 0.5rem;
+    }
+    .menu-slider-container {
+        position: relative;
+        overflow: hidden;
+        width: 25rem;
+        height: 30rem;
+        max-width: 800px;
+        margin: 0 auto;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        background: var(--bg-color);
+    }
+    .slider-track {
+        display: flex;
+        transition: transform 0.5s ease-in-out;
+        width: 100%;
+    }
+    .menu-slide {
+        min-width: 100%;
+        height: 600px;
+        position: relative;
+        cursor: pointer;
+    }
+    .menu-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: var(--bg-color);
+    }
+    .slide-caption {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+        padding: 1rem;
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1rem;
+    }
+    .download-btn a {
+        color: white;
+        text-decoration: none;
+        background: var(--bg-color-btn);
+        padding: 0.4rem 1rem;
+        border-radius: 6px;
+        font-size: 0.9rem;
+    }
+    .download-btn a:hover {
+        background: var(--MenuColor);
+    }
+    .nav-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: var(--MenuColor);
+        color: white;
+        border: none;
+        padding: 1rem;
+        cursor: pointer;
+        z-index: 10;
+        font-size: 1.5rem;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.3s;
+    }
+    .nav-btn:hover {
+        opacity: 0.8;
+    }
+    .nav-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+    .prev-btn {
+        left: 10px;
+    }
+    .next-btn {
+        right: 10px;
+    }
+    .pagination-dots {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 10px;
+    }
+    .dot {
+        width: 12px;
+        height: 12px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        cursor: pointer;
+        transition: background 0.3s;
+        border: none;
+        padding: 0;
+    }
+    .dot.active {
+        background: var(--MenuColor);
+        transform: scale(1.2);
+    }
+
+    /*Lightbox*/
+    .lightbox-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.95);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .lightbox-content {
+        position: relative;
+        max-width: 90%;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .lightbox-content img {
+        max-width: 100%;
+        max-height: 80vh;
+        border-radius: 8px;
+        border: 2px solid white;
+    }
+    .lightbox-caption {
+        color: white;
+        margin-top: 1rem;
+        font-size: 1.2rem;
+    }
+    .close-lightbox-btn {
+        position: absolute;
+        top: -40px;
+        right: 0;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 2rem;
+        cursor: pointer;
+    }
+    .lightbox-download {
+        margin-top: 1rem;
+        padding: 0.5rem 1.5rem;
+        background: white;
+        color: black;
+        border-radius: 20px;
+        text-decoration: none;
+        font-weight: bold;
+    }
+}
+
+@layer menuPlatter {
+    .platter-wrapper {
+        max-width: 1000px;
+        margin: 0 auto 4rem auto;
+        text-align: center;
+    }
+    .menu-image-container {
+        display: inline-block;
+        cursor: pointer;
+    }
+    .menu-image {
+        max-width: 100%;
+        height: auto;
+        border-radius: 12px;
+        border: 2px solid var(--MenuColor);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease;
+        display: block;
+    }
+    .menu-image:hover {
+        transform: scale(1.01);
+    }
+    .download-btn {
+        display: inline-block;
+        margin-top: 0.5rem;
+        padding: 0.6rem 1.5rem;
+        background-color: var(--bg-color-btn);
+        color: white;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+    .download-btn:hover {
+        background-color: var(--MenuColor);
+    }
+    /*Lightbox*/
+    .lightbox-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .lightbox-content {
+        position: relative;
+        max-width: 90%;
+        max-height: 85vh;
+    }
+    .lightbox-content img {
+        max-width: 100%;
+        max-height: 85vh;
+        border-radius: 8px;
+        border: 2px solid white;
+    }
+    .close-lightbox-btn {
+        position: absolute;
+        top: -40px;
+        right: 0;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 2rem;
+        cursor: pointer;
+    }
+    .lightbox-download {
+        position: absolute;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 0.5rem 1.5rem;
+        background: white;
+        color: black;
+        border-radius: 20px;
+        text-decoration: none;
+        font-weight: bold;
+    }
+}
+
+@layer menuSlider {
+    /* Component Layout & Typography */
+    .slider-wrapper {
+        max-width: 1000px;
+        margin: 20% auto;
+        text-align: center;
+    }
+
+    .section-title {
+        font-size: 2rem;
+        color: var(--text-color-light);
+        margin-bottom: 1rem;
+        border-bottom: 2px solid var(--MenuColor);
+        display: inline-block;
+        padding-bottom: 0.5rem;
+    }
+
+    /* Slider Track Window */
+    .slider-container {
+        position: relative;
+        overflow: hidden;
+        width: 25rem;
+        height: 30rem;
+        max-width: 800px;
+        margin: 0 auto;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .slider-track {
+        display: flex;
+        transition: transform 0.5s ease-in-out;
+        width: 100%;
+    }
+
+    .slide {
+        min-width: 100%;
+        position: relative;
+        background-color: var(--bg-color);
+    }
+
+    .slide-content {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .slider-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    /* Overlay Controls & Actions */
+    .slide-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+        padding: 2rem 1rem 5rem 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        height: 100%;
+        z-index: 10;
+    }
+
+    .slide-label {
+        color: var(--text-color-dark);
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+
+    .slide-download {
+        color: var(--text-color-dark);
+        background: var(--bg-color-btn);
+        padding: 0.3rem 1rem;
+        border-radius: 20px;
+        text-decoration: none;
+        font-size: 0.8rem;
+        transition: background 0.25s ease-in-out;
+        &:hover {
+            background: var(--MenuColor);
+            color: var(--text-color-light);
+        }
+    }
+
+    .nav-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: var(--MenuColor);
+        color: white;
+        border: none;
+        padding: 1rem;
+        cursor: pointer;
+        z-index: 10;
+        font-size: 1.5rem;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.3s;
+        &:hover {
+            opacity: 0.8;
+        }
+    }
+
+    .nav-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+
+    .prev-btn {
+        left: 10px;
+    }
+    .next-btn {
+        right: 10px;
+    }
+
+    /* Lightbox Modal CSS Layer */
+    @layer {
+        .lightbox-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .lightbox-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 85vh;
+        }
+        .lightbox-content img {
+            max-width: 100%;
+            max-height: 85vh;
+            border-radius: 8px;
+            border: 2px solid white;
+        }
+        .close-lightbox-btn {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+        }
+        .lightbox-download {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.5rem 1.5rem;
+            background: white;
+            color: black;
+            border-radius: 20px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    }
+}
