@@ -1,0 +1,154 @@
+---
+// src/components/ErrorPage.astro
+// Shared design for the 404 and 500 pages: logo, big status code, message and
+// a few helpful buttons. Uses the variables from src/layouts/Layout.astro.
+import LogoSrcDesktop from "../assets/LordsLogo.svg";
+
+interface Props {
+    code: string;
+    title: string;
+    message: string;
+}
+
+const { code, title, message } = Astro.props;
+
+const links = [
+    { href: "/", label: "Back to Home", icon: "home", primary: true },
+    { href: "/menu", label: "View the Menu", icon: "menu", primary: false },
+    { href: "/contact", label: "Contact Us", icon: "contact", primary: false },
+];
+---
+
+<main class="error-page">
+    <a href="/" class="error-logo" aria-label="Lords and Legends home">
+        <LogoSrcDesktop class="error-logo-img" />
+    </a>
+
+    <p class="error-code" aria-hidden="true">{code}</p>
+    <h1>{title}</h1>
+    <p class="error-message">{message}</p>
+
+    <div class="error-actions">
+        {
+            links.map((link) => (
+                <a
+                    href={link.href}
+                    class:list={["error-btn", { "error-btn-primary": link.primary }]}
+                    data-icon={link.icon}
+                >
+                    {link.label}
+                </a>
+            ))
+        }
+    </div>
+</main>
+
+<style lang="scss">
+    .error-page {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        min-height: calc(100vh - var(--nav-header));
+        margin-top: var(--nav-header);
+        padding: 2rem 1.5rem;
+        color: var(--txt-color);
+    }
+
+    .error-logo-img {
+        height: 6rem;
+        width: auto;
+    }
+
+    .error-code {
+        margin: 1rem 0 0;
+        font-family: "Pinyon Script";
+        font-size: 7rem;
+        line-height: 1;
+        color: var(--bg-color-btn);
+    }
+
+    h1 {
+        margin: 0.25rem 0 0.75rem;
+        font-size: 2.25rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--bg-color-btn);
+    }
+
+    .error-message {
+        max-width: 32rem;
+        margin: 0 0 2rem;
+        font-size: 1.05rem;
+        line-height: 1.65;
+    }
+
+    .error-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.75rem;
+    }
+
+    .error-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 48px;
+        padding: 0 1.5rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 25px;
+        background: #ffffff;
+        color: var(--bg-color-btn);
+        font-weight: 600;
+        text-decoration: none;
+        --icon-gap: 0;
+        transition:
+            background-color 0.2s ease,
+            transform 0.2s ease;
+
+        &:hover,
+        &:focus-visible {
+            background: var(--nav-bg);
+            transform: translateY(-2px);
+        }
+    }
+
+    .error-btn-primary {
+        background: var(--bg-color-btn);
+        border-color: var(--bg-color-btn);
+        color: var(--text-color);
+
+        &:hover,
+        &:focus-visible {
+            background: var(--text-color-hover);
+            border-color: var(--text-color-hover);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .error-page {
+            min-height: calc(100vh - var(--nav-headerM));
+            margin-top: var(--nav-headerM);
+        }
+        .error-logo-img {
+            height: 4.5rem;
+        }
+        .error-code {
+            font-size: 5rem;
+        }
+        h1 {
+            font-size: 1.75rem;
+        }
+        .error-actions {
+            flex-direction: column;
+            align-items: stretch;
+            width: 100%;
+            max-width: 20rem;
+        }
+        .error-btn {
+            justify-content: center;
+        }
+    }
+</style>

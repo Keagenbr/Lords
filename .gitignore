@@ -16,6 +16,8 @@ pnpm-debug.log*
 # environment variables
 .env
 .env.production
+.env.bak
+
 
 # macOS-specific files
 .DS_Store
@@ -24,3 +26,13 @@ pnpm-debug.log*
 .idea/
 .vercel
 .env.local
+
+#general
+WebHook.md
+tree.py
+scripts/
+
+src/components/MetaData/Aeo.astro
+src/components/MetaData/Geo.astro
+src/components/MetaData/Llmo.astro
+src/components/MetaData/Seo.astro

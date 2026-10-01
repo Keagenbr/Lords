@@ -1,0 +1,470 @@
+---
+// src/components/MenuPdfEditor.astro
+//
+// Upload / replace / remove the FULL MENU PDF that customers can download on
+// /menu (see MenuDownloads.astro). Shown on the "Main Menu Pages" editor page.
+//
+// The PDF goes from the browser straight to Supabase Storage using a one-time
+// signed URL from /admin/menu-files, so big PDFs are not blocked by Vercel's
+// 4.5 MB request limit.
+import { MENU_PDF } from "../lib/menuImages";
+import { getMenuPdf } from "../lib/menuImageStore";
+
+const pdf = await getMenuPdf();
+const config = JSON.stringify({
+    pdf,
+    maxBytes: MENU_PDF.maxBytes,
+    filename: MENU_PDF.filename,
+});
+---
+
+<section
+    class="pdf-editor"
+    x-data="menuPdfEditor"
+    data-config={config}
+    aria-labelledby="pdf-editor-title"
+>
+    <div class="pdf-head">
+        <h2 id="pdf-editor-title" data-icon="download">Full menu PDF</h2>
+        <p>
+            Customers can download this from the menu page, next to the menu
+            pictures.
+        </p>
+    </div>
+
+    <div class="pdf-body">
+        <div
+            class="drop-zone pdf-drop"
+            :class="{ 'is-dragging': dragging, 'is-busy': busy }"
+            role="button"
+            tabindex="0"
+            aria-label="Drop the menu PDF here or press to choose a file"
+            @click="!busy && $refs.pdfInput.click()"
+            @keydown.enter.prevent="!busy && $refs.pdfInput.click()"
+            @keydown.space.prevent="!busy && $refs.pdfInput.click()"
+            @dragenter.prevent="depth++; dragging = true"
+            @dragover.prevent="$event.dataTransfer.dropEffect = 'copy'"
+            @dragleave.prevent="if (--depth <= 0) { depth = 0; dragging = false }"
+            @drop.prevent.stop="onDrop($event)"
+        >
+            <template x-if="!busy">
+                <div class="pdf-drop-inner">
+                    <span class="ico-only big-ico" data-icon="download" aria-hidden="true"></span>
+                    <strong class="drag-text" x-text="pdf ? 'Drop a new PDF here to replace it' : 'Drag & drop the menu PDF here'"></strong>
+                    <strong class="tap-text" x-text="pdf ? 'Tap to choose a new PDF' : 'Tap to choose the menu PDF'"></strong>
+                    <span class="drop-hint" x-text="'or click to choose. PDF only, max ' + formatSize(maxBytes) + '.'"></span>
+                </div>
+            </template>
+            <template x-if="busy">
+                <div class="pdf-drop-inner">
+                    <span class="ico-only ico-spin big-ico" data-icon="loader" aria-hidden="true"></span>
+                    <strong>Uploading PDF...</strong>
+                    <div class="pdf-progress" role="progressbar" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100">
+                        <span :style="`width: ${progress}%`"></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <div class="pdf-current">
+            <template x-if="pdf">
+                <div class="pdf-current-inner">
+                    <span class="pdf-label">Current PDF</span>
+                    <strong x-text="filename"></strong>
+                    <span class="pdf-meta" x-text="describe(pdf)"></span>
+                    <div class="pdf-actions">
+                        <a :href="pdf.url" target="_blank" rel="noopener" class="ghost-btn" data-icon="eye">View</a>
+                        <button type="button" class="ghost-btn is-danger" data-icon="trash" :disabled="busy" @click="remove()">Remove</button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="!pdf">
+                <p class="pdf-empty">
+                    No PDF uploaded yet. Customers only see the picture download
+                    until you add one.
+                </p>
+            </template>
+        </div>
+    </div>
+
+    <input
+        type="file"
+        accept="application/pdf,.pdf"
+        class="hidden-input"
+        x-ref="pdfInput"
+        @change="upload($event.target.files[0]); $event.target.value = ''"
+    />
+</section>
+
+<script is:inline>
+    document.addEventListener("alpine:init", () => {
+        Alpine.data("menuPdfEditor", () => ({
+            pdf: null,
+            maxBytes: 20 * 1024 * 1024,
+            filename: "FullMenu.pdf",
+            busy: false,
+            progress: 0,
+            dragging: false,
+            depth: 0,
+
+            init() {
+                try {
+                    const config = JSON.parse(this.$el.dataset.config || "{}");
+                    this.pdf = config.pdf || null;
+                    this.maxBytes = config.maxBytes || this.maxBytes;
+                    this.filename = config.filename || this.filename;
+                } catch (err) {
+                    console.error("PDF editor config could not be read:", err);
+                }
+            },
+
+            formatSize(n) {
+                return n >= 1048576
+                    ? (n / 1048576).toFixed(1) + " MB"
+                    : Math.round(n / 1024) + " KB";
+            },
+
+            describe(pdf) {
+                const parts = [];
+                if (pdf.size) parts.push(this.formatSize(pdf.size));
+                if (pdf.updatedAt) {
+                    parts.push(
+                        "updated " +
+                            new Date(pdf.updatedAt).toLocaleString("en-ZA", {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                            }),
+                    );
+                }
+                return parts.join(" · ");
+            },
+
+            async api(payload) {
+                const res = await fetch("/admin/menu-files", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                    credentials: "same-origin",
+                });
+                const body = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(
+                        res.status === 401 || res.status === 403
+                            ? "Your admin session has expired. Please sign in again."
+                            : body.error || `Request failed (${res.status})`,
+                    );
+                }
+                return body;
+            },
+
+            onDrop(event) {
+                this.dragging = false;
+                this.depth = 0;
+                if (this.busy) return;
+                const files = [...(event.dataTransfer?.files || [])];
+                if (files.length > 1) {
+                    window.siteDialog.toast("Only one PDF can be uploaded. Using the first one.", "warning");
+                }
+                this.upload(files[0]);
+            },
+
+            // PUT the file to the signed URL with progress (fetch can't report
+            // upload progress, XMLHttpRequest can).
+            send(url, file) {
+                return new Promise((resolve, reject) => {
+                    const form = new FormData();
+                    form.append("cacheControl", "300");
+                    form.append("", file);
+                    const xhr = new XMLHttpRequest();
+                    xhr.open("PUT", url);
+                    xhr.setRequestHeader("x-upsert", "true");
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) this.progress = Math.round((e.loaded / e.total) * 100);
+                    };
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) return resolve();
+                        let msg = `Upload failed (${xhr.status})`;
+                        try {
+                            msg = JSON.parse(xhr.responseText).message || msg;
+                        } catch {}
+                        reject(new Error(msg));
+                    };
+                    xhr.onerror = () => reject(new Error("Network error while uploading."));
+                    xhr.send(form);
+                });
+            },
+
+            async upload(file) {
+                if (!file) return;
+                const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+                if (!isPdf) {
+                    return window.siteDialog.alert({
+                        title: "Not a PDF",
+                        message: `"${file.name}" is not a PDF file.`,
+                        tone: "warning",
+                    });
+                }
+                if (file.size > this.maxBytes) {
+                    return window.siteDialog.alert({
+                        title: "PDF too large",
+                        message: `The PDF is ${this.formatSize(file.size)}. The limit is ${this.formatSize(this.maxBytes)}. Try exporting it with "reduce file size" / "web" quality.`,
+                        tone: "warning",
+                    });
+                }
+                if (this.pdf) {
+                    const ok = await window.siteDialog.confirm({
+                        title: "Replace the menu PDF?",
+                        message: "Customers will get the new PDF straight away.",
+                        items: [{ label: file.name, detail: this.formatSize(file.size) }],
+                        confirmText: "Replace PDF",
+                        tone: "warning",
+                    });
+                    if (!ok) return;
+                }
+
+                this.busy = true;
+                this.progress = 0;
+                try {
+                    const { signedUrl, publicUrl } = await this.api({ action: "pdf-upload-url" });
+                    await this.send(signedUrl, file);
+                    this.pdf = {
+                        url: `${publicUrl}?v=${Date.now()}`,
+                        size: file.size,
+                        updatedAt: new Date().toISOString(),
+                    };
+                    window.siteDialog.toast("Menu PDF uploaded.", "success");
+                } catch (err) {
+                    await window.siteDialog.alert({ title: "PDF upload failed", message: err.message, tone: "error" });
+                } finally {
+                    this.busy = false;
+                }
+            },
+
+            async remove() {
+                const ok = await window.siteDialog.confirm({
+                    title: "Remove the menu PDF?",
+                    message: "Customers will only be able to download the menu pictures.",
+                    confirmText: "Remove PDF",
+                    tone: "danger",
+                });
+                if (!ok) return;
+                this.busy = true;
+                try {
+                    await this.api({ action: "pdf-delete" });
+                    this.pdf = null;
+                    window.siteDialog.toast("Menu PDF removed.", "success");
+                } catch (err) {
+                    await window.siteDialog.alert({ title: "Could not remove the PDF", message: err.message, tone: "error" });
+                } finally {
+                    this.busy = false;
+                }
+            },
+        }));
+    });
+</script>
+
+<style lang="scss">
+    .pdf-editor {
+        margin-bottom: 2rem;
+        padding: 1.25rem;
+        background: #fff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+    }
+
+    .pdf-head {
+        margin-bottom: 1rem;
+
+        h2 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0 0 0.25rem;
+            font-size: 1.2rem;
+            color: var(--bg-color-btn);
+            --icon-gap: 0;
+        }
+
+        p {
+            margin: 0;
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+    }
+
+    .pdf-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+        gap: 1rem;
+        align-items: stretch;
+    }
+
+    .drop-zone {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 150px;
+        padding: 1.25rem;
+        text-align: center;
+        background: var(--bg-color-light);
+        border: 2px dashed var(--nav-bg);
+        border-radius: 12px;
+        color: var(--bg-color-btn);
+        cursor: pointer;
+        transition:
+            background-color 0.2s ease,
+            border-color 0.2s ease;
+
+        &:hover,
+        &:focus-visible {
+            border-color: var(--bg-color-btn);
+            outline: none;
+        }
+
+        &.is-dragging {
+            background: #fff;
+            border-color: var(--MenuColor);
+        }
+
+        &.is-busy {
+            cursor: progress;
+        }
+    }
+
+    .pdf-drop-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.4rem;
+        width: 100%;
+    }
+
+    .big-ico {
+        --icon-size: 2rem;
+    }
+
+    .drop-hint {
+        font-size: 0.8rem;
+        color: var(--txt-color);
+        opacity: 0.75;
+    }
+
+    .tap-text {
+        display: none;
+    }
+
+    @media (hover: none) {
+        .drag-text {
+            display: none;
+        }
+        .tap-text {
+            display: block;
+        }
+    }
+
+    .pdf-progress {
+        width: min(260px, 100%);
+        height: 8px;
+        border-radius: 999px;
+        background: var(--nav-bg);
+        overflow: hidden;
+
+        span {
+            display: block;
+            height: 100%;
+            background: var(--bg-color-btn);
+            transition: width 0.2s ease;
+        }
+    }
+
+    .pdf-current {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+    }
+
+    .pdf-current-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        width: 100%;
+    }
+
+    .pdf-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        opacity: 0.65;
+    }
+
+    .pdf-meta {
+        font-size: 0.8rem;
+        opacity: 0.75;
+    }
+
+    .pdf-empty {
+        margin: 0;
+        font-size: 0.875rem;
+        opacity: 0.8;
+    }
+
+    .pdf-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .ghost-btn {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        min-height: 44px;
+        padding: 0.5rem 0.9rem;
+        background: transparent;
+        color: var(--bg-color-btn);
+        border: 2px solid var(--nav-bg);
+        border-radius: 8px;
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-decoration: none;
+        cursor: pointer;
+        --icon-gap: 0;
+
+        &:hover:not(:disabled) {
+            background: var(--nav-bg);
+        }
+
+        &.is-danger {
+            color: #c53030;
+
+            &:hover:not(:disabled) {
+                background: #fff5f5;
+            }
+        }
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    }
+
+    .hidden-input {
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        .pdf-editor {
+            padding: 1rem;
+        }
+
+        .pdf-body {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

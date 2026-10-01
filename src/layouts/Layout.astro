@@ -1,11 +1,16 @@
 ---
 // import "../../src/style.css";
-import Fonts from "../../src/components/Fonts.astro";
+import Favicons from "../components/MetaData/Favicons.astro"; // Import the favicons component
+import Fonts from "../../src/components/Fonts.astro"; // Import the fonts component
 import Nav from "../components/Nav.astro"; // Import the navigation component
 import TopBtn from "../components/topBtn.astro"; // Import the top button component
 import Footer from "../components/Footer.astro"; // Import the footer component
-import "../styles/icons.css"; // Placeholder icon slots (see the file for how to add your SVGs)
+import SiteDialog from "../components/SiteDialog.astro"; // Styled confirm / alert / toast pop-ups
 
+import "../styles/icons.css"; // Placeholder icon slots (see the file for how to add your SVGs)
+import "../styles/main.scss"; // Import the main styles
+import "../styles/contact.scss"; // Import the contact styles
+import "../styles/menu.scss"; // Import the menu styles
 // import "../lib/nav.js";
 
 const { title = "Lords and Legends" } = Astro.props;
@@ -17,27 +22,7 @@ const { title = "Lords and Legends" } = Astro.props;
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width" />
         <!-- favicons -->
-        <link
-            rel="apple-touch-icon"
-            sizes="180x180"
-            href="/favicon/apple-touch-icon.png"
-        />
-        <link
-            rel="icon"
-            type="image/png"
-            sizes="32x32"
-            href="/favicon/favicon-32x32.png"
-        />
-        <link
-            rel="icon"
-            type="image/png"
-            sizes="16x16"
-            href="/favicon/favicon-16x16.png"
-        />
-        <link rel="manifest" href="/favicon/site.webmanifest" />
-        <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
-        <link rel="icon" href="/favicon/favicon.ico" />
-
+        <Favicons />
         <!-- style sheets -->
 
         <!-- <meta name="generator" content={Astro.generator} /> -->
@@ -53,13 +38,15 @@ const { title = "Lords and Legends" } = Astro.props;
             src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
         ></script>
         <Fonts />
+        <!-- Extra tags a page wants in <head>: <meta name="robots" content="noindex" slot="head" /> -->
+        <slot name="head" />
         <!-- font awesome icons -->
-        <script
+        <!-- <script
             src="https://kit.fontawesome.com/07324e9632.js"
             crossorigin="anonymous"
             is:inline
             defer
-        ></script>
+        ></script> -->
         <!-- <script is:inline src="../lib/nav.js"></script> -->
     </head>
     <style lang="scss">
@@ -161,5 +148,6 @@ const { title = "Lords and Legends" } = Astro.props;
         <Nav />
         <slot />
         <Footer />
+        <SiteDialog />
     </body>
 </html>

@@ -1,8 +1,12 @@
 ---
 import Layout from "../layouts/Layout.astro"; // Import the main layout part
+// import Menu from "../components/Menu/MenuMain.astro"; // Import the menu component
+// import MenuSlider from "../components/Menu/MenuSlider.astro"; // Import the menu slider component
+// import MenuPlatter from "../components/Menu/MenuPlatter.astro"; // Import the menu platter component
+
 // import { Image } from "astro:assets";
 // import headerImg from "../../src/assets/headerImg2.webp";
-import HeaderBottom from "../../src/assets/headerBottom.svg";
+// import HeaderBottom from "../../src/assets/headerBottom.svg";
 
 // Gets the public URL for weekly specials image from Supabase Storage.
 import { getPublicImageUrl } from "../lib/supabaseStorage";
@@ -25,10 +29,10 @@ const imageUrl = getPublicImageUrl(`${folder}/${filename}`);
 // import MenuMain from "../components/Menu/MenuMain.astro";
 // import Special from "../components/Menu/MenuSlider.astro";
 
-const { title = "Home" } = Astro.props;
+// const { title = "Home" } = Astro.props;
 ---
 
-<Layout title={title}>
+<Layout title="Home">
     <main class="home">
         <header class="home-header">
             <h1>
@@ -36,9 +40,9 @@ const { title = "Home" } = Astro.props;
                 Lords and Legends
             </h1>
 
-            <button class="menu-btn">
-                <a href="/menu">View Our Menu</a>
-            </button>
+            <a href="/menu" class="menu-btn">
+                View Our Menu
+            </a>
             <section class="triangle"></section>
             <!-- <HeaderBottom class="home-header-down" /> -->
         </header>
@@ -51,14 +55,6 @@ const { title = "Home" } = Astro.props;
                 for locals and visitors. Today Lords and Legends have also
                 established themselves at Brighton Beach. Proudly bringing
                 people of Brighton the same food and viby environment.
-            </p>
-            <p>
-                If you are looking for a place to enjoy your favourite sports
-                broadcasts and to eat the most delicious food, then you must
-                visit Lords & Legends Sports Cafe which has an extensive menu
-                catering for everyone’s taste. With a great selection of food,
-                refreshing drinks and party atmosphere, there is no better place
-                to dine than in our Lords & Legends Sports Cafe!
             </p>
             <p>
                 If you are looking for a place to enjoy your favourite sports
@@ -133,131 +129,4 @@ const { title = "Home" } = Astro.props;
             </div>
         </aside>
     </main>
-
-    <style lang="scss">
-        .home-header {
-            display: grid;
-            grid-template-rows: 2fr auto;
-            align-items: center;
-            justify-items: center;
-            text-align: center;
-            color: var(--text-color-dark);
-            height: calc(100vh - var(--nav-headerM));
-            margin-top: var(--nav-headerM);
-            background: url("../../src/assets/headerImg.webp") no-repeat center
-                center;
-            // background-size: cover;
-
-            & h1 {
-                grid-area: 1 / 1 / 2 / 2;
-                & span {
-                    font-family: "Noto Sans";
-                }
-                color: var(--text-color-dark);
-                font-size: 4rem;
-                font-family: "Pinyon Script";
-            }
-            & svg {
-                bottom: 0;
-                z-index: 10;
-            }
-        }
-        .menu-btn {
-            grid-area: 1 / 1 / 2 / 2;
-
-            position: relative;
-            bottom: -25%;
-
-            padding: 0.5em 1em;
-            background-color: var(--bg-color);
-            color: var(--txt-color);
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-
-            & a {
-                text-decoration: none;
-                color: var(--txt-color);
-            }
-        }
-
-        .triangle {
-            position: relative;
-            background: #2c3e50;
-            height: 30px;
-        }
-
-        .triangle::before {
-            content: "";
-            position: absolute;
-            bottom: 0;
-            width: 0;
-            height: 0;
-            border-style: solid;
-            border-width: 0 43px 43px 43px;
-            border-color: transparent transparent var(--bg-color) transparent;
-            left: 49%;
-            transform: translateX(-50%);
-        }
-
-        // Specials Sections
-        @layer {
-            .Specials {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: space-evenly;
-                margin: 10%;
-                // width: 100%;
-                // overflow: scroll;
-            }
-            .weeklySpecials-wrapper {
-                max-width: 100%;
-                margin: 0 auto 4rem auto;
-                text-align: center;
-            }
-            .menu-image-container {
-                display: inline-block;
-                cursor: pointer;
-            }
-            .menu-image {
-                // margin: 0.25rem auto;
-                width: 90%;
-                height: auto;
-                border-radius: 12px;
-                border: 2px solid var(--MenuColor);
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-                transition: transform 0.3s ease-in-out;
-                // display: block;
-                position: relative;
-            }
-            .menu-image:hover {
-                // transform: scale(1.01);
-                width: 100%;
-            }
-            .download-btn {
-                display: inline-block;
-                margin-top: 0.5rem;
-                padding: 0.6rem 1.5rem;
-                background-color: var(--bg-color-btn);
-                color: var(--text-color-dark);
-                border-radius: 6px;
-                text-decoration: none;
-                font-size: 0.9rem;
-            }
-            .download-btn:hover {
-                background-color: var(--MenuColor);
-            }
-        }
-
-        // @media (max-width: 768px) {
-        //     .home-header {
-        //         height: calc(100vh - var(--nav-headerM));
-        //         margin-top: calc(var(--nav-headerM) - 0.25em);
-        //         // margin-top: var(--nav-headerM);
-        //     }
-        // }
-    </style>
-
-    <script is:inline></script>
 </Layout>

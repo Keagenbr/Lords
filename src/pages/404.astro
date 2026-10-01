@@ -1,0 +1,15 @@
+---
+// src/pages/404.astro - shown for any address that does not exist.
+import Layout from "../layouts/Layout.astro";
+import ErrorPage from "../components/ErrorPage.astro";
+---
+
+<Layout title="Page not found - Lords & Legends">
+    <!-- Keep error pages out of search results -->
+    <meta name="robots" content="noindex" slot="head" />
+    <ErrorPage
+        code="404"
+        title="Oops, this page is off the menu"
+        message="We couldn't find the page you were looking for. It may have moved, or the link might be mistyped. Let's get you back to the good times."
+    />
+</Layout>

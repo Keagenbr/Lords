@@ -11,13 +11,13 @@
     "url": "git+https://github.com/Keagenbr/Lords.git"
   },
   "author": "KeagenBR",
-  "type": "Website",
   "scripts": {
     "sass": "sass --watch --poll --no-source-map src/styles/scss/index.scss:src/style.css",
     "dev": "astro dev ",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "setup:whatsapp": "node scripts/setup-whatsapp-env.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^7.0.0",
@@ -32,6 +32,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "sass": "^1.105.1",
+    "sharp": "^0.35.4",
     "tailwindcss": "^4.3.3",
     "xlsx": "file:vendor/xlsx-0.20.3.tgz"
   },

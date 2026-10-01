@@ -1,12 +1,21 @@
 ---
-// src/components/MenuSlider.astro
-// Slider for the weekly specials. Same pattern as MenuMain.astro.
+// src/components/Menu/MenuSlider.astro
+/**
+ * MenuSlider.astro
+ * Interactive Alpine.js weekly specials slider with lightbox support.
+ * Data Fallback Hierarchy:
+ *   1. Custom 'specials' array passed via Astro.props.
+ *   2. Native server-side fetch from Supabase Storage ('LordsImg' bucket).
+ *   3. Static fallback array (SPECIALS from src/lib/menuImages.ts).
+ */
+import { supabase } from "../../lib/supabase";
 import { getPublicImageUrl } from "../../lib/supabaseStorage";
 import { SPECIALS, SPECIALS_FOLDER } from "../../lib/menuImages";
 
 export interface Special {
     filename: string;
     label: string;
+    url?: string;
 }
 
 interface Props {
@@ -15,23 +24,59 @@ interface Props {
     title?: string;
 }
 
-// The default specials (and their order) live in src/lib/menuImages.ts so the
-// admin image editor edits exactly what is shown here.
+// Extract props with defaults from existing configuration
 const {
-    specials = SPECIALS,
+    specials,
     folder = SPECIALS_FOLDER,
     title = "Weekly Specials",
 } = Astro.props;
 
-const slides = specials.map((special) => ({
+let activeSpecials: Special[] = [];
+
+// Determine slide data source
+if (specials && specials.length > 0) {
+    // Priority 1: Props explicitly supplied by parent page
+    activeSpecials = specials;
+} else {
+    // Priority 2: Native dynamic fetch from Supabase Storage
+    const { data: storageFiles, error } = await supabase.storage
+        .from("LordsImg")
+        .list(folder);
+
+    if (!error && storageFiles && storageFiles.length > 0) {
+        activeSpecials = storageFiles
+            .filter(
+                (file) => file.name.toLowerCase() !== ".emptyfolderplaceholder",
+            )
+            .map((file) => {
+                const rawName = file.name
+                    .replace(/\.[^/.]+$/, "")
+                    .replace(/[-_]/g, " ");
+                return {
+                    filename: file.name,
+                    label: rawName.charAt(0).toUpperCase() + rawName.slice(1),
+                };
+            });
+    }
+
+    // Priority 3: Fallback to menuImages.ts default array if storage is empty/unreachable
+    if (activeSpecials.length === 0) {
+        activeSpecials = SPECIALS;
+    }
+}
+
+// Generate CDN URLs for each slide item
+const slides = activeSpecials.map((special) => ({
     ...special,
-    url: getPublicImageUrl(`${folder}/${special.filename}`),
+    url: special.url || getPublicImageUrl(`${folder}/${special.filename}`),
 }));
 ---
 
+<!-- Slider Outer Wrapper -->
 <div class="slider-wrapper">
     <h2 class="section-title">{title}</h2>
 
+    <!-- Alpine.js Carousel Container with JSON slides payload -->
     <div
         class="slider-container"
         x-data={`specialsSlider(${JSON.stringify(slides)})`}
@@ -69,11 +114,12 @@ const slides = specials.map((special) => ({
             </template>
         </div>
 
-        <!-- Navigation Arrows -->
+        <!-- Navigation Controls -->
         <button
             class="nav-btn prev-btn"
             @click="prev()"
             :disabled="currentSlide === 0"
+            aria-label="Previous slide"
         >
             &lt;
         </button>
@@ -81,11 +127,12 @@ const slides = specials.map((special) => ({
             class="nav-btn next-btn"
             @click="next()"
             :disabled="currentSlide === slides.length - 1"
+            aria-label="Next slide"
         >
             &gt;
         </button>
 
-        <!-- Slider Lightbox -->
+        <!-- Lightbox Modal -->
         <div
             class="lightbox-overlay"
             x-show="lightboxOpen"
@@ -96,16 +143,20 @@ const slides = specials.map((special) => ({
             x-transition:enter-end="opacity-100"
         >
             <div class="lightbox-content" @click.stop>
-                <button class="close-lightbox-btn" @click="closeLightbox()">
+                <button
+                    class="close-lightbox-btn"
+                    @click="closeLightbox()"
+                    aria-label="Close lightbox"
+                >
                     &times;
                 </button>
                 <img
-                    :src="slides[lightboxIndex].url"
-                    :alt="slides[lightboxIndex].label"
+                    :src="slides[lightboxIndex] ? slides[lightboxIndex].url : ''"
+                    :alt="slides[lightboxIndex] ? slides[lightboxIndex].label : ''"
                 />
                 <a
-                    :href="slides[lightboxIndex].url"
-                    :download="slides[lightboxIndex].filename"
+                    :href="slides[lightboxIndex] ? slides[lightboxIndex].url : '#'"
+                    :download="slides[lightboxIndex] ? slides[lightboxIndex].filename : ''"
                     class="download-btn lightbox-download"
                     @click.stop
                 >
@@ -116,11 +167,8 @@ const slides = specials.map((special) => ({
     </div>
 </div>
 
+<!-- Inline Script: Registers Alpine component before Alpine initializes -->
 <script is:inline>
-    // See the matching comment in MenuMain.astro: is:inline keeps this
-    // a plain classic script (runs in document order) instead of a
-    // bundled, deferred ES module — otherwise it can register
-    // "specialsSlider" too late, after Alpine has already started.
     document.addEventListener("alpine:init", () => {
         Alpine.data("specialsSlider", (slides = []) => ({
             slides,
@@ -147,176 +195,3 @@ const slides = specials.map((special) => ({
         }));
     });
 </script>
-
-<style>
-    .slider-wrapper {
-        max-width: 1000px;
-        margin: 20% auto;
-        text-align: center;
-    }
-
-    .section-title {
-        font-size: 2rem;
-        color: var(--text-color-light);
-        margin-bottom: 1rem;
-        border-bottom: 2px solid var(--MenuColor);
-        display: inline-block;
-        padding-bottom: 0.5rem;
-    }
-
-    .slider-container {
-        position: relative;
-        overflow: hidden;
-        width: 25rem;
-        height: 30rem;
-        max-width: 800px;
-        margin: 0 auto;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .slider-track {
-        display: flex;
-        transition: transform 0.5s ease-in-out;
-        width: 100%;
-    }
-
-    .slide {
-        min-width: 100%;
-        /*height: 500px;*/
-        position: relative;
-        background-color: var(--bg-color);
-    }
-
-    .slide-content {
-        width: 100%;
-        height: 100%;
-        position: relative;
-        cursor: pointer;
-    }
-
-    .slider-image {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .slide-overlay {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-        padding: 2rem 1rem 5rem 1rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-end;
-        height: 100%;
-        z-index: 10;
-    }
-
-    .slide-label {
-        color: var(--text-color-dark);
-        font-size: 1.2rem;
-        font-weight: bold;
-        margin-bottom: 0.5rem;
-    }
-
-    .slide-download {
-        /*display: none;*/
-        /*visibility: hidden;*/
-        color: var(--text-color-dark);
-        background: var(--bg-color-btn);
-        padding: 0.3rem 1rem;
-        border-radius: 20px;
-        text-decoration: none;
-        font-size: 0.8rem;
-        transition: background 0.25s ease-in-out;
-        &:hover {
-            background: var(--MenuColor);
-            color: var(--text-color-light);
-        }
-    }
-
-    .nav-btn {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        background: var(--MenuColor);
-        color: white;
-        border: none;
-        padding: 1rem;
-        cursor: pointer;
-        z-index: 10;
-        font-size: 1.5rem;
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: opacity 0.3s;
-        &:hover {
-            opacity: 0.8;
-        }
-    }
-
-    .nav-btn:disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
-    }
-
-    .prev-btn {
-        left: 10px;
-    }
-    .next-btn {
-        right: 10px;
-    }
-
-    /*Lightbox*/
-    @layer {
-        .lightbox-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-        .lightbox-content {
-            position: relative;
-            max-width: 90%;
-            max-height: 85vh;
-        }
-        .lightbox-content img {
-            max-width: 100%;
-            max-height: 85vh;
-            border-radius: 8px;
-            border: 2px solid white;
-        }
-        .close-lightbox-btn {
-            position: absolute;
-            top: -40px;
-            right: 0;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 2rem;
-            cursor: pointer;
-        }
-        .lightbox-download {
-            position: absolute;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 0.5rem 1.5rem;
-            background: white;
-            color: black;
-            border-radius: 20px;
-            text-decoration: none;
-            font-weight: bold;
-        }
-    }
-</style>

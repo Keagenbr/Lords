@@ -1,12 +1,21 @@
 ---
 // src/components/MenuImageEditor.astro
 //
-// Lets an admin replace the pictures used by the Main Menu slider, the
-// Specials slider and the Platter image. Each picture is uploaded over the
-// existing file in Supabase Storage (through /admin/upload-image), so the
-// public components need no code or database change.
-import { getPublicImageUrl } from "../lib/supabaseStorage";
+// Lets an admin manage the pictures of one editor section (Main Menu pages,
+// Specials slider, Platter menu):
+//
+//   - REPLACE a built-in picture (src/lib/menuImages.ts). It is uploaded over
+//     the existing file, so the public pages need no code / database change.
+//   - ADD new pictures under a name of their choice. They are stored in the
+//     section's own "added" folder (IMAGE_SECTIONS[key].extraFolder) and show
+//     up in the /menu downloads automatically.
+//   - RENAME / DELETE added pictures. (Built-in ones can't be renamed: the
+//     website loads them by name.)
+//
+// Pictures can be dropped onto a card, or several at once into the drop zone
+// at the top. All pop-ups use the site's own dialog (SiteDialog.astro).
 import { IMAGE_SECTIONS, type ImageSectionKey } from "../lib/menuImages";
+import { getSectionImages } from "../lib/menuImageStore";
 
 interface Props {
     section: ImageSectionKey;
@@ -15,19 +24,31 @@ interface Props {
 const { section: sectionKey } = Astro.props;
 const section = IMAGE_SECTIONS[sectionKey];
 
-// Public URLs are built here on the server (no `window` involved).
-const images = section.images.map((image) => ({
-    ...image,
-    url: getPublicImageUrl(`${section.folder}/${image.filename}`),
+// Built-in pictures + the ones added earlier, read from Storage on the server.
+const images = (await getSectionImages(sectionKey)).map((img) => ({
+    filename: img.filename,
+    label: img.label,
+    url: img.url,
+    kind: img.kind,
 }));
 
-const editorConfig = JSON.stringify({ folder: section.folder, images });
+const editorConfig = JSON.stringify({
+    section: sectionKey,
+    folder: section.folder,
+    images,
+});
 ---
 
-<section class="image-editor" x-data="menuImageEditor" data-config={editorConfig}>
+<section
+    class="image-editor"
+    x-data="menuImageEditor"
+    data-config={editorConfig}
+    @dragover.window.prevent
+    @drop.window.prevent
+>
     <div class="editor-header">
         <div class="header-titles">
-            <h1><i class="fa-solid fa-images"></i> {section.title}</h1>
+            <h1 data-icon="images">{section.title}</h1>
             <p class="tagline">{section.blurb}</p>
         </div>
     </div>
@@ -37,10 +58,162 @@ const editorConfig = JSON.stringify({ folder: section.folder, images });
         the old one open may see it for up to 5 minutes.
     </p>
 
+    <slot />
+
+    <!-- ── BULK UPLOAD: drop several pictures at once ─────────────── -->
+    <div class="bulk-uploader">
+        <div
+            class="drop-zone bulk-drop"
+            :class="{ 'is-dragging': bulkDragging }"
+            role="button"
+            tabindex="0"
+            aria-label="Drop pictures here or press to choose files"
+            @click="$refs.bulkInput.click()"
+            @keydown.enter.prevent="$refs.bulkInput.click()"
+            @keydown.space.prevent="$refs.bulkInput.click()"
+            @dragenter.prevent="bulkDepth++; bulkDragging = true"
+            @dragover.prevent="$event.dataTransfer.dropEffect = 'copy'"
+            @dragleave.prevent="if (--bulkDepth <= 0) { bulkDepth = 0; bulkDragging = false }"
+            @drop.prevent.stop="onBulkDrop($event)"
+        >
+            <span class="ico-only big-ico" data-icon="images" aria-hidden="true"></span>
+            <strong class="drag-text">Drag &amp; drop several pictures here</strong>
+            <strong class="tap-text">Tap to choose several pictures</strong>
+            <span class="drop-hint">
+                or <u>click to choose files</u>. A file named like an existing
+                picture (e.g. <code x-text="images[0]?.filename"></code>)
+                replaces it; anything else is added as a new picture. You can
+                change the choice and the name before uploading.
+            </span>
+        </div>
+
+        <input
+            type="file"
+            accept="image/*"
+            multiple
+            class="hidden-input"
+            x-ref="bulkInput"
+            @change="addToQueue([...$event.target.files]); $event.target.value = ''"
+        />
+
+        <!-- Queue of dropped files -->
+        <div class="bulk-queue" x-show="queue.length" x-cloak>
+            <div class="queue-head">
+                <h2
+                    x-text="`${queue.length} ${queue.length === 1 ? 'picture' : 'pictures'} in the list`"
+                ></h2>
+                <div class="queue-actions">
+                    <button
+                        type="button"
+                        class="ghost-btn"
+                        data-icon="trash"
+                        :disabled="bulkBusy"
+                        @click="clearQueue()"
+                    >
+                        Clear
+                    </button>
+                    <button
+                        type="button"
+                        class="replace-btn"
+                        data-icon="refresh"
+                        :disabled="bulkBusy || !readyCount"
+                        @click="uploadQueue()"
+                    >
+                        <span
+                            x-text="bulkBusy
+                                ? `Uploading ${bulkDone + 1} of ${bulkTotal}...`
+                                : `Upload ${readyCount} ${readyCount === 1 ? 'picture' : 'pictures'}`"
+                        ></span>
+                    </button>
+                </div>
+            </div>
+
+            <ul class="queue-list">
+                <template x-for="entry in queue" :key="entry.id">
+                    <li
+                        class="queue-item"
+                        :class="[entry.state, entryProblem(entry) && entry.state === 'ready' ? 'has-problem' : '']"
+                    >
+                        <img :src="entry.preview" :alt="entry.file.name" class="queue-thumb" />
+
+                        <div class="queue-info">
+                            <span class="queue-name" x-text="entry.file.name"></span>
+                            <span class="queue-size" x-text="formatSize(entry.file.size)"></span>
+                            <p
+                                class="queue-message"
+                                x-show="entry.message || (entry.state === 'ready' && entryProblem(entry))"
+                                x-text="entry.state === 'ready' && entryProblem(entry) ? entryProblem(entry) : entry.message"
+                            ></p>
+                        </div>
+
+                        <div class="queue-target">
+                            <label>
+                                <span>Action</span>
+                                <select
+                                    x-model="entry.target"
+                                    :disabled="bulkBusy || entry.state !== 'ready'"
+                                >
+                                    <option value="__new__" :selected="entry.target === '__new__'">
+                                        + Add as a new picture
+                                    </option>
+                                    <template x-for="img in images" :key="img.kind + img.filename">
+                                        <option
+                                            :value="img.filename"
+                                            :selected="entry.target === img.filename"
+                                            x-text="'Replace: ' + img.label + (img.kind === 'extra' ? ' (added)' : '') + (isTaken(img.filename, entry.id) ? ' - already chosen' : '')"
+                                        ></option>
+                                    </template>
+                                </select>
+                            </label>
+                            <label x-show="entry.target === '__new__'">
+                                <span>Name</span>
+                                <input
+                                    type="text"
+                                    x-model="entry.newName"
+                                    :disabled="bulkBusy || entry.state !== 'ready'"
+                                    placeholder="e.g. Wings-Wednesday"
+                                    maxlength="60"
+                                />
+                                <small x-text="'Saved as ' + (safeName(entry.newName) || '...') + '.jpg'"></small>
+                            </label>
+                        </div>
+
+                        <span class="queue-state">
+                            <span
+                                class="ico-only ico-spin"
+                                data-icon="loader"
+                                x-show="entry.state === 'uploading'"
+                                aria-hidden="true"
+                            ></span>
+                            <button
+                                type="button"
+                                class="icon-btn"
+                                data-icon="trash"
+                                aria-label="Remove from list"
+                                x-show="entry.state !== 'uploading'"
+                                :disabled="bulkBusy"
+                                @click="removeFromQueue(entry.id)"
+                            ></button>
+                        </span>
+                    </li>
+                </template>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ── PICTURES: drop onto a card, or use its buttons ──────────── -->
     <div class="image-grid">
-        <template x-for="(img, index) in images" :key="img.filename">
-            <article class="image-card">
+        <template x-for="(img, index) in images" :key="img.kind + img.filename">
+            <article
+                class="image-card"
+                :class="{ 'is-dragging': img.dragging, 'is-extra': img.kind === 'extra' }"
+                @dragenter.prevent="img.depth++; img.dragging = true"
+                @dragover.prevent="$event.dataTransfer.dropEffect = 'copy'"
+                @dragleave.prevent="if (--img.depth <= 0) { img.depth = 0; img.dragging = false }"
+                @drop.prevent.stop="onCardDrop($event, img)"
+            >
                 <div class="image-frame">
+                    <span class="added-badge" x-show="img.kind === 'extra'">Added</span>
                     <img
                         :src="img.url + '?v=' + img.version"
                         :alt="img.label"
@@ -48,11 +221,15 @@ const editorConfig = JSON.stringify({ folder: section.folder, images });
                         @load="img.missing = false"
                     />
                     <div class="image-missing" x-show="img.missing" x-cloak>
-                        <i class="fa-solid fa-image"></i>
+                        <span class="ico-only big-ico" data-icon="image" aria-hidden="true"></span>
                         <span>No picture uploaded yet</span>
                     </div>
+                    <div class="drop-overlay" x-show="img.dragging" x-cloak>
+                        <span class="ico-only big-ico" data-icon="refresh" aria-hidden="true"></span>
+                        <span>Drop to replace</span>
+                    </div>
                     <div class="busy" x-show="img.busy" x-cloak>
-                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                        <span class="ico-only ico-spin big-ico" data-icon="loader" aria-hidden="true"></span>
                     </div>
                 </div>
 
@@ -65,20 +242,46 @@ const editorConfig = JSON.stringify({ folder: section.folder, images });
                     <button
                         type="button"
                         class="replace-btn"
-                        :disabled="img.busy"
+                        data-icon="refresh"
+                        :disabled="img.busy || bulkBusy"
                         @click="pick(index)"
                     >
-                        <i class="fa-solid fa-arrows-rotate"></i> Replace picture
+                        Replace picture
                     </button>
                     <a
                         class="open-link"
+                        data-icon="open"
                         :href="img.url + '?v=' + img.version"
                         target="_blank"
                         rel="noopener"
                     >
-                        <i class="fa-solid fa-up-right-from-square"></i> Open
+                        Open
                     </a>
                 </div>
+
+                <!-- Added pictures only: rename / delete -->
+                <div class="extra-actions" x-show="img.kind === 'extra'">
+                    <button
+                        type="button"
+                        class="ghost-btn"
+                        data-icon="edit"
+                        :disabled="img.busy || bulkBusy"
+                        @click="renameImage(img)"
+                    >
+                        Rename
+                    </button>
+                    <button
+                        type="button"
+                        class="ghost-btn is-danger"
+                        data-icon="trash"
+                        :disabled="img.busy || bulkBusy"
+                        @click="deleteImage(img)"
+                    >
+                        Delete
+                    </button>
+                </div>
+
+                <p class="card-drop-hint">or drag a picture onto this card</p>
 
                 <p
                     class="card-message"
@@ -90,6 +293,23 @@ const editorConfig = JSON.stringify({ folder: section.folder, images });
                 </p>
             </article>
         </template>
+
+        <!-- Add-new tile -->
+        <button
+            type="button"
+            class="add-card"
+            :class="{ 'is-dragging': addDragging }"
+            :disabled="bulkBusy"
+            @click="$refs.bulkInput.click()"
+            @dragenter.prevent="addDepth++; addDragging = true"
+            @dragover.prevent="$event.dataTransfer.dropEffect = 'copy'"
+            @dragleave.prevent="if (--addDepth <= 0) { addDepth = 0; addDragging = false }"
+            @drop.prevent.stop="onAddDrop($event)"
+        >
+            <span class="ico-only big-ico" data-icon="plus" aria-hidden="true"></span>
+            <strong>Add a new picture</strong>
+            <span>Drop it here or click to choose</span>
+        </button>
     </div>
 
     <input
@@ -103,27 +323,211 @@ const editorConfig = JSON.stringify({ folder: section.folder, images });
 
 <script is:inline>
     document.addEventListener("alpine:init", () => {
+        // The host (Vercel) rejects uploads over 4.5 MB, so stop at 4 MB.
+        const MAX_BYTES = 4 * 1024 * 1024;
+        const NEW = "__new__";
+
+        // "Thursday Special-1 (copy).JPG" -> "thursdayspecial1copy"
+        const norm = (name) =>
+            String(name || "")
+                .toLowerCase()
+                .replace(/\.[a-z0-9]+$/, "")
+                .replace(/[^a-z0-9]/g, "");
+
+        // Same rules as safeImageName() in src/lib/menuImages.ts.
+        const safeName = (name) =>
+            String(name || "")
+                .replace(/\.[a-z0-9]{2,5}$/i, "")
+                .normalize("NFKD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-zA-Z0-9_-]+/g, "-")
+                .replace(/-+/g, "-")
+                .replace(/^-|-$/g, "")
+                .slice(0, 60);
+
+        const dialog = () => window.siteDialog;
+
         Alpine.data("menuImageEditor", () => ({
+            section: "",
             folder: "",
             images: [],
             pickIndex: null,
 
+            // Bulk uploader state
+            queue: [],
+            bulkDragging: false,
+            bulkDepth: 0,
+            addDragging: false,
+            addDepth: 0,
+            bulkBusy: false,
+            bulkDone: 0,
+            bulkTotal: 0,
+            _nextId: 1,
+
             init() {
-                let config = { folder: "", images: [] };
+                let config = { section: "", folder: "", images: [] };
                 try {
                     config = JSON.parse(this.$el.dataset.config || "{}");
                 } catch (err) {
                     console.error("Image editor config could not be read:", err);
                 }
+                this.section = config.section;
                 this.folder = config.folder;
-                this.images = (config.images || []).map((img) => ({
+                this.images = (config.images || []).map((img) => this.decorate(img));
+            },
+
+            decorate(img) {
+                return {
                     ...img,
                     version: Date.now(), // cache-buster for the admin preview
                     busy: false,
                     missing: false,
                     message: "",
                     messageType: "",
-                }));
+                    dragging: false,
+                    depth: 0,
+                };
+            },
+
+            // ── Shared helpers ────────────────────────────────────
+            safeName,
+
+            formatSize(n) {
+                return n >= 1048576
+                    ? (n / 1048576).toFixed(1) + " MB"
+                    : Math.round(n / 1024) + " KB";
+            },
+
+            // Returns an error message, or "" when the file is fine.
+            validate(file) {
+                if (!file || !file.type.startsWith("image/")) {
+                    return "This is not an image file.";
+                }
+                if (file.size > MAX_BYTES) {
+                    return "Image must be under 4MB. Shrink it first (e.g. at squoosh.app) and try again.";
+                }
+                return "";
+            },
+
+            imageFiles(event) {
+                return [...(event.dataTransfer?.files || [])];
+            },
+
+            errorFrom(res, body) {
+                if (res.status === 401 || res.status === 403) {
+                    return "Your admin session has expired. Please sign in again.";
+                }
+                if (res.status === 413) return "Image is too large (max 4MB).";
+                return body?.error || `Upload failed (${res.status})`;
+            },
+
+            async post(form) {
+                const res = await fetch("/admin/upload-image", {
+                    method: "POST",
+                    body: form,
+                    credentials: "same-origin",
+                });
+                const body = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const err = new Error(this.errorFrom(res, body));
+                    err.code = body?.code;
+                    throw err;
+                }
+                return body;
+            },
+
+            async filesApi(payload) {
+                const res = await fetch("/admin/menu-files", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ section: this.section, ...payload }),
+                    credentials: "same-origin",
+                });
+                const body = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(this.errorFrom(res, body));
+                return body;
+            },
+
+            // Upload `file` over an existing picture (built-in or added).
+            async uploadOver(img, file) {
+                const form = new FormData();
+                form.append("file", file);
+                if (img.kind === "extra") {
+                    form.append("mode", "extra");
+                    form.append("section", this.section);
+                    form.append("filename", img.filename);
+                } else {
+                    form.append("mode", "replace");
+                    form.append("folder", this.folder);
+                    form.append("filename", img.filename);
+                }
+                const body = await this.post(form);
+                img.version = Date.now();
+                img.missing = false;
+                return this.optimizationNote(body.optimization);
+            },
+
+            // Upload `file` as a brand-new picture called `name`.
+            async uploadNew(file, name) {
+                const form = new FormData();
+                form.append("file", file);
+                form.append("mode", "extra");
+                form.append("section", this.section);
+                form.append("name", name);
+                const body = await this.post(form);
+                const img = this.decorate({
+                    filename: body.filename,
+                    label: this.labelFrom(body.filename),
+                    url: body.url,
+                    kind: "extra",
+                });
+                this.images.push(img);
+                return { img, note: this.optimizationNote(body.optimization) };
+            },
+
+            labelFrom(filename) {
+                return String(filename)
+                    .replace(/\.[a-z0-9]+$/i, "")
+                    .replace(/[-_]+/g, " ")
+                    .replace(/([a-z])([A-Z])/g, "$1 $2")
+                    .replace(/\s+/g, " ")
+                    .trim()
+                    .replace(/\b\w/g, (c) => c.toUpperCase());
+            },
+
+            // ── One card at a time ────────────────────────────────
+            async replaceOne(img, file) {
+                const problem = this.validate(file);
+                if (problem) return this.setMessage(img, "error", problem);
+                const ok = await dialog().confirm({
+                    title: `Replace "${img.label}"?`,
+                    message: "The current picture will be overwritten.",
+                    items: [{ label: file.name, detail: `${this.formatSize(file.size)}  →  ${img.filename}` }],
+                    confirmText: "Replace picture",
+                    tone: "warning",
+                });
+                if (!ok) return;
+
+                img.busy = true;
+                this.setMessage(img, "", "");
+                try {
+                    const note = await this.uploadOver(img, file);
+                    this.setMessage(img, note.failed ? "warning" : "success", "Picture replaced. " + note.text);
+                    if (note.failed) {
+                        await dialog().alert({
+                            title: "Optimisation failed",
+                            message: `${img.label}: ${note.text}`,
+                            tone: "warning",
+                        });
+                    } else {
+                        dialog().toast(`${img.label} replaced. ${note.text}`, "success");
+                    }
+                } catch (err) {
+                    this.setMessage(img, "error", err.message);
+                    dialog().toast(`${img.label}: ${err.message}`, "error", 7000);
+                } finally {
+                    img.busy = false;
+                }
             },
 
             pick(index) {
@@ -137,52 +541,287 @@ const editorConfig = JSON.stringify({ folder: section.folder, images });
                 const img = this.images[this.pickIndex];
                 input.value = "";
                 if (!file || !img) return;
+                await this.replaceOne(img, file);
+            },
 
-                if (!file.type.startsWith("image/")) {
-                    return this.setMessage(img, "error", "Please choose an image file.");
-                }
-                if (file.size > 5 * 1024 * 1024) {
-                    return this.setMessage(img, "error", "Image must be under 5MB.");
-                }
-                if (
-                    !confirm(
-                        `Replace "${img.label}" with "${file.name}"?\nThe current picture will be overwritten.`,
-                    )
-                ) {
+            async onCardDrop(event, img) {
+                img.dragging = false;
+                img.depth = 0;
+                if (img.busy || this.bulkBusy) return;
+                const files = this.imageFiles(event);
+                if (!files.length) return;
+                if (files.length > 1) {
+                    // Several files on one card: send them to the bulk list.
+                    this.addToQueue(files);
+                    this.scrollToQueue();
                     return;
                 }
+                await this.replaceOne(img, files[0]);
+            },
+
+            onAddDrop(event) {
+                this.addDragging = false;
+                this.addDepth = 0;
+                if (this.bulkBusy) return;
+                this.addToQueue(this.imageFiles(event), { forceNew: true });
+                this.scrollToQueue();
+            },
+
+            scrollToQueue() {
+                this.$nextTick(() =>
+                    this.$el
+                        .querySelector(".bulk-uploader")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                );
+            },
+
+            // ── Rename / delete (added pictures only) ─────────────
+            async renameImage(img) {
+                const current = img.filename.replace(/\.[a-z0-9]+$/i, "");
+                const value = await dialog().prompt({
+                    title: `Rename "${img.label}"`,
+                    message: "Letters, numbers, - and _ only. The file type stays the same.",
+                    value: current,
+                    placeholder: "e.g. Wings-Wednesday",
+                    confirmText: "Rename",
+                    hint: "Anyone with the old link will need the new one.",
+                });
+                if (value === null) return;
+                const name = safeName(value);
+                if (!name) {
+                    return dialog().alert({ title: "Name needed", message: "Please enter a name.", tone: "warning" });
+                }
+                if (name === current) return;
 
                 img.busy = true;
-                this.setMessage(img, "", "");
                 try {
-                    const form = new FormData();
-                    form.append("file", file);
-                    form.append("mode", "replace");
-                    form.append("folder", this.folder);
-                    form.append("filename", img.filename);
-
-                    const res = await fetch("/admin/upload-image", {
-                        method: "POST",
-                        body: form,
-                        credentials: "same-origin",
-                    });
-                    const body = await res.json().catch(() => ({}));
-                    if (!res.ok) {
-                        throw new Error(
-                            res.status === 401 || res.status === 403
-                                ? "Your admin session has expired. Please sign in again."
-                                : body.error || `Upload failed (${res.status})`,
-                        );
-                    }
-
+                    const body = await this.filesApi({ action: "rename", filename: img.filename, name });
+                    img.filename = body.filename;
+                    img.label = body.label;
+                    img.url = body.url;
                     img.version = Date.now();
-                    img.missing = false;
-                    this.setMessage(img, "success", "Picture replaced.");
+                    this.setMessage(img, "success", "Renamed.");
+                    dialog().toast(`Renamed to ${body.filename}`, "success");
                 } catch (err) {
-                    this.setMessage(img, "error", err.message);
+                    await dialog().alert({ title: "Could not rename", message: err.message, tone: "error" });
                 } finally {
                     img.busy = false;
                 }
+            },
+
+            async deleteImage(img) {
+                const ok = await dialog().confirm({
+                    title: `Delete "${img.label}"?`,
+                    message: "The picture is removed from the website and can't be recovered.",
+                    items: [{ label: img.filename }],
+                    confirmText: "Delete picture",
+                    tone: "danger",
+                });
+                if (!ok) return;
+                img.busy = true;
+                try {
+                    await this.filesApi({ action: "delete", filename: img.filename });
+                    this.images = this.images.filter((i) => i !== img);
+                    dialog().toast(`${img.label} deleted.`, "success");
+                } catch (err) {
+                    img.busy = false;
+                    await dialog().alert({ title: "Could not delete", message: err.message, tone: "error" });
+                }
+            },
+
+            // ── Bulk uploader ─────────────────────────────────────
+            onBulkDrop(event) {
+                this.bulkDragging = false;
+                this.bulkDepth = 0;
+                if (this.bulkBusy) return;
+                this.addToQueue(this.imageFiles(event));
+            },
+
+            // Best matching existing picture for a file name (longest name
+            // match that is not already taken), or NEW if nothing fits.
+            guessTarget(file) {
+                const name = norm(file.name);
+                const free = this.images.filter((img) => !this.isTaken(img.filename));
+                let best = NEW;
+                let bestLen = 0;
+                free.forEach((img) => {
+                    [norm(img.filename), norm(img.label)].forEach((key) => {
+                        if (key && name.startsWith(key) && key.length > bestLen) {
+                            best = img.filename;
+                            bestLen = key.length;
+                        }
+                    });
+                });
+                return best;
+            },
+
+            isTaken(filename, exceptId = null) {
+                return this.queue.some(
+                    (e) => e.id !== exceptId && e.target === filename && e.state === "ready",
+                );
+            },
+
+            // A reason this entry can't be uploaded yet, or "".
+            entryProblem(entry) {
+                if (entry.state !== "ready") return "";
+                if (entry.target !== NEW) {
+                    return this.isTaken(entry.target, entry.id)
+                        ? "Another file in the list replaces the same picture."
+                        : "";
+                }
+                const name = safeName(entry.newName);
+                if (!name) return "Give the new picture a name.";
+                const filename = `${name}.jpg`.toLowerCase();
+                if (this.images.some((img) => img.filename.toLowerCase() === filename)) {
+                    return `"${name}.jpg" already exists. Choose another name, or pick it under Action to replace it.`;
+                }
+                const dupe = this.queue.some(
+                    (e) =>
+                        e.id !== entry.id &&
+                        e.state === "ready" &&
+                        e.target === NEW &&
+                        safeName(e.newName).toLowerCase() === name.toLowerCase(),
+                );
+                return dupe ? "Another file in the list uses the same name." : "";
+            },
+
+            addToQueue(files, { forceNew = false } = {}) {
+                files.forEach((file) => {
+                    const problem = this.validate(file);
+                    const entry = {
+                        id: this._nextId++,
+                        file,
+                        preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : "",
+                        target: NEW,
+                        newName: safeName(file.name),
+                        state: problem ? "error" : "ready",
+                        message: problem,
+                    };
+                    if (!problem && !forceNew) entry.target = this.guessTarget(file);
+                    this.queue.push(entry);
+                });
+            },
+
+            removeFromQueue(id) {
+                const entry = this.queue.find((e) => e.id === id);
+                if (entry?.preview) URL.revokeObjectURL(entry.preview);
+                this.queue = this.queue.filter((e) => e.id !== id);
+            },
+
+            clearQueue() {
+                this.queue.forEach((e) => e.preview && URL.revokeObjectURL(e.preview));
+                this.queue = [];
+            },
+
+            get readyEntries() {
+                return this.queue.filter((e) => e.state === "ready" && !this.entryProblem(e));
+            },
+
+            get readyCount() {
+                return this.readyEntries.length;
+            },
+
+            async uploadQueue() {
+                const ready = this.readyEntries;
+                if (!ready.length) return;
+
+                const items = ready.map((e) => {
+                    if (e.target === NEW) {
+                        return { label: `Add: ${safeName(e.newName)}.jpg`, detail: e.file.name };
+                    }
+                    const img = this.images.find((i) => i.filename === e.target);
+                    return { label: `Replace: ${img?.label}`, detail: `${e.file.name}  →  ${img?.filename}` };
+                });
+                const replacing = ready.filter((e) => e.target !== NEW).length;
+                const ok = await dialog().confirm({
+                    title: `Upload ${ready.length} ${ready.length === 1 ? "picture" : "pictures"}?`,
+                    message: replacing
+                        ? `${replacing} current ${replacing === 1 ? "picture" : "pictures"} will be overwritten.`
+                        : "These will be added as new pictures.",
+                    items,
+                    confirmText: "Upload",
+                    tone: replacing ? "warning" : "info",
+                });
+                if (!ok) return;
+
+                this.bulkBusy = true;
+                this.bulkDone = 0;
+                this.bulkTotal = ready.length;
+                const failedOptimisation = [];
+
+                // One at a time: keeps each request under the host's size
+                // limit and gives clear per-file feedback.
+                for (const entry of ready) {
+                    entry.state = "uploading";
+                    entry.message = "";
+                    let img = null;
+                    try {
+                        let note;
+                        if (entry.target === NEW) {
+                            ({ img, note } = await this.uploadNew(entry.file, safeName(entry.newName)));
+                        } else {
+                            img = this.images.find((i) => i.filename === entry.target);
+                            img.busy = true;
+                            note = await this.uploadOver(img, entry.file);
+                        }
+                        entry.state = note.failed ? "warning" : "done";
+                        entry.message = (entry.target === NEW ? `Added as ${img.filename}. ` : "Uploaded. ") + note.text;
+                        this.setMessage(img, note.failed ? "warning" : "success", entry.message);
+                        if (note.failed) failedOptimisation.push(img.label);
+                    } catch (err) {
+                        entry.state = err.code === "name_taken" ? "ready" : "error";
+                        entry.message = err.message;
+                        if (img) this.setMessage(img, "error", err.message);
+                    } finally {
+                        if (img) img.busy = false;
+                        this.bulkDone++;
+                    }
+                }
+
+                this.bulkBusy = false;
+                const errors = ready.filter((e) => e.state === "error" || (e.state === "ready" && e.message));
+                const uploaded = ready.length - errors.length;
+
+                if (errors.length || failedOptimisation.length) {
+                    const items = [
+                        ...errors.map((e) => ({ label: e.file.name, detail: e.message })),
+                        ...failedOptimisation.map((label) => ({
+                            label,
+                            detail: "Optimisation failed, the original file was uploaded instead.",
+                        })),
+                    ];
+                    await dialog().alert({
+                        title: errors.length ? "Some uploads need attention" : "Optimisation failed",
+                        message: `${uploaded} of ${ready.length} uploaded.`,
+                        items,
+                        tone: errors.length ? "error" : "warning",
+                    });
+                } else {
+                    dialog().toast(
+                        `${uploaded} ${uploaded === 1 ? "picture" : "pictures"} uploaded.`,
+                        "success",
+                    );
+                }
+            },
+
+            // Turns the server's optimisation report into a short sentence.
+            // status "failed" means the ORIGINAL was uploaded untouched.
+            optimizationNote(o) {
+                if (!o) return { failed: false, text: "" };
+                const size = (n) => this.formatSize(n);
+                if (o.status === "optimized") {
+                    return {
+                        failed: false,
+                        text: `Optimised: ${size(o.originalBytes)} → ${size(o.finalBytes)}.`,
+                    };
+                }
+                if (o.status === "failed") {
+                    return {
+                        failed: true,
+                        text: `Optimisation failed, so the original (${size(o.originalBytes)}) was uploaded instead.`,
+                    };
+                }
+                return { failed: false, text: o.message || "" };
             },
 
             setMessage(img, type, message) {
@@ -337,14 +976,33 @@ const editorConfig = JSON.stringify({ folder: section.folder, images });
             background: #fff5f5;
             color: #742a2a;
         }
+        &.warning {
+            background: #fffaf0;
+            color: #744210;
+            border: 1px solid #f6ad55;
+        }
     }
 
     .hidden-input {
         display: none;
     }
 
+    .header-titles h1[data-icon] {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .header-titles h1,
     .replace-btn,
     .open-link {
+        --icon-gap: 0;
+    }
+    .big-ico {
+        --icon-size: 2rem;
+    }
+    .replace-btn,
+    .open-link {
+        gap: 0.4rem;
         min-height: 44px;
         display: inline-flex;
         align-items: center;
@@ -388,6 +1046,440 @@ const editorConfig = JSON.stringify({ folder: section.folder, images });
         /* One wide picture when the section has just one (Platter) */
         .image-grid:has(> .image-card:only-of-type) {
             grid-template-columns: minmax(0, 1fr);
+        }
+    }
+    /* ── Drag & drop ─────────────────────────────────────────── */
+    .bulk-uploader {
+        margin-bottom: 2rem;
+    }
+
+    .drop-zone {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 2rem 1.5rem;
+        text-align: center;
+        background: #fff;
+        border: 2px dashed var(--nav-bg);
+        border-radius: 12px;
+        color: var(--bg-color-btn);
+        cursor: pointer;
+        transition:
+            background-color 0.2s ease,
+            border-color 0.2s ease,
+            transform 0.15s ease;
+
+        strong {
+            font-size: 1.05rem;
+        }
+
+        &:hover,
+        &:focus-visible {
+            border-color: var(--bg-color-btn);
+            outline: none;
+        }
+
+        &.is-dragging {
+            background: var(--bg-color-light);
+            border-color: var(--MenuColor);
+            transform: scale(1.01);
+        }
+    }
+
+    .drop-hint {
+        max-width: 46ch;
+        font-size: 0.85rem;
+        color: var(--txt-color);
+        opacity: 0.8;
+
+        code {
+            font-size: 0.8rem;
+        }
+    }
+
+    .bulk-queue {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #fff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+    }
+
+    .queue-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+
+        h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--bg-color-btn);
+        }
+    }
+
+    .queue-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .ghost-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-height: 44px;
+        padding: 0.5rem 0.9rem;
+        background: transparent;
+        color: var(--bg-color-btn);
+        border: 2px solid var(--nav-bg);
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+        --icon-gap: 0;
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    }
+
+    .queue-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .queue-item {
+        display: grid;
+        grid-template-columns: 56px minmax(0, 1fr) minmax(0, 220px) auto;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem;
+        border: 1px solid var(--nav-bg);
+        border-left-width: 4px;
+        border-radius: 8px;
+
+        &.ready {
+            border-left-color: var(--nav-bg);
+        }
+        &.uploading {
+            border-left-color: var(--MenuColor);
+        }
+        &.done {
+            border-left-color: #48bb78;
+        }
+        &.warning {
+            border-left-color: #f6ad55;
+        }
+        &.error {
+            border-left-color: #e53e3e;
+        }
+    }
+
+    .queue-thumb {
+        width: 56px;
+        height: 56px;
+        object-fit: cover;
+        border-radius: 6px;
+        background: var(--bg-color-light);
+    }
+
+    .queue-info {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .queue-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .queue-size {
+        font-size: 0.75rem;
+        opacity: 0.7;
+    }
+
+    .queue-message {
+        margin: 0.2rem 0 0;
+        font-size: 0.78rem;
+    }
+    .queue-item.error .queue-message {
+        color: #742a2a;
+    }
+    .queue-item.warning .queue-message {
+        color: #744210;
+    }
+    .queue-item.done .queue-message {
+        color: #22543d;
+    }
+
+    .queue-target {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+
+        select {
+            width: 100%;
+            min-height: 40px;
+            padding: 0.4rem;
+            border: 2px solid var(--nav-bg);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            background: #fff;
+        }
+    }
+
+    .queue-state {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        color: var(--bg-color-btn);
+    }
+
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        border-radius: 8px;
+        color: #c53030;
+        cursor: pointer;
+        --icon-gap: 0;
+
+        &:hover {
+            background: #fff5f5;
+        }
+        &:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+    }
+
+    .image-card {
+        transition:
+            border-color 0.2s ease,
+            box-shadow 0.2s ease;
+
+        &.is-dragging {
+            border-color: var(--MenuColor);
+            box-shadow: 0 0 0 3px var(--MenuColor);
+        }
+    }
+
+    .drop-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        background: var(--MenuColorA);
+        color: var(--text-color);
+        font-weight: 600;
+        font-size: 0.9rem;
+        pointer-events: none;
+    }
+
+    .card-drop-hint {
+        margin: -0.25rem 0 0;
+        font-size: 0.75rem;
+        opacity: 0.6;
+        text-align: center;
+    }
+
+    /* Touch screens can't drag files, so hide the drag hints there. */
+    .tap-text {
+        display: none;
+    }
+    @media (hover: none) {
+        .card-drop-hint,
+        .drag-text {
+            display: none;
+        }
+        .tap-text {
+            display: block;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .drop-zone {
+            padding: 1.5rem 1rem;
+        }
+
+        .queue-head {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .queue-actions {
+            justify-content: stretch;
+
+            button {
+                flex: 1;
+                justify-content: center;
+            }
+        }
+
+        .queue-item {
+            grid-template-columns: 48px minmax(0, 1fr) auto;
+            grid-template-areas:
+                "thumb info state"
+                "target target target";
+        }
+
+        .queue-thumb {
+            grid-area: thumb;
+            width: 48px;
+            height: 48px;
+        }
+        .queue-info {
+            grid-area: info;
+        }
+        .queue-target {
+            grid-area: target;
+        }
+        .queue-state {
+            grid-area: state;
+        }
+    }
+
+    /* ── Added pictures / rename / new-name fields ─────────────── */
+    .image-frame .added-badge {
+        position: absolute;
+        top: 0.5rem;
+        left: 0.5rem;
+        z-index: 2;
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        background: var(--MenuColor);
+        color: var(--text-color);
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .extra-actions {
+        display: flex;
+        gap: 0.5rem;
+
+        .ghost-btn {
+            flex: 1;
+            justify-content: center;
+        }
+    }
+
+    .ghost-btn.is-danger {
+        color: #c53030;
+
+        &:hover:not(:disabled) {
+            background: #fff5f5;
+        }
+    }
+
+    .add-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 260px;
+        padding: 1rem;
+        border: 2px dashed var(--nav-bg);
+        border-radius: 12px;
+        background: transparent;
+        color: var(--bg-color-btn);
+        font: inherit;
+        text-align: center;
+        cursor: pointer;
+        transition:
+            background-color 0.2s ease,
+            border-color 0.2s ease;
+
+        span:not(.big-ico) {
+            font-size: 0.8rem;
+            opacity: 0.75;
+        }
+
+        &:hover,
+        &.is-dragging {
+            background: #fff;
+            border-color: var(--MenuColor);
+        }
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    }
+
+    .queue-target {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 40px;
+            padding: 0.4rem 0.5rem;
+            border: 2px solid var(--nav-bg);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            background: #fff;
+        }
+
+        small {
+            font-weight: 400;
+            opacity: 0.7;
+            word-break: break-all;
+        }
+    }
+
+    .queue-item.has-problem {
+        border-left-color: #dd6b20;
+
+        .queue-message {
+            color: #9c4221;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .add-card {
+            min-height: 180px;
+        }
+
+        .extra-actions {
+            flex-direction: column;
         }
     }
 </style>

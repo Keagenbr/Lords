@@ -1,0 +1,497 @@
+---
+// src/components/SiteDialog.astro
+//
+// Site-styled replacement for the browser's confirm() / alert() / prompt()
+// pop-ups ("localhost:4321 says ..."), plus small toast notifications.
+// The browser's own pop-ups can't be styled, so this draws our own using the
+// site's colours. Included once in Layout.astro, usable from any script:
+//
+//   if (await siteDialog.confirm({ title: "Replace?", message: "...", confirmText: "Replace" })) { ... }
+//   await siteDialog.alert({ title: "Done", message: "...", tone: "success" });
+//   const name = await siteDialog.prompt({ title: "Rename", value: "old-name" }); // null = cancelled
+//   siteDialog.toast("Picture replaced", "success");
+//
+// Every call returns a Promise. Calls made while a dialog is open wait their
+// turn. It uses the native <dialog> element, so Esc, focus trapping and the
+// backdrop work out of the box.
+---
+
+<div x-data="siteDialogUi" class="site-dialog-root">
+    <dialog
+        class="site-dialog"
+        :class="'tone-' + current.tone"
+        x-ref="dialog"
+        @close="onClose()"
+        @click="if ($event.target === $refs.dialog) cancel()"
+        aria-labelledby="site-dialog-title"
+    >
+        <form method="dialog" class="site-dialog-box" @submit.prevent="ok()">
+            <div class="site-dialog-head">
+                <span
+                    class="site-dialog-icon ico-only"
+                    :data-icon="current.icon"
+                    aria-hidden="true"
+                ></span>
+                <h2 id="site-dialog-title" x-text="current.title"></h2>
+            </div>
+
+            <p
+                class="site-dialog-message"
+                x-show="current.message"
+                x-text="current.message"
+            ></p>
+
+            <ul class="site-dialog-items" x-show="current.items.length">
+                <template x-for="(item, i) in current.items" :key="i">
+                    <li>
+                        <strong x-text="item.label ?? item"></strong>
+                        <span x-show="item.detail" x-text="item.detail"></span>
+                    </li>
+                </template>
+            </ul>
+
+            <div class="site-dialog-field" x-show="current.type === 'prompt'">
+                <input
+                    type="text"
+                    x-ref="input"
+                    x-model="current.value"
+                    :placeholder="current.placeholder"
+                    autocomplete="off"
+                />
+                <small x-show="current.hint" x-text="current.hint"></small>
+            </div>
+
+            <div class="site-dialog-actions">
+                <button
+                    type="button"
+                    class="site-dialog-btn is-secondary"
+                    x-show="current.type !== 'alert'"
+                    @click="cancel()"
+                    x-text="current.cancelText"
+                ></button>
+                <button
+                    type="submit"
+                    class="site-dialog-btn is-primary"
+                    x-ref="okBtn"
+                    x-text="current.confirmText"
+                ></button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Toasts -->
+    <div class="site-toasts" aria-live="polite" aria-atomic="false">
+        <template x-for="t in toasts" :key="t.id">
+            <div
+                class="site-toast"
+                :class="'tone-' + t.tone"
+                x-transition.opacity.duration.200ms
+                role="status"
+            >
+                <span class="ico-only" :data-icon="iconFor(t.tone)" aria-hidden="true"></span>
+                <span class="site-toast-text" x-text="t.message"></span>
+                <button
+                    type="button"
+                    class="site-toast-close"
+                    aria-label="Dismiss"
+                    @click="dismiss(t.id)"
+                >
+                    &times;
+                </button>
+            </div>
+        </template>
+    </div>
+</div>
+
+<script is:inline>
+    (() => {
+        const ICONS = {
+            info: "alert",
+            warning: "alert",
+            error: "alert",
+            danger: "trash",
+            success: "save",
+        };
+        const BLANK = {
+            type: "alert",
+            tone: "info",
+            icon: "alert",
+            title: "",
+            message: "",
+            items: [],
+            value: "",
+            placeholder: "",
+            hint: "",
+            confirmText: "OK",
+            cancelText: "Cancel",
+        };
+
+        let ui = null; // the Alpine component, once mounted
+        const waiting = []; // calls made before Alpine started / while busy
+
+        function open(type, opts) {
+            return new Promise((resolve) => {
+                waiting.push({ type, opts: opts || {}, resolve });
+                ui?.next();
+            });
+        }
+
+        // Public API. Falls back to the browser pop-ups if Alpine never loads.
+        window.siteDialog = {
+            confirm: (opts) =>
+                window.Alpine ? open("confirm", opts) : Promise.resolve(confirm(opts?.message || opts?.title || "")),
+            alert: (opts) =>
+                window.Alpine ? open("alert", opts) : Promise.resolve(alert(opts?.message || opts?.title || "")),
+            prompt: (opts) =>
+                window.Alpine ? open("prompt", opts) : Promise.resolve(prompt(opts?.message || opts?.title || "", opts?.value || "")),
+            toast: (message, tone = "success", ms = 4500) => ui?.toast(message, tone, ms),
+        };
+
+        document.addEventListener("alpine:init", () => {
+            Alpine.data("siteDialogUi", () => ({
+                current: { ...BLANK },
+                active: null,
+                result: undefined,
+                toasts: [],
+                _id: 1,
+
+                init() {
+                    ui = this;
+                    this.next();
+                },
+
+                iconFor(tone) {
+                    return ICONS[tone] || "alert";
+                },
+
+                next() {
+                    if (this.active || !waiting.length) return;
+                    const { type, opts, resolve } = waiting.shift();
+                    const tone = opts.tone || (type === "confirm" ? "warning" : "info");
+                    this.active = { type, resolve };
+                    this.result = type === "confirm" ? false : type === "prompt" ? null : undefined;
+                    this.current = {
+                        ...BLANK,
+                        ...opts,
+                        type,
+                        tone,
+                        icon: opts.icon || ICONS[tone] || "alert",
+                        title:
+                            opts.title ||
+                            (type === "confirm" ? "Are you sure?" : type === "prompt" ? "Enter a value" : "Notice"),
+                        items: Array.isArray(opts.items) ? opts.items : [],
+                        value: opts.value ?? "",
+                        confirmText: opts.confirmText || (type === "confirm" ? "Continue" : type === "prompt" ? "Save" : "OK"),
+                        cancelText: opts.cancelText || "Cancel",
+                    };
+                    this.$nextTick(() => {
+                        this.$refs.dialog.showModal();
+                        if (type === "prompt") {
+                            this.$refs.input.focus();
+                            this.$refs.input.select();
+                        } else {
+                            this.$refs.okBtn.focus();
+                        }
+                    });
+                },
+
+                ok() {
+                    if (!this.active) return;
+                    const { type } = this.active;
+                    this.result = type === "confirm" ? true : type === "prompt" ? String(this.current.value) : undefined;
+                    this.$refs.dialog.close();
+                },
+
+                cancel() {
+                    if (!this.active) return;
+                    // alert(): clicking outside just closes it
+                    this.$refs.dialog.close();
+                },
+
+                // Fires for OK, Cancel, Esc and backdrop clicks.
+                onClose() {
+                    const done = this.active;
+                    this.active = null;
+                    done?.resolve(this.result);
+                    setTimeout(() => this.next(), 120);
+                },
+
+                toast(message, tone = "success", ms = 4500) {
+                    const id = this._id++;
+                    this.toasts.push({ id, message, tone });
+                    if (ms > 0) setTimeout(() => this.dismiss(id), ms);
+                    return id;
+                },
+
+                dismiss(id) {
+                    this.toasts = this.toasts.filter((t) => t.id !== id);
+                },
+            }));
+        });
+    })();
+</script>
+
+<style lang="scss">
+    .site-dialog {
+        width: min(480px, calc(100vw - 2rem));
+        max-height: calc(100vh - 2rem);
+        padding: 0;
+        border: 1px solid var(--nav-bg);
+        border-top: 5px solid var(--bg-color-btn);
+        border-radius: 14px;
+        background: var(--bg-color-light);
+        color: var(--txt-color);
+        box-shadow: 0 20px 50px var(--nav-bg-shadowA);
+        font-family: "Noto Sans", sans-serif;
+
+        &::backdrop {
+            background: var(--img-overlay);
+            backdrop-filter: blur(3px);
+        }
+
+        &[open] {
+            animation: site-dialog-in 0.18s ease-out;
+        }
+
+        &.tone-warning {
+            border-top-color: #dd6b20;
+        }
+        &.tone-error,
+        &.tone-danger {
+            border-top-color: #c53030;
+        }
+        &.tone-success {
+            border-top-color: #2f855a;
+        }
+    }
+
+    @keyframes site-dialog-in {
+        from {
+            opacity: 0;
+            transform: translateY(8px) scale(0.98);
+        }
+    }
+
+    .site-dialog-box {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        padding: 1.4rem 1.5rem 1.25rem;
+        margin: 0;
+    }
+
+    .site-dialog-head {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+
+        h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--bg-color-btn);
+        }
+    }
+
+    .site-dialog-icon {
+        --icon-size: 1.4rem;
+        display: inline-flex;
+        color: var(--bg-color-btn);
+    }
+    .tone-warning .site-dialog-icon {
+        color: #dd6b20;
+    }
+    .tone-error .site-dialog-icon,
+    .tone-danger .site-dialog-icon {
+        color: #c53030;
+    }
+    .tone-success .site-dialog-icon {
+        color: #2f855a;
+    }
+
+    .site-dialog-message {
+        margin: 0;
+        line-height: 1.55;
+        white-space: pre-line;
+    }
+
+    .site-dialog-items {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        max-height: 40vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+
+        li {
+            display: flex;
+            flex-direction: column;
+            padding: 0.5rem 0.75rem;
+            background: #fff;
+            border: 1px solid var(--nav-bg);
+            border-radius: 8px;
+            font-size: 0.875rem;
+        }
+
+        span {
+            font-size: 0.8rem;
+            opacity: 0.75;
+            word-break: break-all;
+        }
+    }
+
+    .site-dialog-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+
+        input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0.7rem;
+            border: 2px solid var(--nav-bg);
+            border-radius: 8px;
+            font: inherit;
+            background: #fff;
+
+            &:focus {
+                outline: none;
+                border-color: var(--bg-color-btn);
+            }
+        }
+
+        small {
+            font-size: 0.78rem;
+            opacity: 0.75;
+        }
+    }
+
+    .site-dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.6rem;
+        margin-top: 0.35rem;
+    }
+
+    .site-dialog-btn {
+        min-height: 44px;
+        min-width: 6.5rem;
+        padding: 0.55rem 1.2rem;
+        border-radius: 8px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+
+        &.is-secondary {
+            background: transparent;
+            color: var(--bg-color-btn);
+            border: 2px solid var(--nav-bg);
+
+            &:hover {
+                background: var(--nav-bg);
+            }
+        }
+
+        &.is-primary {
+            background: var(--bg-color-btn);
+            color: var(--text-color);
+            border: 2px solid var(--bg-color-btn);
+
+            &:hover {
+                background: var(--text-color-hover);
+            }
+        }
+
+        &:focus-visible {
+            outline: 3px solid var(--MenuColor);
+            outline-offset: 2px;
+        }
+    }
+
+    .tone-danger .site-dialog-btn.is-primary {
+        background: #c53030;
+        border-color: #c53030;
+
+        &:hover {
+            background: #9b2c2c;
+        }
+    }
+
+    /* ── Toasts ─────────────────────────────────────────────── */
+    .site-toasts {
+        position: fixed;
+        left: 50%;
+        bottom: 1.5rem;
+        transform: translateX(-50%);
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        width: min(440px, calc(100vw - 2rem));
+        pointer-events: none;
+    }
+
+    .site-toast {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.75rem 0.9rem;
+        background: var(--bg-color-dark);
+        color: var(--text-color-dark);
+        border-left: 5px solid var(--MenuColor);
+        border-radius: 10px;
+        box-shadow: 0 10px 30px var(--nav-bg-shadowA);
+        font-size: 0.9rem;
+        pointer-events: auto;
+
+        &.tone-success {
+            border-left-color: #48bb78;
+        }
+        &.tone-warning {
+            border-left-color: #f6ad55;
+        }
+        &.tone-error {
+            border-left-color: #fc8181;
+        }
+    }
+
+    .site-toast-text {
+        flex: 1;
+        line-height: 1.4;
+    }
+
+    .site-toast-close {
+        background: none;
+        border: none;
+        color: inherit;
+        font-size: 1.25rem;
+        line-height: 1;
+        cursor: pointer;
+        opacity: 0.7;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .site-dialog-box {
+            padding: 1.2rem 1.1rem 1rem;
+        }
+
+        .site-dialog-actions {
+            flex-direction: column-reverse;
+
+            .site-dialog-btn {
+                width: 100%;
+            }
+        }
+
+        .site-toasts {
+            bottom: 1rem;
+        }
+    }
+</style>

@@ -1,5 +1,12 @@
 ---
 import { getMenu, type MenuType } from "../../lib/menu";
+import {
+    RESTAURANT_NAME,
+    WHATSAPP_NUMBER,
+    PLATTER_NOTICE_DAYS,
+    PLATTER_NOTICE_TITLE,
+    PLATTER_NOTICE_TEXT,
+} from "../../lib/siteInfo";
 
 let menuData: MenuType[] = [];
 
@@ -13,10 +20,38 @@ try {
 const menuJson = JSON.stringify(menuData);
 
 // ─────────────────────────────────────────────────────────────
-// WHATSAPP ORDERING CONFIG
+// WHATSAPP ORDERING CONFIG  (number / name / platter notice: src/lib/siteInfo.ts)
 // ─────────────────────────────────────────────────────────────
-const WHATSAPP_NUMBER = "27626685787";
-const RESTAURANT_NAME = "Lords & Legends";
+
+// ─────────────────────────────────────────────────────────────
+// SPECIALS SUB-CATEGORIES
+// If the "specials" type only has ONE category in Supabase, its items are
+// split into the groups below. The first group whose `match` (a
+// case-insensitive regular expression, tested against the item name,
+// description and original category name) fits wins; items that match nothing
+// go to the group with `match: null`.
+// If you later create separate specials categories in Supabase, this is
+// skipped automatically and your categories are shown as they are.
+// ─────────────────────────────────────────────────────────────
+const SPECIALS_GROUPS = [
+    {
+        id: "specials_r150",
+        label: "R150 Deals",
+        match: "r\\s?150|150\\s?deals?|one\\s?five\\s?o",
+    },
+    {
+        id: "specials_drinks",
+        label: "Drink Specials",
+        match: "\\bdrinks?\\b|shooters?|\\bshots?\\b|\\bgin\\b|vodka|whisk(e)?y|\\brum\\b|brandy|tequila|j(a|ä)ger|beers?\\b|lager|draught|\\bpints?\\b|cider|cocktails?|\\bwine\\b|carafe|mojito|margarita|g\\s?(&|and)\\s?t\\b|tonic",
+    },
+    { id: "specials_daily", label: "Daily Specials", match: null },
+];
+
+const platterNotice = {
+    days: PLATTER_NOTICE_DAYS,
+    title: PLATTER_NOTICE_TITLE,
+    text: PLATTER_NOTICE_TEXT,
+};
 ---
 
 <section
@@ -25,6 +60,8 @@ const RESTAURANT_NAME = "Lords & Legends";
     data-menu={menuJson}
     data-whatsapp={WHATSAPP_NUMBER}
     data-restaurant={RESTAURANT_NAME}
+    data-specials-groups={JSON.stringify(SPECIALS_GROUPS)}
+    data-platter-notice={JSON.stringify(platterNotice)}
 >
     <div class="menu-header">
         <h1>Lords & Legends Menu</h1>
@@ -33,7 +70,11 @@ const RESTAURANT_NAME = "Lords & Legends";
 
     <!-- Search input -->
     <div class="search-box">
-        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <span
+            class="search-icon ico-only"
+            data-icon="search"
+            aria-hidden="true"
+        ></span>
         <input
             type="text"
             x-model="search"
@@ -54,18 +95,19 @@ const RESTAURANT_NAME = "Lords & Legends";
     <div class="filter-buttons">
         <button
             class="filter-btn"
+            data-icon="all"
             :class="{ active: selectedType === 'all' }"
             @click="selectedType = 'all'"
         >
-            <i class="fa-solid fa-utensils"></i> All
+            All
         </button>
         <template x-for="t in types" :key="t.id">
             <button
                 class="filter-btn"
+                :data-icon="t.id"
                 :class="{ active: selectedType === t.id }"
                 @click="selectedType = t.id"
             >
-                <i :class="getTypeIcon(t.id)"></i>
                 <span x-text="t.label"></span>
             </button>
         </template>
@@ -74,8 +116,7 @@ const RESTAURANT_NAME = "Lords & Legends";
     <!-- Rendered server-side sections, filtered client-side -->
     <template x-for="type in filteredMenu" :key="type.id">
         <section class="menu-type-section" :id="'type-' + type.id">
-            <h2 class="type-header">
-                <i :class="getTypeIcon(type.id)"></i>
+            <h2 class="type-header" :data-icon="type.id">
                 <span x-text="type.label"></span>
             </h2>
 
@@ -108,10 +149,12 @@ const RESTAURANT_NAME = "Lords & Legends";
                                 class="item-count-badge"
                                 x-text="filteredItems(cat).length + ' items'"
                             ></span>
-                            <i
-                                class="fa-solid chevron-icon"
-                                :class="isCategoryOpen(cat.id) ? 'fa-chevron-up' : 'fa-chevron-down'"
-                            ></i>
+                            <span
+                                class="chevron-icon ico-only"
+                                data-icon="double-chevron-down"
+                                :class="{ 'is-open': isCategoryOpen(cat.id) }"
+                                aria-hidden="true"
+                            ></span>
                         </div>
                     </button>
 
@@ -166,19 +209,25 @@ const RESTAURANT_NAME = "Lords & Legends";
                                                 ></span>
                                                 <span
                                                     class="dine-in-tag"
+                                                    data-icon="seat"
                                                     x-show="item.takeaway === false"
                                                 >
-                                                    <i class="fa-solid fa-chair"></i>{" "}
                                                     Dine-in only
                                                 </span>
+                                                <span
+                                                    class="notice-tag"
+                                                    data-icon="clock"
+                                                    x-show="item._platter"
+                                                    x-text="notice.title"
+                                                ></span>
                                             </div>
 
                                             <button
                                                 class="add-btn"
+                                                data-icon="plus"
                                                 x-show="isOrderable(item, type.id)"
                                                 @click="openItemModal(item)"
                                             >
-                                                <i class="fa-solid fa-plus"></i>{" "}
                                                 Add to order
                                             </button>
                                         </div>
@@ -194,7 +243,11 @@ const RESTAURANT_NAME = "Lords & Legends";
 
     <!-- Empty state -->
     <div class="empty-state" x-show="!hasResults">
-        <i class="fa-solid fa-utensils-slash empty-icon"></i>
+        <span
+            class="empty-icon ico-only"
+            data-icon="empty"
+            aria-hidden="true"
+        ></span>
         <p>No menu items match your search.</p>
         <button class="reset-btn" @click="search = ''; selectedType = 'all'">
             Reset Filters
@@ -225,6 +278,17 @@ const RESTAURANT_NAME = "Lords & Legends";
 
                     <h3 x-text="activeItem.name"></h3>
                     <p class="modal-price" x-text="activeItem.price || ''"></p>
+
+                    <!-- Platters need notice -->
+                    <div
+                        class="notice-box"
+                        data-icon="alert"
+                        role="alert"
+                        x-show="activeItem._platter"
+                    >
+                        <strong x-text="notice.title"></strong>
+                        <span x-text="notice.text"></span>
+                    </div>
 
                     <!-- Option groups -->
                     <template
@@ -299,8 +363,8 @@ const RESTAURANT_NAME = "Lords & Legends";
         x-cloak
         @click="showCartPanel = true"
     >
-        <i class="fa-solid fa-cart-shopping"></i> View Order (
-        <span x-text="cartCount"></span>)
+        <span class="ico-only" data-icon="cart" aria-hidden="true"></span>
+        View Order (<span x-text="cartCount"></span>)
     </button>
 
     <div
@@ -310,11 +374,27 @@ const RESTAURANT_NAME = "Lords & Legends";
         @click.self="showCartPanel = false"
     >
         <div class="modal-box cart-panel" x-show="showCartPanel" x-transition>
-            <h3>
-                <i class="fa-solid fa-receipt"></i> Your Order
-            </h3>
+            <h3 data-icon="receipt">Your Order</h3>
 
-            <div class="empty-cart" x-show="cart.length === 0">
+            <!-- Shown after a successful Cloud API order -->
+            <div class="order-success" role="status" x-show="orderSent" x-cloak>
+                <span class="order-success-tick" aria-hidden="true"></span>
+                <h4>Order sent</h4>
+                <p>
+                    Thanks <span x-text="orderSent?.name"></span>, the kitchen has
+                    your order <strong x-text="orderSent?.ref"></strong>.
+                </p>
+                <p x-show="orderSent?.confirmation === 'sent'">
+                    We've sent a confirmation to your WhatsApp and will message
+                    you when it's ready to collect.
+                </p>
+                <p x-show="orderSent?.confirmation !== 'sent'">
+                    We'll let you know when it's ready to collect.
+                </p>
+                <button class="confirm-btn" @click="closeOrderSuccess()">Done</button>
+            </div>
+
+            <div class="empty-cart" x-show="cart.length === 0 && !orderSent">
                 <p>Your order is empty.</p>
             </div>
 
@@ -340,18 +420,95 @@ const RESTAURANT_NAME = "Lords & Legends";
                             <span x-show="line.note">
                                 Note: <span x-text="line.note"></span>
                             </span>
+                            <span
+                                class="line-notice"
+                                x-show="line.platter"
+                                x-text="notice.title"
+                            ></span>
                         </div>
                     </li>
                 </template>
             </ul>
 
+            <div x-show="!orderSent">
             <div class="modal-field">
-                <label>Name for order</label>
+                <label for="order-name">Name for order <span class="req">*</span></label>
                 <input
+                    id="order-name"
                     type="text"
                     x-model="orderName"
+                    @blur="touched.name = true"
+                    autocomplete="name"
                     placeholder="Your name"
+                    required
                 />
+                <p class="field-error" x-show="touched.name && !nameValid" x-cloak>
+                    Please enter a name for the order.
+                </p>
+            </div>
+
+            <!-- WhatsApp number + opt-in: REQUIRED for order updates -->
+            <div class="modal-field">
+                <label for="order-phone">WhatsApp number <span class="req">*</span></label>
+                <input
+                    id="order-phone"
+                    type="tel"
+                    inputmode="tel"
+                    autocomplete="tel"
+                    x-model="orderPhone"
+                    @blur="touched.phone = true"
+                    placeholder="e.g. 082 555 0142"
+                    :aria-invalid="touched.phone && !phoneValid"
+                    required
+                />
+                <p class="field-hint" x-show="phoneValid" x-cloak>
+                    We'll send updates to <strong x-text="phoneDisplay"></strong>
+                </p>
+                <p class="field-error" x-show="touched.phone && !phoneValid" x-cloak>
+                    Please enter a valid WhatsApp mobile number, e.g. 082 555 0142
+                    or +27 82 555 0142.
+                </p>
+            </div>
+            <div class="modal-field checkbox-field">
+                <label>
+                    <input
+                        type="checkbox"
+                        x-model="optIn"
+                        @change="touched.optIn = true"
+                        required
+                    />
+                    <span><span x-text="optInText"></span> <span class="req">*</span></span>
+                </label>
+                <p class="field-error" x-show="touched.optIn && !optIn" x-cloak>
+                    Please tick the box so we can send your order confirmation.
+                </p>
+            </div>
+
+            <!-- Any platter in the order: show the notice + ask for a date -->
+            <div
+                class="notice-box"
+                data-icon="alert"
+                role="alert"
+                x-show="hasPlatter"
+                x-cloak
+            >
+                <strong x-text="notice.title"></strong>
+                <span x-text="notice.text"></span>
+            </div>
+            <div class="modal-field" x-show="hasPlatter" x-cloak>
+                <label>
+                    Collection date (at least <span x-text="notice.days"></span>
+                    days from today)
+                </label>
+                <input
+                    type="date"
+                    x-model="collectDate"
+                    :min="minPlatterDate"
+                />
+                <p class="field-error" x-show="dateTooSoon" x-cloak>
+                    Please choose a date that is at least
+                    <span x-text="notice.days"></span> days from today.
+                </p>
             </div>
             <div class="modal-field">
                 <label>Collection time</label>
@@ -366,18 +523,21 @@ const RESTAURANT_NAME = "Lords & Legends";
                 Estimated Total: R<span x-text="cartTotal.toFixed(2)"></span>
             </p>
 
+            <p class="field-error" role="alert" x-show="orderError" x-cloak x-text="orderError"></p>
+
             <div class="modal-actions">
                 <button class="cancel-btn" @click="showCartPanel = false">
                     Keep browsing
                 </button>
                 <button
                     class="confirm-btn whatsapp-btn"
-                    :disabled="cart.length === 0"
+                    data-icon="whatsapp"
+                    :disabled="!canSubmitOrder"
                     @click="sendOrderViaWhatsApp"
                 >
-                    <i class="fa-brands fa-whatsapp"></i> Send Order via
-                    WhatsApp
+                    <span x-text="sendingOrder ? 'Sending…' : 'Send Order'"></span>
                 </button>
+            </div>
             </div>
         </div>
     </div>
@@ -385,10 +545,89 @@ const RESTAURANT_NAME = "Lords & Legends";
 
 <script is:inline>
     document.addEventListener("alpine:init", () => {
+        const root = document.querySelector("[data-menu]");
+
+        const readJson = (value, fallback) => {
+            try {
+                return JSON.parse(value);
+            } catch {
+                return fallback;
+            }
+        };
+
+        // Platter notice text + days (src/lib/siteInfo.ts)
+        const notice = readJson(root.dataset.platterNotice, {
+            days: 2,
+            title: "2 Day notice required",
+            text: "Platters must be ordered at least 2 days in advance.",
+        });
+
+        // ── Specials: split ONE category into sub-categories ───────────
+        // (groups are defined at the top of this file)
+        const SPECIALS_GROUPS = readJson(root.dataset.specialsGroups, []).map(
+            (g) => ({ ...g, re: g.match ? new RegExp(g.match, "i") : null }),
+        );
+
+        const groupSpecials = (type) => {
+            // Already split into several categories in Supabase: leave as is.
+            if (type.categories.length !== 1 || SPECIALS_GROUPS.length === 0) {
+                return type;
+            }
+            const source = type.categories[0];
+            const groups = SPECIALS_GROUPS.map((g, index) => ({
+                id: g.id,
+                label: g.label,
+                sort_order: index + 1,
+                image_url: null,
+                items: [],
+                re: g.re,
+            }));
+            const fallback =
+                groups.find((g) => !g.re) || groups[groups.length - 1];
+
+            source.items.forEach((item) => {
+                const text = [
+                    item.name,
+                    item.description,
+                    source.label,
+                    source.id,
+                ]
+                    .filter(Boolean)
+                    .join(" ");
+                const home =
+                    groups.find((g) => g.re && g.re.test(text)) || fallback;
+                home.items.push({ ...item, category_id: home.id });
+            });
+
+            return {
+                ...type,
+                categories: groups
+                    .filter((g) => g.items.length > 0)
+                    .map(({ re, ...category }) => category),
+            };
+        };
+
+        // Flags items that are platters (used for the "2 Day notice" message).
+        const prepareMenu = (menu) =>
+            menu.map((rawType) => {
+                const type =
+                    String(rawType.id).toLowerCase() === "specials"
+                        ? groupSpecials(rawType)
+                        : rawType;
+                type.categories.forEach((cat) => {
+                    const isPlatterType =
+                        String(type.id).toLowerCase() === "platters" ||
+                        String(cat.id).toLowerCase().startsWith("platters");
+                    cat.items.forEach((item) => {
+                        item._platter = isPlatterType;
+                    });
+                });
+                return type;
+            });
+
         Alpine.data("menuApp", () => ({
-            menu: JSON.parse(
-                document.querySelector("[data-menu]").dataset.menu || "[]",
-            ),
+            menu: prepareMenu(readJson(root.dataset.menu, [])),
+            notice,
             whatsappNumber:
                 document.querySelector("[data-whatsapp]").dataset.whatsapp,
             restaurantName:
@@ -414,6 +653,19 @@ const RESTAURANT_NAME = "Lords & Legends";
             showCartPanel: false,
             orderName: "",
             collectTime: "",
+            collectDate: "",
+
+            // WhatsApp Cloud API ordering
+            orderPhone: "",
+            optIn: false,
+            optInText:
+                "I agree to receive order updates from " +
+                document.querySelector("[data-restaurant]").dataset.restaurant +
+                " on WhatsApp.",
+            touched: { name: false, phone: false, optIn: false },
+            sendingOrder: false,
+            orderSent: null, // { ref, name, confirmation } after success
+            orderError: "",
 
             init() {
                 // Initialize default category dropdown states (all expanded initially or default state)
@@ -459,9 +711,10 @@ const RESTAURANT_NAME = "Lords & Legends";
                 this.search = "";
                 // Wait for the filtered list to render before scrolling.
                 setTimeout(() => {
-                    document
-                        .getElementById(targetId)
-                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    document.getElementById(targetId)?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                    });
                 }, 60);
             },
 
@@ -560,6 +813,12 @@ const RESTAURANT_NAME = "Lords & Legends";
                         "https://images.unsplash.com/photo-1541529086526-db283c563270?w=120&auto=format&fit=crop&q=80",
                     specials_all:
                         "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=120&auto=format&fit=crop&q=80",
+                    specials_daily:
+                        "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=120&auto=format&fit=crop&q=80",
+                    specials_drinks:
+                        "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=120&auto=format&fit=crop&q=80",
+                    specials_r150:
+                        "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=120&auto=format&fit=crop&q=80",
                 };
 
                 return (
@@ -597,16 +856,6 @@ const RESTAURANT_NAME = "Lords & Legends";
                 };
 
                 return defaultItemPlaceholders[item.category_id] || null;
-            },
-
-            getTypeIcon(typeId) {
-                const icons = {
-                    food: "fa-solid fa-burger",
-                    drinks: "fa-solid fa-beer-mug-empty",
-                    platters: "fa-solid fa-utensils",
-                    specials: "fa-solid fa-star",
-                };
-                return icons[typeId] || "fa-solid fa-list";
             },
 
             isOrderable(item, typeId) {
@@ -647,6 +896,7 @@ const RESTAURANT_NAME = "Lords & Legends";
                     options,
                     note: this.modalNote.trim(),
                     qty: this.modalQty,
+                    platter: !!this.activeItem._platter,
                 });
                 this.closeItemModal();
                 this.showCartPanel = true;
@@ -660,6 +910,29 @@ const RESTAURANT_NAME = "Lords & Legends";
                 if (!priceStr) return 0;
                 const n = parseFloat(String(priceStr).replace(/[^0-9.]/g, ""));
                 return isNaN(n) ? 0 : n;
+            },
+
+            // ── Platters: 2 day notice ─────────────────────────────────
+            get hasPlatter() {
+                return this.cart.some((l) => l.platter);
+            },
+
+            // Earliest allowed collection date for platters, as YYYY-MM-DD in
+            // the visitor's local time (today + notice days).
+            get minPlatterDate() {
+                const d = new Date();
+                d.setDate(d.getDate() + this.notice.days);
+                const pad = (n) => String(n).padStart(2, "0");
+                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+            },
+
+            // A date was chosen but it is sooner than the notice allows.
+            get dateTooSoon() {
+                return (
+                    this.hasPlatter &&
+                    !!this.collectDate &&
+                    this.collectDate < this.minPlatterDate
+                );
             },
 
             get cartCount() {
@@ -677,9 +950,38 @@ const RESTAURANT_NAME = "Lords & Legends";
                 const lines = [];
                 lines.push(`*NEW ORDER – ${this.restaurantName}*`);
                 lines.push(`Name: ${this.orderName || "(not given)"}`);
-                lines.push(
-                    `Collection time: ${this.collectTime || "(Asap - 20 to 30 mins)"}`,
-                );
+                if (this.phoneValid) lines.push(`WhatsApp: ${this.phoneDisplay}`);
+
+                if (this.hasPlatter) {
+                    // Platters are never "ready in 20-30 mins".
+                    const platters = this.cart
+                        .filter((l) => l.platter)
+                        .map((l) => `${l.qty}x ${l.name}`)
+                        .join(", ");
+                    lines.push(
+                        `⚠️ *${this.notice.title.toUpperCase()}* – ${platters}`,
+                    );
+                    const when = this.collectDate
+                        ? new Date(
+                              this.collectDate + "T00:00:00",
+                          ).toLocaleDateString("en-ZA", {
+                              weekday: "short",
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                          })
+                        : "(to be confirmed – minimum " +
+                          this.notice.days +
+                          " days from today)";
+                    lines.push(`Collection date: ${when}`);
+                    lines.push(
+                        `Collection time: ${this.collectTime || "(to be confirmed)"}`,
+                    );
+                } else {
+                    lines.push(
+                        `Collection time: ${this.collectTime || "(Asap - 20 to 30 mins)"}`,
+                    );
+                }
                 lines.push("");
 
                 this.cart.forEach((line) => {
@@ -702,556 +1004,123 @@ const RESTAURANT_NAME = "Lords & Legends";
                 return lines.join("\n");
             },
 
-            sendOrderViaWhatsApp() {
-                if (this.cart.length === 0) return;
-                const message = this.buildOrderMessage();
-                const url = `https://wa.me/${this.whatsappNumber}?text=${encodeURIComponent(message)}`;
-                window.open(url, "_blank");
+            // ── WhatsApp number validation ─────────────────────────────
+            // Mirrors src/lib/phone.ts (the server re-checks everything).
+            normalisePhone(input) {
+                const raw = String(input || "").trim();
+                if (!raw || !/^\+?[\d\s\-().]+$/.test(raw)) return null;
+                let digits = raw.replace(/\D/g, "");
+                const international = raw.startsWith("+") || digits.startsWith("00");
+                if (digits.startsWith("00")) digits = digits.slice(2);
+                if (!international) {
+                    if (digits.startsWith("0")) digits = "27" + digits.slice(1);
+                    else if (!digits.startsWith("27")) return null;
+                }
+                if (digits.startsWith("27")) {
+                    return /^27[678]\d{8}$/.test(digits) ? digits : null;
+                }
+                return /^[1-9]\d{7,14}$/.test(digits) ? digits : null;
+            },
+
+            get normalisedPhone() {
+                return this.normalisePhone(this.orderPhone);
+            },
+            get phoneValid() {
+                return !!this.normalisedPhone;
+            },
+            get phoneDisplay() {
+                const d = this.normalisedPhone || "";
+                const m = /^27(\d{2})(\d{3})(\d{4})$/.exec(d);
+                return m ? `+27 ${m[1]} ${m[2]} ${m[3]}` : `+${d}`;
+            },
+            get nameValid() {
+                return this.orderName.trim().length > 0;
+            },
+            get canSubmitOrder() {
+                return (
+                    this.cart.length > 0 &&
+                    !this.dateTooSoon &&
+                    this.nameValid &&
+                    this.phoneValid &&
+                    this.optIn &&
+                    !this.sendingOrder
+                );
+            },
+
+            closeOrderSuccess() {
+                this.orderSent = null;
+                this.showCartPanel = false;
+            },
+
+            async sendOrderViaWhatsApp() {
+                this.touched = { name: true, phone: true, optIn: true };
+                if (!this.canSubmitOrder) return;
+
+                this.sendingOrder = true;
+                this.orderError = "";
+                const fallbackUrl = `https://wa.me/${this.whatsappNumber}?text=${encodeURIComponent(this.buildOrderMessage())}`;
+
+                try {
+                    const res = await fetch("/api/orders/whatsapp", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            name: this.orderName.trim(),
+                            phone: this.normalisedPhone,
+                            optIn: this.optIn === true,
+                            collectDate: this.collectDate,
+                            collectTime: this.collectTime,
+                            hasPlatter: this.hasPlatter,
+                            total: this.cartTotal,
+                            cart: this.cart.map((l) => ({
+                                name: l.name,
+                                qty: l.qty,
+                                price: l.price,
+                                note: l.note,
+                                options: l.options || [],
+                            })),
+                        }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+
+                    if (res.ok && data.ok) {
+                        this.orderSent = {
+                            ref: data.orderRef,
+                            name: this.orderName.trim(),
+                            confirmation: data.confirmation,
+                        };
+                        this.cart = [];
+                        this.collectDate = "";
+                        this.collectTime = "";
+                        this.touched = { name: false, phone: false, optIn: false };
+                        return;
+                    }
+
+                    // Problems the customer can fix: show them, don't fall back.
+                    if (data.error === "invalid_phone") {
+                        this.orderError = "That WhatsApp number doesn't look right – please check it.";
+                        return;
+                    }
+                    if (data.error === "opt_in_required" || data.error === "name_required") {
+                        this.orderError = "Please fill in all the required fields.";
+                        return;
+                    }
+                    if (data.error === "rate_limited") {
+                        this.orderError = "Too many orders in a short time – please wait a few minutes and try again.";
+                        return;
+                    }
+                    throw new Error(data.error || `HTTP ${res.status}`);
+                } catch (err) {
+                    // Server / WhatsApp problem: fall back to the old wa.me flow
+                    // so the order still reaches the restaurant.
+                    console.warn("Cloud API order failed, using wa.me fallback:", err);
+                    this.orderError = "We couldn't send your order automatically – opening WhatsApp instead…";
+                    // window.open() after an await is often blocked as a pop-up.
+                    setTimeout(() => (window.location.href = fallbackUrl), 1200);
+                } finally {
+                    this.sendingOrder = false;
+                }
             },
         }));
     });
 </script>
-
-<style>
-    [x-cloak] {
-        display: none !important;
-    }
-
-    /* Keep jump targets (from the navigation) clear of the fixed header. */
-    .menu-type-section,
-    .category-block {
-        scroll-margin-top: calc(var(--nav-header) + 1rem);
-    }
-
-    @media (max-width: 768px) {
-        .menu-type-section,
-        .category-block {
-            scroll-margin-top: calc(var(--nav-headerM) + 1rem);
-        }
-    }
-
-    .menu-container {
-        max-width: 960px;
-        margin: 0 auto;
-        margin-top: calc(var(--nav-headerM) + 1.5rem);
-        padding: 1.5rem;
-        color: var(--txt-color);
-    }
-
-    .menu-header {
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .menu-header h1 {
-        font-size: 2.25rem;
-        color: var(--bg-color-btn);
-        margin: 0 0 0.25rem;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-    }
-    .tagline {
-        color: var(--text-color-hover);
-        font-style: italic;
-        font-size: 1.05rem;
-        margin: 0;
-    }
-
-    /* Search Box */
-    .search-box {
-        position: relative;
-        margin-bottom: 1.5rem;
-        display: flex;
-        align-items: center;
-    }
-    .search-icon {
-        position: absolute;
-        left: 1rem;
-        color: var(--bg-color-btn);
-        opacity: 0.7;
-    }
-    .search-input {
-        width: 100%;
-        padding: 0.85rem 2.5rem 0.85rem 2.75rem;
-        border: 2px solid var(--nav-bg);
-        background: #ffffff;
-        border-radius: 12px;
-        font-size: 1rem;
-        outline: none;
-        transition:
-            border-color 0.2s,
-            box-shadow 0.2s;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    }
-    .search-input:focus {
-        border-color: var(--bg-color-btn);
-        box-shadow: 0 0 0 3px hsla(14, 45%, 30%, 0.15);
-    }
-    .clear-search-btn {
-        position: absolute;
-        right: 0.85rem;
-        background: transparent;
-        border: none;
-        font-size: 1.1rem;
-        color: var(--bg-color-btn);
-        cursor: pointer;
-    }
-
-    /* Filter Tabs */
-    .filter-buttons {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.6rem;
-        margin-bottom: 2rem;
-        justify-content: center;
-    }
-    .filter-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.55rem 1.25rem;
-        border: 2px solid var(--nav-bg);
-        background: #ffffff;
-        color: var(--bg-color-btn);
-        border-radius: 25px;
-        cursor: pointer;
-        font-size: 0.925rem;
-        font-weight: 600;
-        transition: all 0.2s ease;
-    }
-    .filter-btn:hover {
-        background: var(--nav-bg);
-    }
-    .filter-btn.active {
-        background: var(--bg-color-btn);
-        color: #ffffff;
-        border-color: var(--bg-color-btn);
-        box-shadow: 0 4px 10px hsla(14, 45%, 30%, 0.25);
-    }
-
-    /* Menu Type Sections */
-    .menu-type-section {
-        margin-bottom: 2.5rem;
-    }
-    .type-header {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        font-size: 1.6rem;
-        color: var(--bg-color-btn);
-        border-bottom: 3px solid var(--nav-bg);
-        padding-bottom: 0.5rem;
-        margin-bottom: 1.25rem;
-        font-weight: 700;
-    }
-
-    /* Category Dropdown Block */
-    .category-block {
-        background: #ffffff;
-        border: 1px solid var(--nav-bg);
-        border-radius: 12px;
-        margin-bottom: 1rem;
-        overflow: hidden;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-        transition:
-            border-color 0.2s,
-            box-shadow 0.2s;
-    }
-    .category-block.is-open {
-        border-color: hsla(14, 45%, 30%, 0.3);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-    }
-
-    .category-header {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.85rem 1.2rem;
-        background: #ffffff;
-        border: none;
-        cursor: pointer;
-        text-align: left;
-        transition: background-color 0.2s;
-    }
-    .category-header:hover {
-        background: var(--bg-color-light);
-    }
-
-    .category-title {
-        display: flex;
-        align-items: center;
-        gap: 0.85rem;
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: var(--bg-color-btn);
-        text-transform: capitalize;
-    }
-
-    .category-logo {
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid var(--nav-bg);
-        background: #ffffff;
-        flex-shrink: 0;
-    }
-
-    .category-meta {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-    .item-count-badge {
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: var(--text-color-hover);
-        background: var(--nav-bg);
-        padding: 0.2rem 0.6rem;
-        border-radius: 12px;
-    }
-    .chevron-icon {
-        color: var(--bg-color-btn);
-        font-size: 0.9rem;
-        transition: transform 0.2s ease;
-    }
-
-    /* Category Collapsible Items List */
-    .category-content {
-        padding: 0.5rem 1.25rem 1.25rem;
-        border-top: 1px solid var(--bg-color-light);
-    }
-
-    .item-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-    .menu-item {
-        padding: 0.9rem 0;
-        border-bottom: 1px dashed var(--nav-bg);
-    }
-    .menu-item:last-child {
-        border-bottom: none;
-    }
-
-    .item-layout {
-        display: flex;
-        gap: 1rem;
-        align-items: flex-start;
-    }
-
-    .item-thumb-wrapper {
-        flex-shrink: 0;
-    }
-    .item-thumb {
-        width: 64px;
-        height: 64px;
-        object-fit: cover;
-        border-radius: 8px;
-        border: 1px solid var(--nav-bg);
-    }
-
-    .item-details {
-        flex: 1;
-    }
-
-    .item-line {
-        display: flex;
-        align-items: baseline;
-    }
-    .item-name {
-        font-weight: 700;
-        color: #1a202c;
-        font-size: 1.025rem;
-    }
-    .dots {
-        flex: 1;
-        border-bottom: 1px dotted #cbd5e0;
-        margin: 0 0.5rem;
-    }
-    .price {
-        font-weight: 700;
-        color: var(--bg-color-btn);
-        white-space: nowrap;
-        font-size: 1.025rem;
-    }
-    .description {
-        color: #4a5568;
-        font-size: 0.88rem;
-        margin: 0.35rem 0 0.25rem;
-        line-height: 1.4;
-    }
-
-    .item-tags {
-        display: flex;
-        gap: 0.4rem;
-        flex-wrap: wrap;
-        margin-top: 0.3rem;
-    }
-    .serves-tag {
-        font-size: 0.75rem;
-        color: var(--text-color-hover);
-        font-style: italic;
-    }
-    .dine-in-tag {
-        font-size: 0.72rem;
-        font-weight: 600;
-        color: #c05621;
-        background: #fffaf0;
-        border: 1px solid #fbd38d;
-        border-radius: 4px;
-        padding: 0.15rem 0.45rem;
-    }
-
-    /* Add Button */
-    .add-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        margin-top: 0.6rem;
-        padding: 0.4rem 0.95rem;
-        background: var(--bg-color-btn);
-        color: #ffffff;
-        border: none;
-        border-radius: 6px;
-        font-size: 0.825rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition:
-            background-color 0.2s,
-            transform 0.1s;
-    }
-    .add-btn:hover {
-        background: var(--text-color-hover);
-        transform: translateY(-1px);
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 3rem 1rem;
-        color: #718096;
-    }
-    .empty-icon {
-        font-size: 2.5rem;
-        margin-bottom: 0.75rem;
-        color: var(--nav-bg);
-    }
-    .reset-btn {
-        margin-top: 0.75rem;
-        padding: 0.6rem 1.25rem;
-        background: var(--bg-color-btn);
-        color: #ffffff;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 600;
-    }
-
-    /* Modal Overlay & Modal Box */
-    .modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.55);
-        backdrop-filter: blur(2px);
-        display: flex;
-        align-items: flex-end;
-        justify-content: center;
-        z-index: 1000;
-    }
-    .modal-box {
-        background: #ffffff;
-        width: 100%;
-        max-width: 520px;
-        max-height: 88vh;
-        overflow-y: auto;
-        border-radius: 16px 16px 0 0;
-        padding: 1.5rem;
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
-    }
-    @media (min-width: 640px) {
-        .modal-overlay {
-            align-items: center;
-        }
-        .modal-box {
-            border-radius: 16px;
-        }
-    }
-
-    .modal-item-img-container {
-        width: 100%;
-        height: 160px;
-        margin-bottom: 1rem;
-        overflow: hidden;
-        border-radius: 10px;
-    }
-    .modal-item-img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .modal-price {
-        color: var(--bg-color-btn);
-        font-weight: 700;
-        font-size: 1.1rem;
-        margin: 0.25rem 0 1rem;
-    }
-
-    .modal-field {
-        margin-bottom: 1rem;
-    }
-    .modal-field label {
-        display: block;
-        font-weight: 600;
-        font-size: 0.875rem;
-        color: #2d3748;
-        margin-bottom: 0.4rem;
-    }
-    .modal-field input[type="text"],
-    .modal-field input[type="time"],
-    .modal-field textarea {
-        width: 100%;
-        padding: 0.65rem;
-        border: 2px solid var(--nav-bg);
-        border-radius: 8px;
-        font-size: 0.95rem;
-        font-family: inherit;
-        box-sizing: border-box;
-    }
-
-    .choice-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-    .choice-pill {
-        border: 2px solid var(--nav-bg);
-        border-radius: 20px;
-        padding: 0.4rem 0.9rem;
-        font-size: 0.85rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 0.35rem;
-        background: #ffffff;
-    }
-    .choice-pill input {
-        accent-color: var(--bg-color-btn);
-    }
-
-    .qty-stepper {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-    .qty-stepper button {
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        border: 2px solid var(--nav-bg);
-        background: #ffffff;
-        font-size: 1.1rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .modal-actions {
-        display: flex;
-        gap: 0.75rem;
-        margin-top: 1.25rem;
-    }
-    .cancel-btn,
-    .confirm-btn {
-        flex: 1;
-        padding: 0.75rem;
-        border-radius: 8px;
-        border: none;
-        font-weight: 600;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.4rem;
-    }
-    .cancel-btn {
-        background: var(--bg-color-light);
-        color: #2d3748;
-    }
-    .confirm-btn {
-        background: var(--bg-color-btn);
-        color: #ffffff;
-    }
-    .confirm-btn:disabled {
-        background: #a0aec0;
-        cursor: not-allowed;
-    }
-    .whatsapp-btn {
-        background: #25d366;
-        color: #ffffff;
-    }
-
-    /* Cart Floating Action Button */
-    .cart-fab {
-        position: fixed;
-        bottom: 1.75rem;
-        right: 1.75rem;
-        background: #25d366;
-        color: white;
-        border: none;
-        padding: 0.9rem 1.4rem;
-        border-radius: 30px;
-        font-weight: 700;
-        font-size: 0.95rem;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-        cursor: pointer;
-        z-index: 900;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    /* Cart Panel Details */
-    .cart-list {
-        list-style: none;
-        padding: 0;
-        margin: 0 0 1rem;
-    }
-    .cart-line {
-        border-bottom: 1px solid var(--nav-bg);
-        padding: 0.6rem 0;
-    }
-    .cart-line-top {
-        display: flex;
-        justify-content: space-between;
-        font-weight: 600;
-    }
-    .remove-btn {
-        background: none;
-        border: none;
-        color: #e53e3e;
-        cursor: pointer;
-        font-size: 0.9rem;
-    }
-    .cart-line-details {
-        display: flex;
-        flex-direction: column;
-        font-size: 0.8rem;
-        color: #718096;
-        margin-top: 0.2rem;
-    }
-    .empty-cart {
-        text-align: center;
-        color: #718096;
-        padding: 1.5rem 0;
-    }
-    .cart-total {
-        font-weight: 700;
-        text-align: right;
-        color: var(--bg-color-btn);
-        margin: 0.5rem 0 0;
-        font-size: 1.1rem;
-    }
-</style>

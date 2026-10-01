@@ -2,7 +2,7 @@
    PLACEHOLDER ICON SLOTS
    ──────────────────────────────────────────────────────────────
    Any element with a  data-icon="name"  attribute gets an icon drawn
-   in front of its content (via ::before). Right now every icon is a
+   in front of its content (via ::before). As placeholder every icon is a
    dashed-square placeholder.
 
    To add a real icon:
@@ -145,4 +145,76 @@
 }
 [data-icon="open"] {
     --_ico: url("/icons/open.svg");
+}
+
+/* Menu page, order panel, admin editor, footer */
+[data-icon="search"] {
+    --_ico: url("/icons/search.svg");
+}
+[data-icon="all"] {
+    --_ico: url("/icons/all.svg");
+}
+[data-icon="seat"] {
+    --_ico: url("/icons/seat.svg");
+}
+[data-icon="plus"] {
+    --_ico: url("/icons/plus.svg");
+}
+[data-icon="cart"] {
+    --_ico: url("/icons/cart.svg");
+}
+[data-icon="receipt"] {
+    --_ico: url("/icons/receipt.svg");
+}
+[data-icon="whatsapp"] {
+    --_ico: url("/icons/whatsapp.svg");
+}
+[data-icon="empty"] {
+    --_ico: url("/icons/empty.svg");
+}
+[data-icon="clock"] {
+    --_ico: url("/icons/clock.svg");
+}
+[data-icon="alert"] {
+    --_ico: url("/icons/alert.svg");
+}
+[data-icon="download"] {
+    --_ico: url("/icons/download.svg");
+}
+[data-icon="save"] {
+    --_ico: url("/icons/save.svg");
+}
+[data-icon="loader"] {
+    --_ico: url("/icons/loader.svg");
+}
+[data-icon="camera"] {
+    --_ico: url("/icons/camera.svg");
+}
+[data-icon="trash"] {
+    --_ico: url("/icons/trash.svg");
+}
+[data-icon="expand"] {
+    --_ico: url("/icons/expand.svg");
+}
+[data-icon="image"] {
+    --_ico: url("/icons/image.svg");
+}
+[data-icon="images"] {
+    --_ico: url("/icons/images.svg");
+}
+[data-icon="refresh"] {
+    --_ico: url("/icons/refresh.svg");
+}
+[data-icon="map-pin"] {
+    --_ico: url("/icons/map-pin.svg");
+}
+
+/* Spinning icon (e.g. data-icon="loader" class="ico-spin") */
+.ico-spin::before {
+    animation: ico-spin 0.9s linear infinite;
+}
+@keyframes ico-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }

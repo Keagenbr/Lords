@@ -1,0 +1,176 @@
+---
+// src/components/Footer.astro
+// Site footer: logo + tagline, quick links, where to find us, WhatsApp.
+// Details live in src/lib/siteInfo.ts. Colours/spacing use the variables from
+// src/layouts/Layout.astro and the same 768px mobile breakpoint as the rest
+// of the site.
+import LogoSrc from "../assets/LordsLogo.svg";
+import {
+    RESTAURANT_NAME,
+    TAGLINE,
+    LOCATIONS,
+    LOCATION_URL,
+    WHATSAPP_LINK,
+} from "../lib/siteInfo";
+
+const year = new Date().getFullYear();
+
+const links = [
+    { href: "/", label: "Home", icon: "home" },
+    { href: "/menu", label: "Menu", icon: "menu" },
+    { href: "/contact", label: "Contact", icon: "contact" },
+];
+---
+
+<footer class="site-footer">
+    <div class="footer-container">
+        <!-- Brand -->
+        <section class="footer-brand">
+            <a
+                href="/"
+                class="footer-logo"
+                aria-label={`${RESTAURANT_NAME} home`}
+            >
+                <LogoSrc class="footer-logo-img" />
+            </a>
+            <p class="footer-tagline">{TAGLINE}</p>
+        </section>
+
+        <!-- Quick links -->
+        <nav class="footer-links" aria-label="Footer">
+            <h2 class="footer-heading">Explore</h2>
+            <ul>
+                {links.map((link) => (
+                    <li>
+                        <a href={link.href} data-icon={link.icon}>
+                            {link.label}
+                        </a>
+                    </li>
+                ))}
+            </ul>
+        </nav>
+
+        <!-- Find us -->
+        <section class="footer-contact">
+            <h2 class="footer-heading">Find us</h2>
+            <ul>
+                {LOCATIONS.map((place) => (
+                    <li data-icon="map-pin">
+                        <a href={LOCATION_URL} target="_blank" rel="noopener">
+                            {place}
+                        </a>
+                    </li>
+                ))}
+                <li>
+                    <a
+                        href={WHATSAPP_LINK}
+                        target="_blank"
+                        rel="noopener"
+                        data-icon="whatsapp"
+                    >
+                        Chat on WhatsApp
+                    </a>
+                </li>
+            </ul>
+        </section>
+    </div>
+
+    <div class="footer-bottom">
+        <p>
+            &copy; {year} {RESTAURANT_NAME}. All rights reserved.
+        </p>
+    </div>
+</footer>
+
+<style lang="scss">
+    .site-footer {
+        margin-top: 3rem;
+        background: var(--nav-bg);
+        color: var(--txt-color);
+        border-top: 1px solid var(--nav-bg-shadowA);
+        position: relative;
+        bottom: 0;
+    }
+
+    .footer-container {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr 1fr;
+        gap: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2.5rem 1.5rem;
+    }
+
+    .footer-logo-img {
+        height: 8rem;
+        width: auto;
+    }
+
+    .footer-tagline {
+        margin: 0.75rem 0 0;
+        font-style: italic;
+        color: var(--text-color-hover);
+    }
+
+    .footer-heading {
+        margin: 0 0 0.75rem;
+        font-size: 1.05rem;
+        color: var(--bg-color-btn);
+    }
+
+    ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    li {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        --icon-gap: 0;
+    }
+
+    a {
+        color: var(--txt-color);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 44px; // comfortable tap target
+        --icon-gap: 0;
+
+        &:hover,
+        &:focus-visible {
+            color: var(--text-color-hover);
+            text-decoration: underline;
+        }
+    }
+
+    .footer-bottom {
+        border-top: 1px solid var(--nav-bg-shadowA);
+        padding: 1rem 1.5rem;
+        text-align: center;
+        font-size: 0.85rem;
+
+        p {
+            margin: 0;
+            opacity: 0.8;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .footer-container {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            padding: 2rem 1.25rem;
+            text-align: left;
+        }
+        footer {
+            margin-top: 1rem;
+        }
+    }
+</style>

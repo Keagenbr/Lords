@@ -6,6 +6,7 @@
 import Layout from "../../../layouts/Layout.astro";
 import MenuEditorNav from "../../../components/MenuEditorNav.astro";
 import MenuImageEditor from "../../../components/MenuImageEditor.astro";
+import MenuPdfEditor from "../../../components/MenuPdfEditor.astro";
 import { guardAdminPage } from "../../../lib/adminAuth";
 import { IMAGE_SECTIONS, type ImageSectionKey } from "../../../lib/menuImages";
 
@@ -23,5 +24,7 @@ const section = IMAGE_SECTIONS[key];
 
 <Layout title={`Menu Editor - ${section.title}`}>
     <MenuEditorNav active={key} />
-    <MenuImageEditor section={key} />
+    <MenuImageEditor section={key}>
+        {key === "main-menu" && <MenuPdfEditor />}
+    </MenuImageEditor>
 </Layout>

@@ -1,0 +1,288 @@
+---
+// src/components/Menu/MenuDownloads.astro
+//
+// "Take the menu with you" section at the bottom of /menu. Customers choose:
+//   - the FULL MENU PDF (uploaded on the "Main Menu Pages" editor page), or
+//   - ALL MENU PICTURES as one .zip (built in the browser), or
+//   - single pictures (view / download) in the expandable list.
+//
+// It lists every picture the admin manages: the built-in ones
+// (src/lib/menuImages.ts) plus any added in the editor, so it is always up
+// to date. If Storage can't be reached it still shows the built-in pictures.
+import { IMAGE_SECTIONS, type ImageSectionKey } from "../../lib/menuImages";
+import { getMenuPdf, getSectionImages } from "../../lib/menuImageStore";
+
+const keys = Object.keys(IMAGE_SECTIONS) as ImageSectionKey[];
+const [pdf, ...sectionImages] = await Promise.all([
+    getMenuPdf(),
+    ...keys.map((key) => getSectionImages(key)),
+]);
+
+const groups = keys.map((key, i) => ({
+    key,
+    title: IMAGE_SECTIONS[key].title,
+    images: sectionImages[i],
+}));
+
+// Everything the "download all" button puts in the zip.
+const zipFiles = groups.flatMap((group) =>
+    group.images.map((image) => ({
+        url: image.url,
+        name: `${group.title}/${image.filename}`,
+    })),
+);
+const imageCount = zipFiles.length;
+const formatSize = (n: number) =>
+    n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`;
+---
+
+<section class="menu-downloads" id="menu-downloads" aria-labelledby="menu-downloads-title">
+    <div class="downloads-choice">
+        <h2 id="menu-downloads-title" class="downloads-title">Take the menu with you</h2>
+        <p class="downloads-intro">
+            Download the full menu as a PDF, or just the menu pictures.
+        </p>
+
+        <div class="downloads-options">
+            {
+                pdf && (
+                    <div class="download-option">
+                        <span class="download-option-icon ico-only" data-icon="receipt" aria-hidden="true" />
+                        <div class="download-option-text">
+                            <strong>Full menu (PDF)</strong>
+                            <span>Everything in one file{pdf.size ? ` · ${formatSize(pdf.size)}` : ""}</span>
+                        </div>
+                        <div class="download-option-actions">
+                            <a href={pdf.url} target="_blank" rel="noopener" class="download-link" data-icon="eye">
+                                View
+                            </a>
+                            <a href={pdf.downloadUrl} class="download-link download-link-primary" data-icon="download">
+                                Download PDF
+                            </a>
+                        </div>
+                    </div>
+                )
+            }
+
+            <div class="download-option" data-zip-root data-files={JSON.stringify(zipFiles)}>
+                <span class="download-option-icon ico-only" data-icon="images" aria-hidden="true" />
+                <div class="download-option-text">
+                    <strong>Menu pictures</strong>
+                    <span data-zip-status>
+                        All {imageCount} pictures in one .zip file
+                    </span>
+                </div>
+                <div class="download-option-actions">
+                    <a href="#menu-images-list" class="download-link" data-icon="eye" data-open-list>
+                        Browse
+                    </a>
+                    <button type="button" class="download-link download-link-primary" data-icon="download" data-zip-btn>
+                        Download all
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <details class="downloads" id="menu-images-list">
+        <summary class="downloads-toggle" data-icon="images">
+            <span>View or download single pictures</span>
+            <span
+                class="downloads-chevron ico-only"
+                data-icon="double-chevron-down"
+                aria-hidden="true"
+            ></span>
+        </summary>
+
+        <div class="downloads-body">
+            {groups.filter((group) => group.images.length).map((group) => (
+                <div class="downloads-group">
+                    <h3>{group.title}</h3>
+                    <ul class="download-grid">
+                        {group.images.map((image) => (
+                            <li class="download-card">
+                                <a
+                                    href={image.url}
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="download-thumb"
+                                    aria-label={`View ${image.label}`}
+                                >
+                                    <img
+                                        src={image.url}
+                                        alt={image.label}
+                                        loading="lazy"
+                                        decoding="async"
+                                    />
+                                </a>
+                                <span class="download-label">
+                                    {image.label}
+                                </span>
+                                <div class="download-actions">
+                                    <a
+                                        href={image.url}
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="download-link"
+                                        data-icon="eye"
+                                    >
+                                        View
+                                    </a>
+                                    <a
+                                        href={image.downloadUrl}
+                                        class="download-link download-link-primary"
+                                        data-icon="download"
+                                    >
+                                        Download
+                                    </a>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            ))}
+        </div>
+    </details>
+</section>
+
+<script>
+    // "Download all" builds one .zip in the browser from the public picture
+    // URLs (Supabase allows this cross-origin), so no server work and no
+    // "allow multiple downloads?" prompt. Pictures are already compressed, so
+    // they are stored as-is in the zip (no extra compression needed).
+
+    const CRC_TABLE = (() => {
+        const table = new Uint32Array(256);
+        for (let n = 0; n < 256; n++) {
+            let c = n;
+            for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+            table[n] = c >>> 0;
+        }
+        return table;
+    })();
+
+    function crc32(data: Uint8Array): number {
+        let crc = 0xffffffff;
+        for (let i = 0; i < data.length; i++) {
+            crc = CRC_TABLE[(crc ^ data[i]) & 0xff] ^ (crc >>> 8);
+        }
+        return (crc ^ 0xffffffff) >>> 0;
+    }
+
+    function makeZip(files: { name: string; data: Uint8Array }[]): Blob {
+        const enc = new TextEncoder();
+        const now = new Date();
+        const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+        const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+
+        const parts: BlobPart[] = [];
+        const central: Uint8Array[] = [];
+        let offset = 0;
+
+        for (const file of files) {
+            const name = enc.encode(file.name);
+            const crc = crc32(file.data);
+            const size = file.data.length;
+
+            const local = new DataView(new ArrayBuffer(30));
+            local.setUint32(0, 0x04034b50, true);
+            local.setUint16(4, 20, true); // version needed
+            local.setUint16(6, 0x0800, true); // UTF-8 names
+            local.setUint16(8, 0, true); // stored
+            local.setUint16(10, dosTime, true);
+            local.setUint16(12, dosDate, true);
+            local.setUint32(14, crc, true);
+            local.setUint32(18, size, true);
+            local.setUint32(22, size, true);
+            local.setUint16(26, name.length, true);
+            local.setUint16(28, 0, true);
+            parts.push(local.buffer, name, file.data);
+
+            const entry = new DataView(new ArrayBuffer(46));
+            entry.setUint32(0, 0x02014b50, true);
+            entry.setUint16(4, 20, true);
+            entry.setUint16(6, 20, true);
+            entry.setUint16(8, 0x0800, true);
+            entry.setUint16(10, 0, true);
+            entry.setUint16(12, dosTime, true);
+            entry.setUint16(14, dosDate, true);
+            entry.setUint32(16, crc, true);
+            entry.setUint32(20, size, true);
+            entry.setUint32(24, size, true);
+            entry.setUint16(28, name.length, true);
+            entry.setUint32(42, offset, true);
+            const record = new Uint8Array(46 + name.length);
+            record.set(new Uint8Array(entry.buffer), 0);
+            record.set(name, 46);
+            central.push(record);
+
+            offset += 30 + name.length + size;
+        }
+
+        const centralSize = central.reduce((sum, c) => sum + c.length, 0);
+        const end = new DataView(new ArrayBuffer(22));
+        end.setUint32(0, 0x06054b50, true);
+        end.setUint16(8, files.length, true);
+        end.setUint16(10, files.length, true);
+        end.setUint32(12, centralSize, true);
+        end.setUint32(16, offset, true);
+
+        return new Blob([...parts, ...central, end.buffer], { type: "application/zip" });
+    }
+
+    const root = document.querySelector<HTMLElement>("[data-zip-root]");
+    const button = root?.querySelector<HTMLButtonElement>("[data-zip-btn]");
+    const status = root?.querySelector<HTMLElement>("[data-zip-status]");
+    const list = document.getElementById("menu-images-list") as HTMLDetailsElement | null;
+
+    // "Browse" opens the list of single pictures.
+    root?.querySelector("[data-open-list]")?.addEventListener("click", () => {
+        if (list) list.open = true;
+    });
+
+    button?.addEventListener("click", async () => {
+        const files: { url: string; name: string }[] = JSON.parse(root!.dataset.files || "[]");
+        const label = status!.textContent;
+        button.disabled = true;
+
+        try {
+            const loaded: { name: string; data: Uint8Array }[] = [];
+            let done = 0;
+            for (const file of files) {
+                status!.textContent = `Preparing ${++done} of ${files.length}...`;
+                const res = await fetch(file.url, { mode: "cors" });
+                if (!res.ok) continue; // skip a missing picture, keep the rest
+                loaded.push({ name: file.name, data: new Uint8Array(await res.arrayBuffer()) });
+            }
+            if (!loaded.length) throw new Error("No pictures could be downloaded.");
+
+            const url = URL.createObjectURL(makeZip(loaded));
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "Lords-and-Legends-Menu-Pictures.zip";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 10_000);
+            status!.textContent = label;
+            (window as any).siteDialog?.toast(
+                `Downloaded ${loaded.length} menu pictures.`,
+                "success",
+            );
+        } catch (err) {
+            console.error("Zip download failed:", err);
+            status!.textContent = label;
+            if (list) {
+                list.open = true;
+                list.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+            (window as any).siteDialog?.alert({
+                title: "Download didn't work",
+                message: "We couldn't bundle the pictures. You can still download them one by one from the list below.",
+                tone: "warning",
+            });
+        } finally {
+            button.disabled = false;
+        }
+    });
+</script>
