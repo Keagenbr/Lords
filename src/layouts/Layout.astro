@@ -5,6 +5,7 @@ import Fonts from "../../src/components/Fonts.astro"; // Import the fonts compon
 import Nav from "../components/Nav.astro"; // Import the navigation component
 import TopBtn from "../components/topBtn.astro"; // Import the top button component
 import Footer from "../components/Footer.astro"; // Import the footer component
+import SiteDialog from "../components/SiteDialog.astro"; // Styled confirm / alert / toast pop-ups
 
 import "../styles/icons.css"; // Placeholder icon slots (see the file for how to add your SVGs)
 import "../styles/main.scss"; // Import the main styles
@@ -147,5 +148,6 @@ const { title = "Lords and Legends" } = Astro.props;
         <Nav />
         <slot />
         <Footer />
+        <SiteDialog />
     </body>
 </html>

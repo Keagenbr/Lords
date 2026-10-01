@@ -634,16 +634,16 @@ const menuJson = JSON.stringify(menuData);
                 });
             },
 
-            removeItem(category, index) {
+            async removeItem(category, index) {
                 const item = category.items[index];
                 if (!item) return;
-                if (
-                    !confirm(
-                        `Delete "${item.name || "this item"}"? This is applied when you press Save Menu.`,
-                    )
-                ) {
-                    return;
-                }
+                const ok = await window.siteDialog.confirm({
+                    title: `Delete "${item.name || "this item"}"?`,
+                    message: 'This is applied when you press "Save Menu".',
+                    confirmText: "Delete item",
+                    tone: "danger",
+                });
+                if (!ok || category.items[index] !== item) return;
                 if (!this.isNewItem(item)) this.deletedIds.push(item.id);
                 category.items.splice(index, 1);
             },

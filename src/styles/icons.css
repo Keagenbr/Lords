@@ -2,7 +2,7 @@
    PLACEHOLDER ICON SLOTS
    ──────────────────────────────────────────────────────────────
    Any element with a  data-icon="name"  attribute gets an icon drawn
-   in front of its content (via ::before). Right now every icon is a
+   in front of its content (via ::before). As placeholder every icon is a
    dashed-square placeholder.
 
    To add a real icon:

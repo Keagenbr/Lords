@@ -765,9 +765,102 @@
         }
     }
 
+    /* PDF or pictures: the two download choices */
+    .downloads-choice {
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .downloads-title {
+        margin: 0 0 0.25rem;
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: var(--bg-color-btn);
+    }
+
+    .downloads-intro {
+        margin: 0 0 1.25rem;
+        color: var(--text-color-hover);
+    }
+
+    .downloads-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+        text-align: left;
+    }
+
+    .download-option {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas:
+            "icon text"
+            "actions actions";
+        align-items: center;
+        gap: 0.75rem 1rem;
+        padding: 1rem 1.1rem;
+        background: #ffffff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+    }
+
+    .download-option-icon {
+        grid-area: icon;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        background: var(--bg-color-light);
+        color: var(--bg-color-btn);
+        --icon-size: 1.5rem;
+    }
+
+    .download-option-text {
+        grid-area: text;
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+
+        strong {
+            font-size: 1.05rem;
+        }
+
+        span {
+            font-size: 0.85rem;
+            opacity: 0.75;
+        }
+    }
+
+    .download-option-actions {
+        grid-area: actions;
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    button.download-link {
+        font: inherit;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+
+        &:disabled {
+            opacity: 0.6;
+            cursor: progress;
+        }
+    }
+
     @media (max-width: 768px) {
         .menu-downloads {
             padding: 0 0.75rem;
+        }
+        .downloads-title {
+            font-size: 1.35rem;
+        }
+        .downloads-options {
+            grid-template-columns: 1fr;
         }
         /* Two pictures per row on a phone */
         .download-grid {

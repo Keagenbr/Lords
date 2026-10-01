@@ -54,6 +54,12 @@ export interface ImageSection {
   blurb: string;
   folder: string;
   images: ManagedImage[];
+  /**
+   * Where pictures ADDED in the editor (beyond the fixed list above) are
+   * stored, e.g. "MenuSpecials/specials". Each section has its own sub-folder
+   * so specials and platter pictures (same parent folder) never mix.
+   */
+  extraFolder: string;
 }
 
 export const IMAGE_SECTIONS: Record<ImageSectionKey, ImageSection> = {
@@ -64,6 +70,7 @@ export const IMAGE_SECTIONS: Record<ImageSectionKey, ImageSection> = {
       "The multi-page menu slider. Replace a page with a new picture; the slider order stays the same.",
     folder: MAIN_MENU_FOLDER,
     images: MAIN_MENU_PARTS,
+    extraFolder: `${MAIN_MENU_FOLDER}/main-menu`,
   },
   specials: {
     key: "specials",
@@ -71,6 +78,7 @@ export const IMAGE_SECTIONS: Record<ImageSectionKey, ImageSection> = {
     blurb: "The weekly specials slider. Replace any special with a new picture.",
     folder: SPECIALS_FOLDER,
     images: SPECIALS,
+    extraFolder: `${SPECIALS_FOLDER}/specials`,
   },
   platter: {
     key: "platter",
@@ -78,6 +86,7 @@ export const IMAGE_SECTIONS: Record<ImageSectionKey, ImageSection> = {
     blurb: "The platter menu picture.",
     folder: PLATTER_FOLDER,
     images: [PLATTER],
+    extraFolder: `${PLATTER_FOLDER}/platter`,
   },
 };
 
@@ -90,4 +99,47 @@ export function findManagedImage(
     .filter((section) => section.folder === folder)
     .flatMap((section) => section.images)
     .find((image) => image.filename === filename);
+}
+
+export function isImageSectionKey(key: string): key is ImageSectionKey {
+  return Object.prototype.hasOwnProperty.call(IMAGE_SECTIONS, key);
+}
+
+// ── Full menu PDF ───────────────────────────────────────────────
+// One PDF customers can download from /menu. Uploaded from the
+// "Main Menu Pages" editor page.
+export const MENU_PDF = {
+  folder: MAIN_MENU_FOLDER,
+  filename: "FullMenu.pdf",
+  /** Name the customer's browser saves it as. */
+  downloadName: "Lords-and-Legends-Menu.pdf",
+  maxBytes: 20 * 1024 * 1024, // 20MB
+};
+
+// ── Names for added pictures ────────────────────────────────────
+
+/**
+ * Turns whatever the admin typed into a safe storage name (no extension):
+ * "Wings Wednesday (new)!" -> "Wings-Wednesday-new"
+ */
+export function safeImageName(name: string): string {
+  return String(name || "")
+    .replace(/\.[a-z0-9]{2,5}$/i, "") // drop an extension if one was typed
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60);
+}
+
+/** "Wings-Wednesday_special.jpg" -> "Wings Wednesday Special" */
+export function labelFromFilename(filename: string): string {
+  return filename
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
