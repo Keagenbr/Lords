@@ -40,9 +40,7 @@ const imageUrl = getPublicImageUrl(`${folder}/${filename}`);
                 Lords and Legends
             </h1>
 
-            <button class="menu-btn">
-                <a href="/menu">View Our Menu</a>
-            </button>
+            <a href="/menu" class="menu-btn">View Our Menu</a>
             <section class="triangle"></section>
             <!-- <HeaderBottom class="home-header-down" /> -->
         </header>
@@ -55,14 +53,6 @@ const imageUrl = getPublicImageUrl(`${folder}/${filename}`);
                 for locals and visitors. Today Lords and Legends have also
                 established themselves at Brighton Beach. Proudly bringing
                 people of Brighton the same food and viby environment.
-            </p>
-            <p>
-                If you are looking for a place to enjoy your favourite sports
-                broadcasts and to eat the most delicious food, then you must
-                visit Lords & Legends Sports Cafe which has an extensive menu
-                catering for everyone’s taste. With a great selection of food,
-                refreshing drinks and party atmosphere, there is no better place
-                to dine than in our Lords & Legends Sports Cafe!
             </p>
             <p>
                 If you are looking for a place to enjoy your favourite sports
@@ -139,6 +129,7 @@ const imageUrl = getPublicImageUrl(`${folder}/${filename}`);
     </main>
 
     <style lang="scss">
+        // ── Hero ────────────────────────────────────────────────
         .home-header {
             display: grid;
             grid-template-rows: 2fr auto;
@@ -146,48 +137,69 @@ const imageUrl = getPublicImageUrl(`${folder}/${filename}`);
             justify-items: center;
             text-align: center;
             color: var(--text-color-dark);
-            height: calc(100vh - var(--nav-headerM));
-            margin-top: var(--nav-headerM);
-            background: url("../../src/assets/headerImg.webp") no-repeat center
-                center;
-            // background-size: cover;
+            min-height: 32rem;
+            height: calc(100vh - var(--nav-header));
+            margin-top: var(--nav-header);
+            // soft dark overlay so the white title stays readable on the photo
+            background:
+                linear-gradient(
+                    color-mix(in srgb, var(--bg-color-dark) 45%, transparent),
+                    color-mix(in srgb, var(--bg-color-dark) 45%, transparent)
+                ),
+                url("../../src/assets/headerImg.webp") no-repeat center center;
+            background-size: cover;
 
             & h1 {
                 grid-area: 1 / 1 / 2 / 2;
-                & span {
-                    font-family: "Noto Sans";
-                }
+                margin: 0;
+                padding: 0 1rem;
                 color: var(--text-color-dark);
                 font-size: 4rem;
+                line-height: 1.15;
                 font-family: "Pinyon Script";
+                text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+
+                & span {
+                    display: block;
+                    font-family: "Noto Sans";
+                    font-size: 1.25rem;
+                    letter-spacing: 0.15em;
+                    text-transform: uppercase;
+                }
             }
             & svg {
                 bottom: 0;
                 z-index: 10;
             }
         }
+
         .menu-btn {
             grid-area: 1 / 1 / 2 / 2;
-
             position: relative;
             bottom: -25%;
 
-            padding: 0.5em 1em;
-            background-color: var(--bg-color);
-            color: var(--txt-color);
-            border: none;
+            display: inline-block;
+            padding: 0.75em 1.75em;
+            background-color: var(--bg-color-btn);
+            color: var(--text-color);
+            border: 2px solid var(--text-color-dark);
             border-radius: 5px;
-            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            transition:
+                background-color 0.2s ease,
+                transform 0.2s ease;
 
-            & a {
-                text-decoration: none;
-                color: var(--txt-color);
+            &:hover,
+            &:focus-visible {
+                background-color: var(--text-color-hover);
+                transform: translateY(-2px);
             }
         }
 
         .triangle {
             position: relative;
-            background: #2c3e50;
+            background: var(--bg-color-dark);
             height: 30px;
         }
 
@@ -204,20 +216,58 @@ const imageUrl = getPublicImageUrl(`${folder}/${filename}`);
             transform: translateX(-50%);
         }
 
-        // Specials Sections
+        // ── About ───────────────────────────────────────────────
+        .home-about {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem 1rem;
+            color: var(--txt-color);
+            text-align: center;
+
+            & h2 {
+                margin: 0 0 1.25rem;
+                font-size: 2.25rem;
+                font-weight: 800;
+                letter-spacing: -0.02em;
+                color: var(--bg-color-btn);
+
+                // short accent line under the heading
+                &::after {
+                    content: "";
+                    display: block;
+                    width: 4rem;
+                    height: 3px;
+                    margin: 0.6rem auto 0;
+                    background: var(--MenuColor);
+                    border-radius: 2px;
+                }
+            }
+
+            & p {
+                margin: 0 0 1.25rem;
+                font-size: 1.05rem;
+                line-height: 1.75;
+            }
+        }
+
+        // ── Specials ────────────────────────────────────────────
         @layer {
             .Specials {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 justify-content: space-evenly;
-                margin: 10%;
-                // width: 100%;
-                // overflow: scroll;
+                margin: 3rem 10%;
+
+                & h3 {
+                    margin: 0 0 1.25rem;
+                    font-size: 1.75rem;
+                    color: var(--bg-color-btn);
+                }
             }
             .weeklySpecials-wrapper {
                 max-width: 100%;
-                margin: 0 auto 4rem auto;
+                margin: 0 auto 2rem auto;
                 text-align: center;
             }
             .menu-image-container {
@@ -225,18 +275,15 @@ const imageUrl = getPublicImageUrl(`${folder}/${filename}`);
                 cursor: pointer;
             }
             .menu-image {
-                // margin: 0.25rem auto;
                 width: 90%;
                 height: auto;
                 border-radius: 12px;
                 border: 2px solid var(--MenuColor);
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
                 transition: transform 0.3s ease-in-out;
-                // display: block;
                 position: relative;
             }
             .menu-image:hover {
-                // transform: scale(1.01);
                 width: 100%;
             }
             .download-btn {
@@ -254,13 +301,48 @@ const imageUrl = getPublicImageUrl(`${folder}/${filename}`);
             }
         }
 
-        // @media (max-width: 768px) {
-        //     .home-header {
-        //         height: calc(100vh - var(--nav-headerM));
-        //         margin-top: calc(var(--nav-headerM) - 0.25em);
-        //         // margin-top: var(--nav-headerM);
-        //     }
-        // }
+        // ── Mobile ──────────────────────────────────────────────
+        @media (max-width: 768px) {
+            .home-header {
+                min-height: 26rem;
+                height: calc(100vh - var(--nav-headerM));
+                margin-top: var(--nav-headerM);
+
+                & h1 {
+                    font-size: 2.75rem;
+
+                    & span {
+                        font-size: 1rem;
+                    }
+                }
+            }
+
+            .menu-btn {
+                bottom: -15%;
+            }
+
+            .home-about {
+                padding: 2rem 1.25rem 0.5rem;
+                text-align: left;
+
+                & h2 {
+                    font-size: 1.75rem;
+                    text-align: center;
+                }
+                & p {
+                    font-size: 1rem;
+                    line-height: 1.65;
+                }
+            }
+
+            .Specials {
+                margin: 2rem 1rem;
+            }
+            .menu-image,
+            .menu-image:hover {
+                width: 100%;
+            }
+        }
     </style>
 
     <script is:inline></script>

@@ -1,0 +1,24 @@
+---
+// src/pages/500.astro - shown when a page that is rendered on demand
+// (like /menu) throws an error.
+//
+// Astro passes the error in as a prop. It is deliberately NOT shown to
+// visitors (it could leak details); it is only logged for you to read in the
+// server logs. If this page itself fails, the host's default 500 page is used.
+import Layout from "../layouts/Layout.astro";
+import ErrorPage from "../components/ErrorPage.astro";
+
+export const prerender = false;
+
+const { error } = Astro.props;
+console.error("[500]", error instanceof Error ? error.message : error);
+---
+
+<Layout title="Something went wrong - Lords & Legends">
+    <meta name="robots" content="noindex" slot="head" />
+    <ErrorPage
+        code="500"
+        title="Something went wrong on our side"
+        message="Sorry about that, our kitchen had a hiccup. Please try again in a moment, and if it keeps happening, get in touch with us."
+    />
+</Layout>

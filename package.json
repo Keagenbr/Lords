@@ -31,6 +31,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "sass": "^1.105.1",
+    "sharp": "^0.35.4",
     "tailwindcss": "^4.3.3",
     "xlsx": "file:vendor/xlsx-0.20.3.tgz"
   },

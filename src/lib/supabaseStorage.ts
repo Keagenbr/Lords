@@ -18,10 +18,14 @@ if (!SUPABASE_URL) {
  *
  * @param path   Path inside the bucket, e.g. "Menu/MenuPage1.jpg".
  * @param bucket Optional bucket override. Defaults to PUBLIC_SUPABASE_BUCKET.
+ * @param options.download  Supabase Storage: `true` (or a file name) makes the
+ *   browser SAVE the file instead of opening it. A plain `<a download>` does
+ *   not work for images on another domain (your Supabase URL), but this does.
  */
 export function getPublicImageUrl(
   path: string,
   bucket: string = DEFAULT_BUCKET,
+  options: { download?: boolean | string } = {},
 ): string {
   // Encode each path segment individually so folder separators survive
   // but characters like `&` (e.g. "MenuL&L.jpg") are escaped correctly.
@@ -31,5 +35,10 @@ export function getPublicImageUrl(
     .map(encodeURIComponent)
     .join("/");
 
-  return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${encodedPath}`;
+  const base = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${encodedPath}`;
+
+  if (options.download === undefined || options.download === false) return base;
+  return options.download === true
+    ? `${base}?download=`
+    : `${base}?download=${encodeURIComponent(options.download)}`;
 }

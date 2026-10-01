@@ -32,9 +32,7 @@ const menuJson = JSON.stringify(menuData);
     <!-- Editor Control Header -->
     <div class="editor-header">
         <div class="header-titles">
-            <h1>
-                <i class="fa-solid fa-pen-to-square"></i> Menu Management Editor
-            </h1>
+            <h1 data-icon="menu-editor">Menu Management Editor</h1>
             <p class="tagline">
                 Update menu items and their pictures, then press Save Menu.
             </p>
@@ -52,12 +50,19 @@ const menuJson = JSON.stringify(menuData);
                 @click="saveAllChanges()"
                 :disabled="isSaving || dirtyCount === 0"
             >
-                <i class="fa-solid fa-floppy-disk" x-show="!isSaving"></i>
-                <i
-                    class="fa-solid fa-spinner fa-spin"
+                <span
+                    class="ico-only"
+                    data-icon="save"
+                    x-show="!isSaving"
+                    aria-hidden="true"
+                ></span>
+                <span
+                    class="ico-only ico-spin"
+                    data-icon="loader"
                     x-show="isSaving"
                     x-cloak
-                ></i>
+                    aria-hidden="true"
+                ></span>
                 <span x-text="isSaving ? 'Saving Changes...' : 'Save Menu'"></span>
             </button>
         </div>
@@ -84,7 +89,11 @@ const menuJson = JSON.stringify(menuData);
 
     <!-- Search & Filter Controls -->
     <div class="search-box">
-        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <span
+            class="search-icon ico-only"
+            data-icon="search"
+            aria-hidden="true"
+        ></span>
         <input
             type="text"
             x-model="search"
@@ -107,15 +116,15 @@ const menuJson = JSON.stringify(menuData);
             :class="{ active: selectedType === 'all' }"
             @click="selectedType = 'all'"
         >
-            <i class="fa-solid fa-utensils"></i> All Types
+            All Types
         </button>
         <template x-for="t in types" :key="t.id">
             <button
                 class="filter-btn"
+                :data-icon="String(t.id).toLowerCase()"
                 :class="{ active: selectedType === t.id }"
                 @click="selectedType = t.id"
             >
-                <i :class="getTypeIcon(t.id)"></i>
                 <span x-text="t.label"></span>
             </button>
         </template>
@@ -125,7 +134,11 @@ const menuJson = JSON.stringify(menuData);
     <template x-for="type in filteredMenu" :key="type.id">
         <section class="menu-type-section">
             <h2 class="type-header">
-                <i :class="getTypeIcon(type.id)"></i>
+                <span
+                    class="ico-only"
+                    :data-icon="String(type.id).toLowerCase()"
+                    aria-hidden="true"
+                ></span>
                 <span x-text="type.label"></span>
             </h2>
 
@@ -150,7 +163,11 @@ const menuJson = JSON.stringify(menuData);
                                     class="category-logo"
                                 />
                                 <div class="image-overlay-edit">
-                                    <i class="fa-solid fa-camera"></i>
+                                    <span
+                                        class="ico-only"
+                                        data-icon="camera"
+                                        aria-hidden="true"
+                                    ></span>
                                 </div>
                             </div>
                             <span x-text="cat.label.replace(/_/g, ' ')"></span>
@@ -162,16 +179,18 @@ const menuJson = JSON.stringify(menuData);
                                 @click.stop="addNewItem(cat)"
                                 title="Add New Item to Category"
                             >
-                                <i class="fa-solid fa-plus"></i> Add Item
+                                Add Item
                             </button>
                             <button
                                 class="toggle-cat-btn"
                                 @click="toggleCategory(cat.id)"
                             >
-                                <i
-                                    class="fa-solid"
-                                    :class="isCategoryOpen(cat.id) ? 'fa-chevron-up' : 'fa-chevron-down'"
-                                ></i>
+                                <span
+                                    class="cat-chevron ico-only"
+                                    data-icon="double-chevron-down"
+                                    :class="{ 'is-open': isCategoryOpen(cat.id) }"
+                                    aria-hidden="true"
+                                ></span>
                             </button>
                         </div>
                     </div>
@@ -208,11 +227,19 @@ const menuJson = JSON.stringify(menuData);
                                                     class="no-img-placeholder"
                                                     x-show="!getItemImage(item)"
                                                 >
-                                                    <i class="fa-solid fa-image"></i>
+                                                    <span
+                                                        class="ico-only"
+                                                        data-icon="image"
+                                                        aria-hidden="true"
+                                                    ></span>
                                                     <span>No Img</span>
                                                 </div>
                                                 <div class="thumb-hover-edit">
-                                                    <i class="fa-solid fa-arrows-rotate"></i>{" "}
+                                                    <span
+                                                        class="ico-only"
+                                                        data-icon="refresh"
+                                                        aria-hidden="true"
+                                                    ></span>
                                                     Change
                                                 </div>
                                             </div>
@@ -222,7 +249,11 @@ const menuJson = JSON.stringify(menuData);
                                                 @click.stop="openLightbox(getItemImage(item), item.name)"
                                                 title="View Fullsize"
                                             >
-                                                <i class="fa-solid fa-expand"></i>
+                                                <span
+                                                    class="ico-only"
+                                                    data-icon="expand"
+                                                    aria-hidden="true"
+                                                ></span>
                                             </button>
                                         </div>
 
@@ -230,7 +261,9 @@ const menuJson = JSON.stringify(menuData);
                                         <div class="item-details-fields">
                                             <div class="field-row">
                                                 <label class="field field-name">
-                                                    <span class="field-label">Name</span>
+                                                    <span class="field-label">
+                                                        Name
+                                                    </span>
                                                     <input
                                                         type="text"
                                                         x-model="item.name"
@@ -239,7 +272,9 @@ const menuJson = JSON.stringify(menuData);
                                                     />
                                                 </label>
                                                 <label class="field field-price">
-                                                    <span class="field-label">Price</span>
+                                                    <span class="field-label">
+                                                        Price
+                                                    </span>
                                                     <input
                                                         type="text"
                                                         x-model="item.price"
@@ -251,7 +286,9 @@ const menuJson = JSON.stringify(menuData);
                                             </div>
 
                                             <label class="field field-desc">
-                                                <span class="field-label">Description</span>
+                                                <span class="field-label">
+                                                    Description
+                                                </span>
                                                 <textarea
                                                     x-model="item.description"
                                                     placeholder="Description / ingredients..."
@@ -262,7 +299,9 @@ const menuJson = JSON.stringify(menuData);
 
                                             <div class="field-tags">
                                                 <label class="field field-serves">
-                                                    <span class="field-label">Serves</span>
+                                                    <span class="field-label">
+                                                        Serves
+                                                    </span>
                                                     <input
                                                         type="text"
                                                         x-model="item.serves"
@@ -275,7 +314,9 @@ const menuJson = JSON.stringify(menuData);
                                                         type="checkbox"
                                                         x-model="item.takeaway"
                                                     />
-                                                    <span>Available takeaway</span>
+                                                    <span>
+                                                        Available takeaway
+                                                    </span>
                                                 </label>
                                             </div>
                                         </div>
@@ -294,7 +335,11 @@ const menuJson = JSON.stringify(menuData);
                                                 @click="removeItem(cat, index)"
                                                 title="Delete item"
                                             >
-                                                <i class="fa-solid fa-trash-can"></i>
+                                                <span
+                                                    class="ico-only"
+                                                    data-icon="trash"
+                                                    aria-hidden="true"
+                                                ></span>
                                                 <span>Delete</span>
                                             </button>
                                         </div>
@@ -336,7 +381,11 @@ const menuJson = JSON.stringify(menuData);
     <!-- Upload Progress Loader Modal -->
     <div class="loader-overlay" x-show="isUploading" x-cloak>
         <div class="loader-box">
-            <i class="fa-solid fa-circle-notch fa-spin loader-icon"></i>
+            <span
+                class="loader-icon ico-only ico-spin"
+                data-icon="loader"
+                aria-hidden="true"
+            ></span>
             <p>Uploading image to Supabase Storage...</p>
         </div>
     </div>
@@ -535,16 +584,6 @@ const menuJson = JSON.stringify(menuData);
                 return !!this.openCategories[catId];
             },
 
-            getTypeIcon(typeId) {
-                const icons = {
-                    food: "fa-solid fa-burger",
-                    drinks: "fa-solid fa-beer-mug-empty",
-                    platters: "fa-solid fa-utensils",
-                    specials: "fa-solid fa-star",
-                };
-                return icons[typeId] || "fa-solid fa-list";
-            },
-
             // A stored value is either a full URL (what uploads save) or a
             // bare file name from older rows.
             resolveImage(value, folder) {
@@ -556,7 +595,9 @@ const menuJson = JSON.stringify(menuData);
             },
 
             getCategoryImage(cat) {
-                return this.resolveImage(cat.image_url, "Categories") || NO_IMAGE;
+                return (
+                    this.resolveImage(cat.image_url, "Categories") || NO_IMAGE
+                );
             },
 
             getItemImage(item) {
@@ -644,6 +685,17 @@ const menuJson = JSON.stringify(menuData);
                     return;
                 }
 
+                // The host (Vercel) rejects uploads over 4.5 MB, so stop at 4 MB.
+                if (file.size > 4 * 1024 * 1024) {
+                    this.status = {
+                        type: "error",
+                        message:
+                            "That picture is over 4MB. Shrink it first (e.g. at squoosh.app) and try again.",
+                    };
+                    input.value = "";
+                    return;
+                }
+
                 this.isUploading = true;
                 try {
                     const form = new FormData();
@@ -666,10 +718,28 @@ const menuJson = JSON.stringify(menuData);
                     // Shows immediately; it is attached to the menu when the
                     // admin presses "Save Menu".
                     target.image_url = body.url;
+
+                    // The server reports what optimisation did. "failed" means
+                    // the ORIGINAL picture was uploaded untouched.
+                    const o = body.optimization;
+                    const size = (n) =>
+                        n >= 1048576
+                            ? (n / 1048576).toFixed(1) + " MB"
+                            : Math.round(n / 1024) + " KB";
+                    let note = "";
+                    let type = "info";
+                    if (o?.status === "optimized") {
+                        note = ` Optimised: ${size(o.originalBytes)} → ${size(o.finalBytes)}.`;
+                    } else if (o?.status === "failed") {
+                        type = "warning";
+                        note = ` Optimisation failed, so the original (${size(o.originalBytes)}) was uploaded instead.`;
+                    }
                     this.status = {
-                        type: "info",
+                        type,
                         message:
-                            'Picture uploaded. Press "Save Menu" to attach it.',
+                            "Picture uploaded." +
+                            note +
+                            ' Press "Save Menu" to attach it.',
                     };
                 } catch (err) {
                     this.status = {
@@ -693,6 +763,9 @@ const menuJson = JSON.stringify(menuData);
             errorText(res, body) {
                 if (res.status === 403 || res.status === 401) {
                     return "Your admin session has expired. Please sign in again.";
+                }
+                if (res.status === 413) {
+                    return "The picture is too large (max 4MB).";
                 }
                 return body?.error || `Request failed (${res.status})`;
             },
@@ -753,10 +826,14 @@ const menuJson = JSON.stringify(menuData);
                         // 2. Category picture
                         if (this.isCategoryDirty(cat)) {
                             try {
-                                await this.callCrud("update", "menu_categories", {
-                                    id: cat.id,
-                                    image_url: cat.image_url || "",
-                                });
+                                await this.callCrud(
+                                    "update",
+                                    "menu_categories",
+                                    {
+                                        id: cat.id,
+                                        image_url: cat.image_url || "",
+                                    },
+                                );
                                 this.categoryBaseline[cat.id] =
                                     cat.image_url || "";
                                 saved++;
@@ -784,10 +861,14 @@ const menuJson = JSON.stringify(menuData);
                                     );
                                     item.id = row.id;
                                 } else {
-                                    await this.callCrud("update", "menu_items", {
-                                        ...payload,
-                                        id: item.id,
-                                    });
+                                    await this.callCrud(
+                                        "update",
+                                        "menu_items",
+                                        {
+                                            ...payload,
+                                            id: item.id,
+                                        },
+                                    );
                                 }
                                 this.baseline[item.id] = JSON.stringify(
                                     this.itemPayload(item),
@@ -831,7 +912,7 @@ const menuJson = JSON.stringify(menuData);
         display: block;
         position: relative;
         max-width: 1000px;
-        margin: 0 auto;
+        margin: 0 10% 5%;
         padding: 1.5rem;
         color: var(--txt-color);
         top: var(--nav-header);
@@ -921,6 +1002,11 @@ const menuJson = JSON.stringify(menuData);
             border-color: #90cdf4;
             color: #2a4365;
         }
+        &.warning {
+            background: #fffaf0;
+            border-color: #f6ad55;
+            color: #744210;
+        }
     }
 
     .status-close {
@@ -934,6 +1020,7 @@ const menuJson = JSON.stringify(menuData);
     .search-box {
         position: relative;
         margin-bottom: 1.5rem;
+        max-width: 100%;
     }
 
     .search-input {
@@ -1141,6 +1228,42 @@ const menuJson = JSON.stringify(menuData);
             color: var(--bg-color-btn);
             margin-bottom: 1rem;
         }
+    }
+
+    /* SVG icon slots (src/styles/icons.css) */
+    .filter-btn,
+    .add-item-btn,
+    .save-btn,
+    .delete-item-btn,
+    .thumb-hover-edit,
+    .editor-header h1 {
+        --icon-gap: 0;
+    }
+    .editor-header h1[data-icon] {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .add-item-btn,
+    .save-btn,
+    .filter-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .search-icon {
+        --icon-size: 1.15rem;
+    }
+    .cat-chevron {
+        display: inline-flex;
+        --icon-size: 1.25rem;
+        transition: transform 0.25s ease;
+    }
+    .cat-chevron.is-open {
+        transform: rotate(180deg);
+    }
+    .loader-icon {
+        --icon-size: 2rem;
     }
 
     /* ─────────────────────────────────────────────────────────────
@@ -1370,6 +1493,10 @@ const menuJson = JSON.stringify(menuData);
             min-height: 48px;
             padding: 0.5rem 1.1rem;
             flex: none;
+        }
+
+        .search-box {
+            width: fit-content;
         }
 
         .search-input,

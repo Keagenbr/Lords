@@ -1,0 +1,242 @@
+---
+// src/components/Menu/MenuDownloads.astro
+//
+// "Download or view all menu images" section shown at the bottom of /menu.
+// It lists every picture the admin can edit (main menu pages, specials and the
+// platter menu; see src/lib/menuImages.ts), so it is always up to date.
+import { getPublicImageUrl } from "../../lib/supabaseStorage";
+import { IMAGE_SECTIONS } from "../../lib/menuImages";
+
+const groups = Object.values(IMAGE_SECTIONS).map((section) => ({
+    key: section.key,
+    title: section.title,
+    images: section.images.map((image) => {
+        const path = `${section.folder}/${image.filename}`;
+        return {
+            label: image.label,
+            // Opens the picture in a new tab.
+            viewUrl: getPublicImageUrl(path),
+            // Supabase's `download` option makes the browser SAVE the file.
+            downloadUrl: getPublicImageUrl(path, undefined, {
+                download: image.filename,
+            }),
+        };
+    }),
+}));
+---
+
+<section class="menu-downloads">
+    <details class="downloads">
+        <summary class="downloads-toggle" data-icon="images">
+            <span>Download or view all menu images</span>
+            <span
+                class="downloads-chevron ico-only"
+                data-icon="double-chevron-down"
+                aria-hidden="true"></span>
+        </summary>
+
+        <div class="downloads-body">
+            {
+                groups.map((group) => (
+                    <div class="downloads-group">
+                        <h3>{group.title}</h3>
+                        <ul class="download-grid">
+                            {group.images.map((image) => (
+                                <li class="download-card">
+                                    <a
+                                        href={image.viewUrl}
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="download-thumb"
+                                        aria-label={`View ${image.label}`}
+                                    >
+                                        <img
+                                            src={image.viewUrl}
+                                            alt={image.label}
+                                            loading="lazy"
+                                            decoding="async"
+                                        />
+                                    </a>
+                                    <span class="download-label">
+                                        {image.label}
+                                    </span>
+                                    <div class="download-actions">
+                                        <a
+                                            href={image.viewUrl}
+                                            target="_blank"
+                                            rel="noopener"
+                                            class="download-link"
+                                            data-icon="eye"
+                                        >
+                                            View
+                                        </a>
+                                        <a
+                                            href={image.downloadUrl}
+                                            class="download-link download-link-primary"
+                                            data-icon="download"
+                                        >
+                                            Download
+                                        </a>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                ))
+            }
+        </div>
+    </details>
+</section>
+
+<style>
+    .menu-downloads {
+        max-width: 960px;
+        margin: 0 auto 3rem;
+        padding: 0 1.5rem;
+        color: var(--txt-color);
+    }
+
+    .downloads-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+        min-height: 48px;
+        padding: 0.6rem 1.5rem;
+        background: var(--bg-color-btn);
+        color: var(--text-color);
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        list-style: none;
+        --icon-gap: 0;
+
+        &::-webkit-details-marker {
+            display: none;
+        }
+        &:hover {
+            background: var(--text-color-hover);
+        }
+        &:focus-visible {
+            outline: 3px solid var(--MenuColor);
+            outline-offset: 2px;
+        }
+    }
+
+    .downloads-chevron {
+        display: inline-flex;
+        transition: transform 0.25s ease;
+        --icon-size: 1.25rem;
+    }
+    .downloads[open] .downloads-chevron {
+        transform: rotate(180deg);
+    }
+
+    .downloads-body {
+        padding-top: 1.5rem;
+    }
+
+    .downloads-group {
+        margin-bottom: 2rem;
+
+        h3 {
+            color: var(--bg-color-btn);
+            border-bottom: 3px solid var(--nav-bg);
+            padding-bottom: 0.4rem;
+            margin: 0 0 1rem;
+        }
+    }
+
+    .download-grid {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .download-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        background: #ffffff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+    }
+
+    .download-thumb {
+        display: block;
+        aspect-ratio: 3 / 4;
+        overflow: hidden;
+        border-radius: 8px;
+        background: var(--bg-color-light);
+        border: 1px solid var(--nav-bg);
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+    }
+
+    .download-label {
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+
+    .download-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .download-link {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        min-height: 44px;
+        padding: 0 0.5rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 8px;
+        color: var(--bg-color-btn);
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        --icon-gap: 0;
+
+        &:hover {
+            background: var(--nav-bg);
+        }
+    }
+
+    .download-link-primary {
+        background: var(--bg-color-btn);
+        border-color: var(--bg-color-btn);
+        color: var(--text-color);
+
+        &:hover {
+            background: var(--text-color-hover);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .menu-downloads {
+            padding: 0 0.75rem;
+        }
+        /* Two pictures per row on a phone */
+        .download-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .download-card {
+            padding: 0.5rem;
+        }
+        .download-actions {
+            flex-direction: column;
+        }
+    }
+</style>

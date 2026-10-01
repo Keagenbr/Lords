@@ -27,6 +27,28 @@ const MAP = {
   "live-menu": "globe",
   back: "arrow-left",
   open: "arrow-up-right",
+  // menu page, order panel, admin editor, footer
+  search: "search",
+  all: "utensils",
+  seat: "armchair",
+  plus: "plus",
+  cart: "shopping-cart",
+  receipt: "receipt",
+  whatsapp: "message-circle",
+  empty: "utensils-crossed",
+  clock: "clock",
+  alert: "triangle-alert",
+  download: "download",
+  save: "save",
+  loader: "loader-circle",
+  camera: "camera",
+  trash: "trash-2",
+  expand: "maximize-2",
+  image: "image",
+  images: "images",
+  refresh: "refresh-cw",
+  "map-pin": "map-pin",
+  // NOTE: double-chevron-down.svg is your own file and is not copied here.
 };
 
 mkdirSync("public/icons", { recursive: true });

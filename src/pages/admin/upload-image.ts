@@ -3,6 +3,11 @@ import { supabaseAdmin } from "../../lib/supabaseAdmin";
 import { getAdminUser } from "../../lib/adminAuth";
 import { STORAGE_BUCKET } from "../../lib/supabaseStorage";
 import { findManagedImage } from "../../lib/menuImages";
+import {
+  formatFromFilename,
+  optimizeImage,
+  type OptimizeOptions,
+} from "../../lib/optimizeImage";
 
 export const prerender = false;
 
@@ -22,7 +27,22 @@ const json = (body: unknown, status = 200) =>
 //                is written over the existing path, so the components keep
 //                working without any code or database change.
 const NEW_IMAGE_FOLDERS = ["Categories", "MenuItems"];
-const MAX_BYTES = 5 * 1024 * 1024; // 5MB
+
+// Vercel Functions reject request bodies over 4.5 MB (413) before this code
+// ever runs, so the limit here is a little under that. Bigger photos must be
+// shrunk before uploading (the editor tells the admin when this happens).
+const MAX_BYTES = 4 * 1024 * 1024; // 4MB
+
+// How each kind of picture is optimised (longest side in px, JPEG/WebP quality).
+// - Menu pages / specials / platter: full-page pictures people read and zoom
+//   into, so they keep a high resolution.
+// - Item pictures: small thumbnails + the order pop-up.
+// - Category pictures: tiny logos.
+const SETTINGS = {
+  managed: { maxDimension: 2400, quality: 82 },
+  MenuItems: { maxDimension: 1200, quality: 80 },
+  Categories: { maxDimension: 600, quality: 80 },
+} as const;
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   const user = await getAdminUser(cookies);
@@ -44,11 +64,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return json({ error: "File must be an image" }, 400);
   }
   if (file.size > MAX_BYTES) {
-    return json({ error: "Image must be under 5MB" }, 400);
+    return json({ error: "Image must be under 4MB" }, 400);
   }
 
   let path: string;
   let cacheControl = "3600";
+  let optimizeOptions: OptimizeOptions;
 
   if (mode === "replace") {
     const filename = String(formData.get("filename") || "");
@@ -60,6 +81,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Same URL, new content: keep the browser-cache window short so visitors
     // pick up the new picture quickly.
     cacheControl = "300";
+    // The file name (and therefore the URL) must not change, so the image is
+    // converted to the format that matches the existing file extension.
+    optimizeOptions = {
+      ...SETTINGS.managed,
+      format: formatFromFilename(filename) ?? "same",
+    };
   } else {
     if (!NEW_IMAGE_FOLDERS.includes(folder)) {
       return json(
@@ -67,15 +94,34 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         400,
       );
     }
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    path = `${folder}/${Date.now()}_${safeName}`;
+    const baseName = file.name
+      .replace(/\.[^.]+$/, "")
+      .replace(/[^a-zA-Z0-9._-]/g, "_");
+    // New pictures get a fresh URL, so they can be stored as WebP.
+    optimizeOptions = {
+      ...SETTINGS[folder as "MenuItems" | "Categories"],
+      format: "webp",
+    };
+    path = `${folder}/${Date.now()}_${baseName}.webp`;
   }
 
+  // ── Optimise (never throws; see src/lib/optimizeImage.ts) ──────────
+  const original = new Uint8Array(await file.arrayBuffer());
+  let result = await optimizeImage(original, file.type, optimizeOptions);
+
+  // A new picture that could not be optimised is stored as it was uploaded,
+  // so give it back its real extension instead of ".webp".
+  if (result.status !== "optimized" && mode !== "replace") {
+    const ext = file.name.match(/\.([a-zA-Z0-9]+)$/)?.[1]?.toLowerCase() ?? "img";
+    path = path.replace(/\.webp$/, `.${ext}`);
+  }
+
+  // ── Upload (the optimised file, or the original if that failed) ────
   const { error: uploadError } = await supabaseAdmin.storage
     .from(STORAGE_BUCKET)
-    .upload(path, file, {
+    .upload(path, result.data, {
       upsert: true,
-      contentType: file.type,
+      contentType: result.contentType,
       cacheControl,
     });
 
@@ -85,5 +131,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     .from(STORAGE_BUCKET)
     .getPublicUrl(path);
 
-  return json({ url: publicUrlData.publicUrl, path });
+  return json({
+    url: publicUrlData.publicUrl,
+    path,
+    // The editors show this to the admin. status "failed" means the original
+    // was uploaded untouched.
+    optimization: {
+      status: result.status,
+      originalBytes: result.originalBytes,
+      finalBytes: result.finalBytes,
+      message: result.message,
+    },
+  });
 };

@@ -35,6 +35,8 @@ const { title = "Lords and Legends" } = Astro.props;
             src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
         ></script>
         <Fonts />
+        <!-- Extra tags a page wants in <head>: <meta name="robots" content="noindex" slot="head" /> -->
+        <slot name="head" />
         <!-- font awesome icons -->
         <!-- <script
             src="https://kit.fontawesome.com/07324e9632.js"

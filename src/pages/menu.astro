@@ -2,6 +2,7 @@
 // src/pages/menu.astro
 import Layout from "../layouts/Layout.astro";
 import Menu from "../components/Menu/index.astro";
+import MenuDownloads from "../components/Menu/MenuDownloads.astro";
 
 // Render on request so a menu change saved in the admin editor shows up
 // immediately, instead of being frozen at the last build. (The navigation is
@@ -11,4 +12,5 @@ export const prerender = false;
 
 <Layout title="Menu - Lords & Legends">
     <Menu />
+    <MenuDownloads />
 </Layout>

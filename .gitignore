@@ -27,6 +27,7 @@ pnpm-debug.log*
 
 #general
 WebHook.md
+tree.py
 
 src/components/MetaData/Aeo.astro
 src/components/MetaData/Geo.astro

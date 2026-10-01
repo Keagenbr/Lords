@@ -10,21 +10,33 @@ Lords/
 ├── public/
 │   ├── assets/
 │   ├── icons/
+│   │   ├── alert.svg
+│   │   ├── all.svg
 │   │   ├── back.svg
+│   │   ├── camera.svg
+│   │   ├── cart.svg
 │   │   ├── chevron-down.svg
 │   │   ├── chevron-right.svg
+│   │   ├── clock.svg
 │   │   ├── contact.svg
 │   │   ├── double-chevron-down.svg
+│   │   ├── download.svg
 │   │   ├── drinks.svg
 │   │   ├── edit.svg
 │   │   ├── email.svg
+│   │   ├── empty.svg
+│   │   ├── expand.svg
 │   │   ├── eye-off.svg
 │   │   ├── eye.svg
 │   │   ├── food.svg
 │   │   ├── home.svg
+│   │   ├── image.svg
+│   │   ├── images.svg
 │   │   ├── live-menu.svg
+│   │   ├── loader.svg
 │   │   ├── logout.svg
 │   │   ├── main-menu.svg
+│   │   ├── map-pin.svg
 │   │   ├── menu-editor.svg
 │   │   ├── menu-items.svg
 │   │   ├── menu.svg
@@ -32,10 +44,18 @@ Lords/
 │   │   ├── password.svg
 │   │   ├── platter.svg
 │   │   ├── platters.svg
+│   │   ├── plus.svg
+│   │   ├── receipt.svg
+│   │   ├── refresh.svg
+│   │   ├── save.svg
+│   │   ├── search.svg
+│   │   ├── seat.svg
 │   │   ├── specials-slider.svg
 │   │   ├── specials.svg
 │   │   ├── staff.svg
-│   │   └── user.svg
+│   │   ├── trash.svg
+│   │   ├── user.svg
+│   │   └── whatsapp.svg
 │   ├── android-chrome-192x192.png
 │   ├── android-chrome-512x512.png
 │   ├── apple-touch-icon.png
@@ -90,6 +110,7 @@ Lords/
 │   ├── components/
 │   │   ├── Menu/
 │   │   │   ├── index.astro
+│   │   │   ├── MenuDownloads.astro
 │   │   │   ├── MenuMain.astro
 │   │   │   ├── MenuPlatter.astro
 │   │   │   └── MenuSlider.astro
@@ -101,6 +122,7 @@ Lords/
 │   │   │   └── Seo.astro
 │   │   ├── AuthSessionManager.astro
 │   │   ├── CategoryNav.astro
+│   │   ├── ErrorPage.astro
 │   │   ├── ExcelUploader.astro
 │   │   ├── Fonts.astro
 │   │   ├── Footer.astro
@@ -131,6 +153,8 @@ Lords/
 │   │   ├── adminAuth.ts
 │   │   ├── menu.ts
 │   │   ├── menuImages.ts
+│   │   ├── optimizeImage.ts
+│   │   ├── siteInfo.ts
 │   │   ├── supabase.ts
 │   │   ├── supabaseAdmin.ts
 │   │   ├── Supabaseserver.ts
@@ -158,6 +182,8 @@ Lords/
 │   │   │   ├── [name].astro
 │   │   │   ├── index.astro
 │   │   │   └── login.astro
+│   │   ├── 404.astro
+│   │   ├── 500.astro
 │   │   ├── contact.astro
 │   │   ├── index.astro
 │   │   └── menu.astro
@@ -178,7 +204,9 @@ Lords/
 ├── astro.config.mjs
 ├── package-lock.json
 ├── package.json
+├── structure.md
 ├── tree.py
-└── tsconfig.json
+├── tsconfig.json
+└── WebHook.md
 
-27 directories, 154 files
+27 directories, 182 files

@@ -27,7 +27,7 @@ const editorConfig = JSON.stringify({ folder: section.folder, images });
 <section class="image-editor" x-data="menuImageEditor" data-config={editorConfig}>
     <div class="editor-header">
         <div class="header-titles">
-            <h1><i class="fa-solid fa-images"></i> {section.title}</h1>
+            <h1 data-icon="images">{section.title}</h1>
             <p class="tagline">{section.blurb}</p>
         </div>
     </div>
@@ -48,11 +48,11 @@ const editorConfig = JSON.stringify({ folder: section.folder, images });
                         @load="img.missing = false"
                     />
                     <div class="image-missing" x-show="img.missing" x-cloak>
-                        <i class="fa-solid fa-image"></i>
+                        <span class="ico-only big-ico" data-icon="image" aria-hidden="true"></span>
                         <span>No picture uploaded yet</span>
                     </div>
                     <div class="busy" x-show="img.busy" x-cloak>
-                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                        <span class="ico-only ico-spin big-ico" data-icon="loader" aria-hidden="true"></span>
                     </div>
                 </div>
 
@@ -65,18 +65,20 @@ const editorConfig = JSON.stringify({ folder: section.folder, images });
                     <button
                         type="button"
                         class="replace-btn"
+                        data-icon="refresh"
                         :disabled="img.busy"
                         @click="pick(index)"
                     >
-                        <i class="fa-solid fa-arrows-rotate"></i> Replace picture
+                        Replace picture
                     </button>
                     <a
                         class="open-link"
+                        data-icon="open"
                         :href="img.url + '?v=' + img.version"
                         target="_blank"
                         rel="noopener"
                     >
-                        <i class="fa-solid fa-up-right-from-square"></i> Open
+                        Open
                     </a>
                 </div>
 
@@ -141,8 +143,13 @@ const editorConfig = JSON.stringify({ folder: section.folder, images });
                 if (!file.type.startsWith("image/")) {
                     return this.setMessage(img, "error", "Please choose an image file.");
                 }
-                if (file.size > 5 * 1024 * 1024) {
-                    return this.setMessage(img, "error", "Image must be under 5MB.");
+                // The host (Vercel) rejects uploads over 4.5 MB, so stop at 4 MB.
+                if (file.size > 4 * 1024 * 1024) {
+                    return this.setMessage(
+                        img,
+                        "error",
+                        "Image must be under 4MB. Shrink it first (e.g. at squoosh.app) and try again.",
+                    );
                 }
                 if (
                     !confirm(
@@ -171,18 +178,48 @@ const editorConfig = JSON.stringify({ folder: section.folder, images });
                         throw new Error(
                             res.status === 401 || res.status === 403
                                 ? "Your admin session has expired. Please sign in again."
-                                : body.error || `Upload failed (${res.status})`,
+                                : res.status === 413
+                                  ? "Image is too large (max 4MB)."
+                                  : body.error || `Upload failed (${res.status})`,
                         );
                     }
 
                     img.version = Date.now();
                     img.missing = false;
-                    this.setMessage(img, "success", "Picture replaced.");
+                    const note = this.optimizationNote(body.optimization);
+                    this.setMessage(
+                        img,
+                        note.failed ? "warning" : "success",
+                        "Picture replaced. " + note.text,
+                    );
                 } catch (err) {
                     this.setMessage(img, "error", err.message);
                 } finally {
                     img.busy = false;
                 }
+            },
+
+            // Turns the server's optimisation report into a short sentence.
+            // status "failed" means the ORIGINAL was uploaded untouched.
+            optimizationNote(o) {
+                if (!o) return { failed: false, text: "" };
+                const size = (n) =>
+                    n >= 1048576
+                        ? (n / 1048576).toFixed(1) + " MB"
+                        : Math.round(n / 1024) + " KB";
+                if (o.status === "optimized") {
+                    return {
+                        failed: false,
+                        text: `Optimised: ${size(o.originalBytes)} → ${size(o.finalBytes)}.`,
+                    };
+                }
+                if (o.status === "failed") {
+                    return {
+                        failed: true,
+                        text: `Optimisation failed, so the original (${size(o.originalBytes)}) was uploaded instead.`,
+                    };
+                }
+                return { failed: false, text: o.message || "" };
             },
 
             setMessage(img, type, message) {
@@ -337,14 +374,33 @@ const editorConfig = JSON.stringify({ folder: section.folder, images });
             background: #fff5f5;
             color: #742a2a;
         }
+        &.warning {
+            background: #fffaf0;
+            color: #744210;
+            border: 1px solid #f6ad55;
+        }
     }
 
     .hidden-input {
         display: none;
     }
 
+    .header-titles h1[data-icon] {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .header-titles h1,
     .replace-btn,
     .open-link {
+        --icon-gap: 0;
+    }
+    .big-ico {
+        --icon-size: 2rem;
+    }
+    .replace-btn,
+    .open-link {
+        gap: 0.4rem;
         min-height: 44px;
         display: inline-flex;
         align-items: center;
