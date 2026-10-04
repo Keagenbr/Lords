@@ -7,7 +7,9 @@ export const RESTAURANT_NAME = "Lords & Legends";
 export const TAGLINE = "Good times. Cold drinks. Great company.";
 
 /** WhatsApp number in international format, digits only (no + or spaces). */
-export const WHATSAPP_NUMBER = "27626685787";
+export const WHATSAPP_NUMBER = import.meta.env.WHATSAPP_NUMBER;
+
+// export const WHATSAPP_NUMBER = "27626685787";
 export const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}`;
 
 /** Shown in the footer. Add an address / opening hours here if you want them. */

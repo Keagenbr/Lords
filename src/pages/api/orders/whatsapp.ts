@@ -1,13 +1,18 @@
 // src/pages/api/orders/whatsapp.ts
 //
-// POST from the menu cart. Validates the order (WhatsApp number + opt-in are
-// REQUIRED), stores it, sends the staff alert and the customer confirmation.
+// POST from the menu cart. Validates the order (WhatsApp number + opt-in
+// are REQUIRED) and stores it in Supabase. That's all this endpoint does —
+// no WhatsApp Cloud API send happens here. The browser is responsible for
+// opening a wa.me link with the order pre-filled, and the customer sends
+// it to us themselves from their own WhatsApp (same as a normal customer
+// message — no Meta template approval needed for that).
+//
+// Storing first means we still have a record of the order even if the
+// customer closes WhatsApp without hitting send.
 import type { APIRoute } from "astro";
 import { createHash } from "node:crypto";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
-import { formatWhatsAppNumber, normaliseWhatsAppNumber } from "../../../lib/phone";
-import { WA, canMessage, isWhatsAppConfigured, sendTemplate } from "../../../lib/whatsapp";
-import { OPT_IN_TEXT, orderRef } from "../../../lib/orders";
+// import { normaliseWhatsAppNumber } from "../../../lib/phone";
 
 export const prerender = false;
 
@@ -22,13 +27,12 @@ const json = (data: unknown, status = 200) =>
   });
 
 const clean = (v: unknown, max = 120) =>
-  String(v ?? "").replace(/[\u0000-\u001F]/g, " ").trim().slice(0, max);
+  String(v ?? "")
+    .replace(/[\u0000-\u001F]/g, " ")
+    .trim()
+    .slice(0, max);
 
 export const POST: APIRoute = async ({ request, clientAddress }) => {
-  if (!isWhatsAppConfigured() || WA.staffRecipients.length === 0) {
-    return json({ ok: false, error: "not_configured" }, 503);
-  }
-
   let body: any;
   try {
     body = await request.json();
@@ -41,7 +45,8 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   if (cart.length === 0) return json({ ok: false, error: "empty_cart" }, 400);
 
   const customerName = clean(body?.name, 60);
-  if (!customerName) return json({ ok: false, error: "name_required", field: "name" }, 400);
+  if (!customerName)
+    return json({ ok: false, error: "name_required", field: "name" }, 400);
 
   const customerPhone = normaliseWhatsAppNumber(body?.phone);
   if (!customerPhone) {
@@ -56,20 +61,38 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     qty: Math.min(Math.max(parseInt(l?.qty, 10) || 1, 1), 50),
     price: clean(l?.price, 20),
     note: clean(l?.note, 200),
-    options: (Array.isArray(l?.options) ? l.options : []).slice(0, 10).map((o: any) => ({
-      label: clean(o?.label, 40),
-      value: clean(o?.value, 60),
-    })),
+    options: (Array.isArray(l?.options) ? l.options : [])
+      .slice(0, 10)
+      .map((o: any) => ({
+        label: clean(o?.label, 40),
+        value: clean(o?.value, 60),
+        // Optional — only present for modifier options with a price > 0
+        // (e.g. Extra Sauce, Schnitzel Add-ons). Clamped to a sane range.
+        price: Number.isFinite(+o?.price)
+          ? Math.min(Math.max(+o.price, 0), 10000)
+          : 0,
+      })),
   }));
 
   const hasPlatter = Boolean(body?.hasPlatter);
-  const collectDate = /^\d{4}-\d{2}-\d{2}$/.test(body?.collectDate) ? body.collectDate : null;
-  const collectTime = /^\d{2}:\d{2}$/.test(body?.collectTime) ? body.collectTime : "";
-  const estTotal = Number.isFinite(+body?.total) ? Math.max(0, +body.total) : null;
+  const collectDate = /^\d{4}-\d{2}-\d{2}$/.test(body?.collectDate)
+    ? body.collectDate
+    : null;
+  const collectTime = /^\d{2}:\d{2}$/.test(body?.collectTime)
+    ? body.collectTime
+    : "";
+  const estTotal = Number.isFinite(+body?.total)
+    ? Math.max(0, +body.total)
+    : null;
 
-  // ── Basic abuse protection (every message costs money) ──────
+  // ── Basic abuse protection (keeps the orders table honest — no longer
+  // about WhatsApp send costs, since nothing here sends anything) ──────
   const ipHash = createHash("sha256")
-    .update(String(clientAddress ?? request.headers.get("x-forwarded-for") ?? "unknown"))
+    .update(
+      String(
+        clientAddress ?? request.headers.get("x-forwarded-for") ?? "unknown",
+      ),
+    )
     .digest("hex");
   const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
@@ -93,6 +116,9 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   }
 
   // ── Save order ──────────────────────────────────────────────
+  // `status` is deliberately left unset here so the column's existing
+  // default applies — we genuinely don't know yet whether the customer
+  // went on to send the WhatsApp message, only that they got this far.
   const { data: order, error: insertError } = await supabaseAdmin
     .from("whatsapp_orders")
     .insert({
@@ -115,76 +141,5 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     return json({ ok: false, error: "db_error" }, 500);
   }
 
-  const ref = orderRef(order.order_no);
-
-  // ── Template params (each must be a single line) ────────────
-  const collection = hasPlatter
-    ? `${collectDate ?? "date TBC"} at ${collectTime || "time TBC"} (PLATTER)`
-    : collectTime || "ASAP (20-30 mins)";
-
-  const itemsText = items
-    .map((i: (typeof items)[number]) => {
-      const opts = i.options.map((o: { label: string; value: string }) => `${o.label}: ${o.value}`).join(", ");
-      return `${i.qty}x ${i.name}${opts ? ` (${opts})` : ""}${i.note ? ` [${i.note}]` : ""}`;
-    })
-    .join("; ");
-  const totalText = estTotal !== null ? `R${estTotal.toFixed(2)}` : "-";
-
-  // ── 1) Staff alert: new_order_alert ─────────────────────────
-  // {{1}} ref  {{2}} name  {{3}} phone  {{4}} collection  {{5}} items  {{6}} total
-  // Buttons: [0] Accept order  [1] Ready for collection
-  const staffResults = await Promise.allSettled(
-    WA.staffRecipients.map((to) =>
-      sendTemplate(to, WA.templates.staffAlert, {
-        body: [ref, customerName, formatWhatsAppNumber(customerPhone), collection, itemsText, totalText],
-        quickReplyPayloads: [`ACCEPT:${order.id}`, `READY:${order.id}`],
-      }),
-    ),
-  );
-  const staffIds = staffResults
-    .filter((r): r is PromiseFulfilledResult<{ messageId: string }> => r.status === "fulfilled")
-    .map((r) => r.value.messageId);
-  staffResults
-    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
-    .forEach((r) =>
-      console.error("[orders/whatsapp] staff alert failed:", r.reason?.message, r.reason?.details),
-    );
-
-  // ── 2) Customer confirmation: order_received ────────────────
-  // {{1}} name  {{2}} ref  {{3}} total  {{4}} collection
-  let confirmation: "sent" | "skipped_test_mode" | "failed" = "failed";
-  let customerMessageId: string | null = null;
-
-  if (!canMessage(customerPhone)) {
-    confirmation = "skipped_test_mode";
-    console.warn(
-      `[orders/whatsapp] TEST MODE: ${customerPhone} is not in WHATSAPP_TEST_ALLOWED_RECIPIENTS – confirmation skipped.`,
-    );
-  } else {
-    try {
-      const sent = await sendTemplate(customerPhone, WA.templates.orderReceived, {
-        body: [customerName, ref, totalText, collection],
-      });
-      customerMessageId = sent.messageId;
-      confirmation = "sent";
-    } catch (err: any) {
-      console.error("[orders/whatsapp] customer confirmation failed:", err?.message, err?.details);
-    }
-  }
-
-  await supabaseAdmin
-    .from("whatsapp_orders")
-    .update({
-      status: staffIds.length ? "sent" : "failed",
-      staff_message_ids: staffIds,
-      customer_message_id: customerMessageId,
-      confirmation_status: confirmation,
-    })
-    .eq("id", order.id);
-
-  if (!staffIds.length) {
-    // Kitchen didn't get it – let the browser fall back to wa.me.
-    return json({ ok: false, error: "send_failed", orderRef: ref }, 502);
-  }
-  return json({ ok: true, orderRef: ref, confirmation });
+  return json({ ok: true, orderRef: orderRef(order.order_no) });
 };

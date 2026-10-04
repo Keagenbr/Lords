@@ -1,6 +1,7 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import { supabase } from "../../lib/supabase";
+import { getSessionUser, isAdminUser } from "../../lib/adminAuth";
 import "../../styles/password-toggle.css";
 
 export const prerender = false;
@@ -24,27 +25,14 @@ const getTargetSlug = (user: any) => {
     return slugOf(rawTarget);
 };
 
-// 1. If already logged in, redirect immediately
-const accessToken = Astro.cookies.get("sb-access-token")?.value;
-const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
-
-if (accessToken && refreshToken) {
-    const { data: sessionData } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-    });
-
-    if (sessionData?.user) {
-        const user = sessionData.user;
-        const isAdmin =
-            user.app_metadata?.role === "admin" ||
-            user.user_metadata?.role === "admin";
-
-        if (isAdmin) {
-            return Astro.redirect("/staff");
-        } else {
-            return Astro.redirect(`/staff/${getTargetSlug(user)}`);
-        }
+// 1. If already logged in, redirect immediately. getSessionUser() also
+// transparently refreshes an expired access token.
+const existingUser = await getSessionUser(Astro.cookies);
+if (existingUser) {
+    if (isAdminUser(existingUser)) {
+        return Astro.redirect("/staff");
+    } else {
+        return Astro.redirect(`/staff/${getTargetSlug(existingUser)}`);
     }
 }
 
@@ -88,11 +76,8 @@ if (Astro.request.method === "POST") {
                 );
 
                 const user = data.user;
-                const isAdmin =
-                    user.app_metadata?.role === "admin" ||
-                    user.user_metadata?.role === "admin";
 
-                if (isAdmin) {
+                if (isAdminUser(user)) {
                     return Astro.redirect("/staff");
                 } else {
                     return Astro.redirect(`/staff/${getTargetSlug(user)}`);
@@ -120,7 +105,9 @@ if (Astro.request.method === "POST") {
 
             <form method="POST" class="login-form">
                 <div class="form-group">
-                    <label for="email" data-icon="email">Email Address</label>
+                    <label for="email" data-icon="email">
+                        Email Address
+                    </label>
                     <input
                         type="email"
                         id="email"
@@ -131,7 +118,9 @@ if (Astro.request.method === "POST") {
                 </div>
 
                 <div class="form-group">
-                    <label for="password" data-icon="password">Password</label>
+                    <label for="password" data-icon="password">
+                        Password
+                    </label>
                     <div class="pw-wrap" data-pw-field>
                         <input
                             type="password"
@@ -148,8 +137,14 @@ if (Astro.request.method === "POST") {
                             aria-label="Show password"
                             aria-pressed="false"
                         >
-                            <span class="pw-eye ico-only" data-icon="eye"></span>
-                            <span class="pw-eye-off ico-only" data-icon="eye-off"></span>
+                            <span
+                                class="pw-eye ico-only"
+                                data-icon="eye"
+                            ></span>
+                            <span
+                                class="pw-eye-off ico-only"
+                                data-icon="eye-off"
+                            ></span>
                         </button>
                     </div>
                 </div>
