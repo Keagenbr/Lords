@@ -16,8 +16,7 @@
     "dev": "astro dev ",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro",
-    "setup:whatsapp": "node scripts/setup-whatsapp-env.mjs"
+    "astro": "astro"
   },
   "dependencies": {
     "@astrojs/react": "^7.0.0",
