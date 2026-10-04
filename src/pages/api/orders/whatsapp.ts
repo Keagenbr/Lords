@@ -12,8 +12,7 @@
 import type { APIRoute } from "astro";
 import { createHash } from "node:crypto";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
-import { normaliseWhatsAppNumber } from "../../../lib/phone";
-import { OPT_IN_TEXT, orderRef } from "../../../lib/orders";
+// import { normaliseWhatsAppNumber } from "../../../lib/phone";
 
 export const prerender = false;
 
@@ -28,7 +27,10 @@ const json = (data: unknown, status = 200) =>
   });
 
 const clean = (v: unknown, max = 120) =>
-  String(v ?? "").replace(/[\u0000-\u001F]/g, " ").trim().slice(0, max);
+  String(v ?? "")
+    .replace(/[\u0000-\u001F]/g, " ")
+    .trim()
+    .slice(0, max);
 
 export const POST: APIRoute = async ({ request, clientAddress }) => {
   let body: any;
@@ -43,7 +45,8 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   if (cart.length === 0) return json({ ok: false, error: "empty_cart" }, 400);
 
   const customerName = clean(body?.name, 60);
-  if (!customerName) return json({ ok: false, error: "name_required", field: "name" }, 400);
+  if (!customerName)
+    return json({ ok: false, error: "name_required", field: "name" }, 400);
 
   const customerPhone = normaliseWhatsAppNumber(body?.phone);
   if (!customerPhone) {
@@ -58,24 +61,38 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     qty: Math.min(Math.max(parseInt(l?.qty, 10) || 1, 1), 50),
     price: clean(l?.price, 20),
     note: clean(l?.note, 200),
-    options: (Array.isArray(l?.options) ? l.options : []).slice(0, 10).map((o: any) => ({
-      label: clean(o?.label, 40),
-      value: clean(o?.value, 60),
-      // Optional — only present for modifier options with a price > 0
-      // (e.g. Extra Sauce, Schnitzel Add-ons). Clamped to a sane range.
-      price: Number.isFinite(+o?.price) ? Math.min(Math.max(+o.price, 0), 10000) : 0,
-    })),
+    options: (Array.isArray(l?.options) ? l.options : [])
+      .slice(0, 10)
+      .map((o: any) => ({
+        label: clean(o?.label, 40),
+        value: clean(o?.value, 60),
+        // Optional — only present for modifier options with a price > 0
+        // (e.g. Extra Sauce, Schnitzel Add-ons). Clamped to a sane range.
+        price: Number.isFinite(+o?.price)
+          ? Math.min(Math.max(+o.price, 0), 10000)
+          : 0,
+      })),
   }));
 
   const hasPlatter = Boolean(body?.hasPlatter);
-  const collectDate = /^\d{4}-\d{2}-\d{2}$/.test(body?.collectDate) ? body.collectDate : null;
-  const collectTime = /^\d{2}:\d{2}$/.test(body?.collectTime) ? body.collectTime : "";
-  const estTotal = Number.isFinite(+body?.total) ? Math.max(0, +body.total) : null;
+  const collectDate = /^\d{4}-\d{2}-\d{2}$/.test(body?.collectDate)
+    ? body.collectDate
+    : null;
+  const collectTime = /^\d{2}:\d{2}$/.test(body?.collectTime)
+    ? body.collectTime
+    : "";
+  const estTotal = Number.isFinite(+body?.total)
+    ? Math.max(0, +body.total)
+    : null;
 
   // ── Basic abuse protection (keeps the orders table honest — no longer
   // about WhatsApp send costs, since nothing here sends anything) ──────
   const ipHash = createHash("sha256")
-    .update(String(clientAddress ?? request.headers.get("x-forwarded-for") ?? "unknown"))
+    .update(
+      String(
+        clientAddress ?? request.headers.get("x-forwarded-for") ?? "unknown",
+      ),
+    )
     .digest("hex");
   const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 

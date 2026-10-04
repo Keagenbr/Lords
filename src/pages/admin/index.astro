@@ -1,5 +1,5 @@
 ---
-// ->  /admin
+// src/pages/admin/index.astro  ->  /admin
 import Layout from "../../layouts/Layout.astro";
 import AuthSessionManager from "../../components/AuthSessionManager.astro";
 import {
@@ -60,7 +60,7 @@ const shortcuts = [
                   icon: "user",
                   title: "User Roles",
                   blurb: "Set who is an Owner, Admin/Manager, or Staff.",
-                  href: "/admin/users",
+                  href: "/admin/user",
               },
           ]
         : []),
