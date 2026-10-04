@@ -1,8 +1,11 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import { getByStaff } from "../../lib/staffSales/storage";
-import { supabase } from "../../lib/supabase";
-import { getDisplayName } from "../../lib/adminAuth";
+import {
+    getSessionUser,
+    getDisplayName,
+    isAdminUser,
+} from "../../lib/adminAuth";
 import AuthSessionManager from "../../components/AuthSessionManager.astro";
 
 export const prerender = false;
@@ -25,27 +28,17 @@ const data = Object.values(staffData).find(
 
 if (!data) return new Response(null, { status: 404, statusText: "Not found" });
 
-// 3. Authentication & Security Check
-const accessToken = Astro.cookies.get("sb-access-token")?.value;
-const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
-
-if (!accessToken || !refreshToken) {
+// 3. Authentication & Security Check. getSessionUser() also transparently
+// refreshes an expired access token, so this page no longer bounces
+// someone to login just because their token happened to lapse.
+const user = await getSessionUser(Astro.cookies);
+if (!user) {
     return Astro.redirect("/staff/login");
 }
 
-const { data: sessionData, error: sessionError } =
-    await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-    });
-
-if (sessionError || !sessionData.user) {
-    return Astro.redirect("/staff/login");
-}
-
-const user = sessionData.user;
-const isAdmin =
-    user.app_metadata?.role === "admin" || user.user_metadata?.role === "admin";
+// isAdminUser() is true for Admin/Manager AND Owner — both can view any
+// staff member's page; a plain Staff account can only view their own.
+const isAdmin = isAdminUser(user);
 
 // Normalize user staff slug for exact matching
 const userStaffSlug = slugOf(

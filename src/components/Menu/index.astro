@@ -290,26 +290,51 @@ const platterNotice = {
                         <span x-text="notice.text"></span>
                     </div>
 
-                    <!-- Option groups -->
+                    <!-- Modifier groups: "single" = radio, "multiple" = checkboxes
+                         (checkboxes can each add a price, e.g. Extra Sauce,
+                         Schnitzel Add-ons — set up in /admin/menu-editor) -->
                     <template
-                        x-for="group in (activeItem.option_groups || [])"
-                        :key="group.key"
+                        x-for="group in (activeItem.modifier_groups || [])"
+                        :key="group.id"
                     >
                         <div class="modal-field">
-                            <label x-text="group.label"></label>
-                            <div class="choice-group">
+                            <label x-text="group.name"></label>
+
+                            <div
+                                class="choice-group"
+                                x-show="group.selection_type === 'single'"
+                            >
                                 <template
                                     x-for="opt in group.options"
-                                    :key="opt"
+                                    :key="opt.id"
                                 >
                                     <label class="choice-pill">
                                         <input
                                             type="radio"
-                                            :name="group.key"
-                                            :value="opt"
-                                            x-model="modalChoices[group.key]"
+                                            :name="group.id"
+                                            :value="opt.id"
+                                            x-model="modalChoices[group.id]"
                                         />
-                                        <span x-text="opt"></span>
+                                        <span x-text="opt.name + (opt.price > 0 ? ' (+R' + opt.price.toFixed(2) + ')' : '')"></span>
+                                    </label>
+                                </template>
+                            </div>
+
+                            <div
+                                class="choice-group"
+                                x-show="group.selection_type === 'multiple'"
+                            >
+                                <template
+                                    x-for="opt in group.options"
+                                    :key="opt.id"
+                                >
+                                    <label class="choice-pill">
+                                        <input
+                                            type="checkbox"
+                                            :checked="(modalChoices[group.id] || []).includes(opt.id)"
+                                            @change="toggleMultiChoice(group.id, opt.id)"
+                                        />
+                                        <span x-text="opt.name + (opt.price > 0 ? ' (+R' + opt.price.toFixed(2) + ')' : '')"></span>
                                     </label>
                                 </template>
                             </div>
@@ -376,7 +401,24 @@ const platterNotice = {
         <div class="modal-box cart-panel" x-show="showCartPanel" x-transition>
             <h3 data-icon="receipt">Your Order</h3>
 
-            <div class="empty-cart" x-show="cart.length === 0">
+            <!-- Shown after the order is saved and WhatsApp has opened -->
+            <div class="order-success" role="status" x-show="orderSent" x-cloak>
+                <span class="order-success-tick" aria-hidden="true"></span>
+                <h4>Order saved</h4>
+                <p>
+                    Thanks <span x-text="orderSent?.name"></span> — we've saved
+                    your order <strong x-text="orderSent?.ref"></strong>.
+                </p>
+                <p>
+                    Send the WhatsApp message that just opened to confirm it
+                    with us — that's what actually gets it to the kitchen.
+                </p>
+                <button class="confirm-btn" @click="closeOrderSuccess()">
+                    Done
+                </button>
+            </div>
+
+            <div class="empty-cart" x-show="cart.length === 0 && !orderSent">
                 <p>Your order is empty.</p>
             </div>
 
@@ -395,9 +437,9 @@ const platterNotice = {
                         <div class="cart-line-details">
                             <template
                                 x-for="opt in line.options"
-                                :key="opt.label"
+                                :key="opt.label + opt.value"
                             >
-                                <span x-text="opt.label + ': ' + opt.value"></span>
+                                <span x-text="opt.label + ': ' + opt.value + (opt.price > 0 ? ' (+R' + opt.price.toFixed(2) + ')' : '')"></span>
                             </template>
                             <span x-show="line.note">
                                 Note: <span x-text="line.note"></span>
@@ -412,66 +454,142 @@ const platterNotice = {
                 </template>
             </ul>
 
-            <div class="modal-field">
-                <label>Name for order</label>
-                <input
-                    type="text"
-                    x-model="orderName"
-                    placeholder="Your name"
-                />
-            </div>
+            <div x-show="!orderSent">
+                <div class="modal-field">
+                    <label for="order-name">
+                        Name for order <span class="req">*</span>
+                    </label>
+                    <input
+                        id="order-name"
+                        type="text"
+                        x-model="orderName"
+                        @blur="touched.name = true"
+                        autocomplete="name"
+                        placeholder="Your name"
+                        required
+                    />
+                    <p
+                        class="field-error"
+                        x-show="touched.name && !nameValid"
+                        x-cloak
+                    >
+                        Please enter a name for the order.
+                    </p>
+                </div>
 
-            <!-- Any platter in the order: show the notice + ask for a date -->
-            <div
-                class="notice-box"
-                data-icon="alert"
-                role="alert"
-                x-show="hasPlatter"
-                x-cloak
-            >
-                <strong x-text="notice.title"></strong>
-                <span x-text="notice.text"></span>
-            </div>
-            <div class="modal-field" x-show="hasPlatter" x-cloak>
-                <label>
-                    Collection date (at least <span x-text="notice.days"></span>
-                    days from today)
-                </label>
-                <input
-                    type="date"
-                    x-model="collectDate"
-                    :min="minPlatterDate"
-                />
-                <p class="field-error" x-show="dateTooSoon" x-cloak>
-                    Please choose a date that is at least
-                    <span x-text="notice.days"></span> days from today.
-                </p>
-            </div>
-            <div class="modal-field">
-                <label>Collection time</label>
-                <input
-                    type="time"
-                    x-model="collectTime"
-                    placeholder="Leave blank for collection in 20-30 mins"
-                />
-            </div>
+                <!-- WhatsApp number + opt-in: REQUIRED for order updates -->
+                <div class="modal-field">
+                    <label for="order-phone">
+                        WhatsApp number <span class="req">*</span>
+                    </label>
+                    <input
+                        id="order-phone"
+                        type="tel"
+                        inputmode="tel"
+                        autocomplete="tel"
+                        x-model="orderPhone"
+                        @blur="touched.phone = true"
+                        placeholder="e.g. 082 555 0142"
+                        :aria-invalid="touched.phone && !phoneValid"
+                        required
+                    />
+                    <p class="field-hint" x-show="phoneValid" x-cloak>
+                        We'll send updates to{" "}
+                        <strong x-text="phoneDisplay"></strong>
+                    </p>
+                    <p
+                        class="field-error"
+                        x-show="touched.phone && !phoneValid"
+                        x-cloak
+                    >
+                        Please enter a valid WhatsApp mobile number, e.g. 082
+                        555 0142 or +27 82 555 0142.
+                    </p>
+                </div>
+                <div class="modal-field checkbox-field">
+                    <label>
+                        <input
+                            type="checkbox"
+                            x-model="optIn"
+                            @change="touched.optIn = true"
+                            required
+                        />
+                        <span>
+                            <span x-text="optInText"></span>{" "}
+                            <span class="req">*</span>
+                        </span>
+                    </label>
+                    <p
+                        class="field-error"
+                        x-show="touched.optIn && !optIn"
+                        x-cloak
+                    >
+                        Please tick the box to continue.
+                    </p>
+                </div>
 
-            <p class="cart-total" x-show="cartTotal > 0">
-                Estimated Total: R<span x-text="cartTotal.toFixed(2)"></span>
-            </p>
-
-            <div class="modal-actions">
-                <button class="cancel-btn" @click="showCartPanel = false">
-                    Keep browsing
-                </button>
-                <button
-                    class="confirm-btn whatsapp-btn"
-                    data-icon="whatsapp"
-                    :disabled="cart.length === 0 || dateTooSoon"
-                    @click="sendOrderViaWhatsApp"
+                <!-- Any platter in the order: show the notice + ask for a date -->
+                <div
+                    class="notice-box"
+                    data-icon="alert"
+                    role="alert"
+                    x-show="hasPlatter"
+                    x-cloak
                 >
-                    Send Order via WhatsApp
-                </button>
+                    <strong x-text="notice.title"></strong>
+                    <span x-text="notice.text"></span>
+                </div>
+                <div class="modal-field" x-show="hasPlatter" x-cloak>
+                    <label>
+                        Collection date (at least{" "}
+                        <span x-text="notice.days"></span>
+                        days from today)
+                    </label>
+                    <input
+                        type="date"
+                        x-model="collectDate"
+                        :min="minPlatterDate"
+                    />
+                    <p class="field-error" x-show="dateTooSoon" x-cloak>
+                        Please choose a date that is at least
+                        <span x-text="notice.days"></span> days from today.
+                    </p>
+                </div>
+                <div class="modal-field">
+                    <label>Collection time</label>
+                    <input
+                        type="time"
+                        x-model="collectTime"
+                        placeholder="Leave blank for collection in 20-30 mins"
+                    />
+                </div>
+
+                <p class="cart-total" x-show="cartTotal > 0">
+                    Estimated Total: R
+                    <span x-text="cartTotal.toFixed(2)"></span>
+                </p>
+
+                <p
+                    class="field-error"
+                    role="alert"
+                    x-show="orderError"
+                    x-cloak
+                    x-text="orderError"
+                ></p>
+
+                <div class="modal-actions">
+                    <button class="cancel-btn" @click="showCartPanel = false">
+                        Keep browsing
+                    </button>
+                    <button
+                        class="confirm-btn whatsapp-btn"
+                        data-icon="whatsapp"
+                        :disabled="!canSubmitOrder"
+                        @click="sendOrderViaWhatsApp"
+                    >
+                        <span x-text="sendingOrder ? 'Sending…' : 'Send Order'"></span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -588,6 +706,18 @@ const platterNotice = {
             orderName: "",
             collectTime: "",
             collectDate: "",
+
+            // WhatsApp Cloud API ordering
+            orderPhone: "",
+            optIn: false,
+            optInText:
+                "I agree to receive order updates from " +
+                document.querySelector("[data-restaurant]").dataset.restaurant +
+                " on WhatsApp.",
+            touched: { name: false, phone: false, optIn: false },
+            sendingOrder: false,
+            orderSent: null, // { ref, name } after a successful save
+            orderError: "",
 
             init() {
                 // Initialize default category dropdown states (all expanded initially or default state)
@@ -789,12 +919,25 @@ const platterNotice = {
             openItemModal(item) {
                 this.activeItem = item;
                 this.modalChoices = {};
-                (item.option_groups || []).forEach((group) => {
-                    this.modalChoices[group.key] = group.options[0] || "";
+                (item.modifier_groups || []).forEach((group) => {
+                    this.modalChoices[group.id] =
+                        group.selection_type === "multiple"
+                            ? []
+                            : group.options[0]
+                              ? group.options[0].id
+                              : "";
                 });
                 this.modalQty = 1;
                 this.modalNote = "";
                 this.showItemModal = true;
+            },
+
+            toggleMultiChoice(groupId, optId) {
+                if (!this.modalChoices[groupId])
+                    this.modalChoices[groupId] = [];
+                const idx = this.modalChoices[groupId].indexOf(optId);
+                if (idx === -1) this.modalChoices[groupId].push(optId);
+                else this.modalChoices[groupId].splice(idx, 1);
             },
 
             closeItemModal() {
@@ -804,17 +947,36 @@ const platterNotice = {
 
             confirmAddToCart() {
                 if (!this.activeItem) return;
-                const options = (this.activeItem.option_groups || [])
-                    .map((group) => ({
-                        label: group.label,
-                        value: this.modalChoices[group.key],
-                    }))
-                    .filter((o) => o.value);
+                const options = [];
+                (this.activeItem.modifier_groups || []).forEach((group) => {
+                    const chosen = this.modalChoices[group.id];
+                    const ids =
+                        group.selection_type === "multiple"
+                            ? chosen || []
+                            : chosen
+                              ? [chosen]
+                              : [];
+                    ids.forEach((optId) => {
+                        const opt = group.options.find((o) => o.id === optId);
+                        if (opt) {
+                            options.push({
+                                label: group.name,
+                                value: opt.name,
+                                price: opt.price,
+                            });
+                        }
+                    });
+                });
+                const addOnsTotal = options.reduce(
+                    (sum, o) => sum + (o.price || 0),
+                    0,
+                );
 
                 this.cart.push({
                     name: this.activeItem.name,
                     price: this.activeItem.price || "",
-                    priceValue: this.parsePrice(this.activeItem.price),
+                    priceValue:
+                        this.parsePrice(this.activeItem.price) + addOnsTotal,
                     options,
                     note: this.modalNote.trim(),
                     qty: this.modalQty,
@@ -872,6 +1034,8 @@ const platterNotice = {
                 const lines = [];
                 lines.push(`*NEW ORDER – ${this.restaurantName}*`);
                 lines.push(`Name: ${this.orderName || "(not given)"}`);
+                if (this.phoneValid)
+                    lines.push(`WhatsApp: ${this.phoneDisplay}`);
 
                 if (this.hasPlatter) {
                     // Platters are never "ready in 20-30 mins".
@@ -910,7 +1074,11 @@ const platterNotice = {
                     if (line.price) itemLine += ` (${line.price})`;
                     lines.push(itemLine);
                     (line.options || []).forEach((opt) => {
-                        lines.push(`   • ${opt.label}: ${opt.value}`);
+                        const priceSuffix =
+                            opt.price > 0 ? ` (+R${opt.price.toFixed(2)})` : "";
+                        lines.push(
+                            `   • ${opt.label}: ${opt.value}${priceSuffix}`,
+                        );
                     });
                     if (line.note) lines.push(`   • Note: ${line.note}`);
                 });
@@ -925,11 +1093,150 @@ const platterNotice = {
                 return lines.join("\n");
             },
 
-            sendOrderViaWhatsApp() {
-                if (this.cart.length === 0 || this.dateTooSoon) return;
-                const message = this.buildOrderMessage();
-                const url = `https://wa.me/${this.whatsappNumber}?text=${encodeURIComponent(message)}`;
-                window.open(url, "_blank");
+            // ── WhatsApp number validation ─────────────────────────────
+            // Mirrors src/lib/phone.ts (the server re-checks everything).
+            normalisePhone(input) {
+                const raw = String(input || "").trim();
+                if (!raw || !/^\+?[\d\s\-().]+$/.test(raw)) return null;
+                let digits = raw.replace(/\D/g, "");
+                const international =
+                    raw.startsWith("+") || digits.startsWith("00");
+                if (digits.startsWith("00")) digits = digits.slice(2);
+                if (!international) {
+                    if (digits.startsWith("0")) digits = "27" + digits.slice(1);
+                    else if (!digits.startsWith("27")) return null;
+                }
+                if (digits.startsWith("27")) {
+                    return /^27[678]\d{8}$/.test(digits) ? digits : null;
+                }
+                return /^[1-9]\d{7,14}$/.test(digits) ? digits : null;
+            },
+
+            get normalisedPhone() {
+                return this.normalisePhone(this.orderPhone);
+            },
+            get phoneValid() {
+                return !!this.normalisedPhone;
+            },
+            get phoneDisplay() {
+                const d = this.normalisedPhone || "";
+                const m = /^27(\d{2})(\d{3})(\d{4})$/.exec(d);
+                return m ? `+27 ${m[1]} ${m[2]} ${m[3]}` : `+${d}`;
+            },
+            get nameValid() {
+                return this.orderName.trim().length > 0;
+            },
+            get canSubmitOrder() {
+                return (
+                    this.cart.length > 0 &&
+                    !this.dateTooSoon &&
+                    this.nameValid &&
+                    this.phoneValid &&
+                    this.optIn &&
+                    !this.sendingOrder
+                );
+            },
+
+            closeOrderSuccess() {
+                this.orderSent = null;
+                this.showCartPanel = false;
+            },
+
+            async sendOrderViaWhatsApp() {
+                this.touched = { name: true, phone: true, optIn: true };
+                if (!this.canSubmitOrder) return;
+
+                this.sendingOrder = true;
+                this.orderError = "";
+                // Always the fallback if the save itself fails — the order
+                // still reaches us via WhatsApp even with no DB record.
+                const fallbackUrl = `https://wa.me/${this.whatsappNumber}?text=${encodeURIComponent(this.buildOrderMessage())}`;
+
+                try {
+                    const res = await fetch("/api/orders/whatsapp", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            name: this.orderName.trim(),
+                            phone: this.normalisedPhone,
+                            optIn: this.optIn === true,
+                            collectDate: this.collectDate,
+                            collectTime: this.collectTime,
+                            hasPlatter: this.hasPlatter,
+                            total: this.cartTotal,
+                            cart: this.cart.map((l) => ({
+                                name: l.name,
+                                qty: l.qty,
+                                price: l.price,
+                                note: l.note,
+                                options: l.options || [],
+                            })),
+                        }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+
+                    if (res.ok && data.ok) {
+                        // Saved — now hand off to WhatsApp. Prefix the order
+                        // ref so it's easy to match the incoming WhatsApp
+                        // message back to the stored record.
+                        const message = `Order Ref: ${data.orderRef}\n${this.buildOrderMessage()}`;
+                        const whatsappUrl = `https://wa.me/${this.whatsappNumber}?text=${encodeURIComponent(message)}`;
+
+                        this.orderSent = {
+                            ref: data.orderRef,
+                            name: this.orderName.trim(),
+                        };
+                        this.cart = [];
+                        this.collectDate = "";
+                        this.collectTime = "";
+                        this.touched = {
+                            name: false,
+                            phone: false,
+                            optIn: false,
+                        };
+
+                        // window.open() after an await is often blocked as a
+                        // pop-up, so navigate directly instead.
+                        window.location.href = whatsappUrl;
+                        return;
+                    }
+
+                    // Problems the customer can fix: show them, don't fall back.
+                    if (data.error === "invalid_phone") {
+                        this.orderError =
+                            "That WhatsApp number doesn't look right – please check it.";
+                        return;
+                    }
+                    if (
+                        data.error === "opt_in_required" ||
+                        data.error === "name_required"
+                    ) {
+                        this.orderError =
+                            "Please fill in all the required fields.";
+                        return;
+                    }
+                    if (data.error === "rate_limited") {
+                        this.orderError =
+                            "Too many orders in a short time – please wait a few minutes and try again.";
+                        return;
+                    }
+                    throw new Error(data.error || `HTTP ${res.status}`);
+                } catch (err) {
+                    // Couldn't save the order — still let them complete it via
+                    // WhatsApp directly, just without a record on our side.
+                    console.warn(
+                        "Order save failed, opening WhatsApp directly:",
+                        err,
+                    );
+                    this.orderError =
+                        "We couldn't save your order, but you can still send it — opening WhatsApp…";
+                    setTimeout(
+                        () => (window.location.href = fallbackUrl),
+                        1200,
+                    );
+                } finally {
+                    this.sendingOrder = false;
+                }
             },
         }));
     });
