@@ -55,10 +55,63 @@ const COOKIE_OPTIONS = {
   sameSite: "lax",
 } as const;
 
-export function isAdminUser(user: User | null | undefined): boolean {
+// ─────────────────────────────────────────────────────────────
+// ROLES — three tiers: Owner > Admin/Manager > Staff.
+//
+// Backward compatible on purpose: every existing account with
+// role "admin" keeps exactly the behaviour it has today (full
+// access to /admin and everything under it). "owner" is new and
+// sits one tier above "admin" — owners get everything admins get,
+// PLUS the user-role management page (src/pages/admin/users.astro).
+// Any account with no role set, or an unrecognised one, is "staff"
+// — the same as how unset roles already behave today.
+//
+// Role is read from app_metadata first, then user_metadata, for
+// backward compatibility with any already-set roles. New role
+// assignments (src/pages/admin/set-user-role.ts) are written to
+// app_metadata ONLY: unlike user_metadata, a signed-in user can
+// never update their own app_metadata via the client SDK, so it
+// can't be self-escalated.
+// ─────────────────────────────────────────────────────────────
+export type Role = "owner" | "admin" | "staff";
+
+const ROLE_RANK: Record<Role, number> = { staff: 1, admin: 2, owner: 3 };
+
+function asRole(value: unknown): Role | null {
+  return value === "owner" || value === "admin" || value === "staff"
+    ? value
+    : null;
+}
+
+/** The user's role, defaulting to "staff" if unset or unrecognised. */
+export function getUserRole(user: User | null | undefined): Role {
   return (
-    user?.app_metadata?.role === "admin" || user?.user_metadata?.role === "admin"
+    asRole(user?.app_metadata?.role) ??
+    asRole(user?.user_metadata?.role) ??
+    "staff"
   );
+}
+
+/** True if the user's role is at least `minimum` (owner > admin > staff). */
+export function hasMinimumRole(
+  user: User | null | undefined,
+  minimum: Role,
+): boolean {
+  return ROLE_RANK[getUserRole(user)] >= ROLE_RANK[minimum];
+}
+
+/** True for "owner" only — gates user-role management specifically. */
+export function isOwnerUser(user: User | null | undefined): boolean {
+  return getUserRole(user) === "admin";
+}
+
+/**
+ * True for "admin" or "owner" — unchanged meaning from before roles existed:
+ * everything under /admin (menu editor, staff dashboard, etc.) still just
+ * checks this one function, so owners get it automatically too.
+ */
+export function isAdminUser(user: User | null | undefined): boolean {
+  return hasMinimumRole(user, "admin");
 }
 
 /**
@@ -126,7 +179,9 @@ export async function getAdminUser(
 export async function guardAdminPage(
   cookies: AstroCookies,
   redirect: (path: string) => Response,
-): Promise<{ user: User; response: null } | { user: null; response: Response }> {
+): Promise<
+  { user: User; response: null } | { user: null; response: Response }
+> {
   const user = await getSessionUser(cookies);
   if (!user) {
     cookies.delete(ACCESS_COOKIE, { path: "/" });
@@ -137,6 +192,34 @@ export async function guardAdminPage(
     return {
       user: null,
       response: new Response("Forbidden: Admin access required.", {
+        status: 403,
+      }),
+    };
+  }
+  return { user, response: null };
+}
+
+/**
+ * For OWNER-ONLY pages (currently just user-role management). Same shape
+ * and redirect behaviour as guardAdminPage, but a signed-in admin who is
+ * not an owner gets 403 here instead of being let through.
+ */
+export async function guardOwnerPage(
+  cookies: AstroCookies,
+  redirect: (path: string) => Response,
+): Promise<
+  { user: User; response: null } | { user: null; response: Response }
+> {
+  const user = await getSessionUser(cookies);
+  if (!user) {
+    cookies.delete(ACCESS_COOKIE, { path: "/" });
+    cookies.delete(REFRESH_COOKIE, { path: "/" });
+    return { user: null, response: redirect("/admin/login") };
+  }
+  if (!isOwnerUser(user)) {
+    return {
+      user: null,
+      response: new Response("Forbidden: Owner access required.", {
         status: 403,
       }),
     };

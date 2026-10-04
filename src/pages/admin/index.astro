@@ -2,7 +2,11 @@
 // src/pages/admin/index.astro  ->  /admin
 import Layout from "../../layouts/Layout.astro";
 import AuthSessionManager from "../../components/AuthSessionManager.astro";
-import { guardAdminPage, getDisplayName } from "../../lib/adminAuth";
+import {
+    guardAdminPage,
+    getDisplayName,
+    isOwnerUser,
+} from "../../lib/adminAuth";
 
 export const prerender = false;
 
@@ -48,6 +52,18 @@ const shortcuts = [
         blurb: "See the menu the way customers do.",
         href: "/menu",
     },
+    // Owner only — lets someone promote/demote Admin/Manager and Staff
+    // accounts. Hidden entirely for Admin/Manager, same as it not existing.
+    ...(isOwnerUser(user)
+        ? [
+              {
+                  icon: "user",
+                  title: "User Roles",
+                  blurb: "Set who is an Owner, Admin/Manager, or Staff.",
+                  href: "/admin/users",
+              },
+          ]
+        : []),
 ];
 ---
 
@@ -67,25 +83,27 @@ const shortcuts = [
 
         <!-- Table-like rows: icon | what it is | open button -->
         <div class="shortcut-table" role="list">
-            {
-                shortcuts.map((item) => (
-                    <div class="shortcut-row" role="listitem">
-                        <span class="shortcut-icon" data-icon={item.icon} aria-hidden="true" />
-                        <div class="shortcut-text">
-                            <h2>{item.title}</h2>
-                            <p>{item.blurb}</p>
-                        </div>
-                        <a
-                            href={item.href}
-                            class="shortcut-btn"
-                            data-icon="open"
-                            aria-label={`Open ${item.title}`}
-                        >
-                            Open
-                        </a>
+            {shortcuts.map((item) => (
+                <div class="shortcut-row" role="listitem">
+                    <span
+                        class="shortcut-icon"
+                        data-icon={item.icon}
+                        aria-hidden="true"
+                    />
+                    <div class="shortcut-text">
+                        <h2>{item.title}</h2>
+                        <p>{item.blurb}</p>
                     </div>
-                ))
-            }
+                    <a
+                        href={item.href}
+                        class="shortcut-btn"
+                        data-icon="open"
+                        aria-label={`Open ${item.title}`}
+                    >
+                        Open
+                    </a>
+                </div>
+            ))}
         </div>
     </main>
 </Layout>

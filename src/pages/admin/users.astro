@@ -1,0 +1,270 @@
+---
+// src/pages/admin/users.astro  ->  /admin/users  (owner only)
+import Layout from "../../layouts/Layout.astro";
+import AuthSessionManager from "../../components/AuthSessionManager.astro";
+import {
+    guardOwnerPage,
+    getDisplayName,
+    getUserRole,
+} from "../../lib/adminAuth";
+import { supabaseAdmin } from "../../lib/supabaseAdmin";
+
+export const prerender = false;
+
+// Signed out -> /admin/login, signed in but not an owner -> 403.
+const { user, response } = await guardOwnerPage(Astro.cookies, Astro.redirect);
+if (response) return response;
+
+const { data: list, error: listError } =
+    await supabaseAdmin.auth.admin.listUsers({
+        perPage: 200,
+    });
+
+const accounts = (list?.users ?? [])
+    .map((u) => ({
+        id: u.id,
+        email: u.email ?? "(no email)",
+        displayName: getDisplayName(u),
+        role: getUserRole(u),
+    }))
+    .sort((a, b) => a.email.localeCompare(b.email));
+
+const initialAccounts = JSON.stringify(accounts);
+---
+
+<Layout title="Admin - User Roles">
+    <main class="users-container" x-data={`userRoles(${initialAccounts})`}>
+        <AuthSessionManager
+            displayName={getDisplayName(user)}
+            userEmail={user.email}
+            loginPath="/admin/login"
+            timeoutMinutes={15}
+        />
+
+        <header class="users-header">
+            <h1>User Roles</h1>
+            <p>
+                Owner, Admin/Manager, or Staff — only owners can see this page.
+            </p>
+            <a href="/admin" class="back-link">
+                &larr; Back to Admin Portal
+            </a>
+        </header>
+
+        {listError && (
+            <p class="notice error">Couldn't load users: {listError.message}</p>
+        )}
+
+        <p
+            class="save-status"
+            x-show="statusMessage"
+            x-text="statusMessage"
+            :class="statusIsError ? 'status-error' : 'status-ok'"
+        ></p>
+
+        <table class="users-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="account in accounts" :key="account.id">
+                    <tr>
+                        <td x-text="account.displayName"></td>
+                        <td x-text="account.email"></td>
+                        <td>
+                            <select x-model="account.pendingRole">
+                                <option value="staff">Staff</option>
+                                <option value="admin">Admin / Manager</option>
+                                <option value="owner">Owner</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button
+                                class="save-btn"
+                                :disabled="account.pendingRole === account.role"
+                                @click="saveRole(account)"
+                            >
+                                Save
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+
+        <section class="role-explainer">
+            <h2>What each role can do</h2>
+            <ul>
+                <li>
+                    <strong>Staff</strong> — signs in at{" "}
+                    <code>/staff/login</code>, sees only their own sales &amp;
+                    tips page.
+                </li>
+                <li>
+                    <strong>Admin / Manager</strong> — everything under{" "}
+                    <code>/admin</code>: menu editor, images, the full staff
+                    dashboard. Cannot change anyone's role.
+                </li>
+                <li>
+                    <strong>Owner</strong> — everything Admin/Manager can do,
+                    plus this page.
+                </li>
+            </ul>
+        </section>
+    </main>
+</Layout>
+
+<script is:inline>
+    document.addEventListener("alpine:init", () => {
+        Alpine.data("userRoles", (initialAccounts) => ({
+            accounts: initialAccounts.map((a) => ({
+                ...a,
+                pendingRole: a.role,
+            })),
+            statusMessage: "",
+            statusIsError: false,
+
+            async saveRole(account) {
+                try {
+                    const res = await fetch("/admin/set-user-role", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            userId: account.id,
+                            role: account.pendingRole,
+                        }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok)
+                        throw new Error(data.error || "Request failed");
+
+                    account.role = data.role;
+                    this.statusMessage = `${account.email} is now ${data.role}.`;
+                    this.statusIsError = false;
+                } catch (err) {
+                    account.pendingRole = account.role; // revert the dropdown
+                    this.statusMessage = "Error: " + err.message;
+                    this.statusIsError = true;
+                }
+            },
+        }));
+    });
+</script>
+
+<style>
+    .users-container {
+        max-width: 900px;
+        margin: 5rem auto 2rem auto;
+        padding: 20px;
+        color: var(--txt-color);
+    }
+    .users-header {
+        border-bottom: 3px solid var(--MenuColor, #00d4aa);
+        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+
+        h1 {
+            margin: 0 0 0.25rem;
+        }
+        p {
+            margin: 0 0 0.5rem;
+            opacity: 0.75;
+        }
+    }
+    .back-link {
+        color: var(--bg-color-btn, #00d4aa);
+        text-decoration: none;
+        font-weight: 600;
+    }
+    .notice.error {
+        color: #c53030;
+        background: #fff5f5;
+        border: 1px solid #feb2b2;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    .save-status {
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    .status-ok {
+        background: #f0fff4;
+        color: #276749;
+        border: 1px solid #9ae6b4;
+    }
+    .status-error {
+        background: #fff5f5;
+        color: #c53030;
+        border: 1px solid #feb2b2;
+    }
+    .users-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+    .users-table th,
+    .users-table td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--nav-bg);
+        font-size: 0.9rem;
+    }
+    .users-table th {
+        background: var(--nav-bg);
+    }
+    .users-table select {
+        padding: 0.4rem 0.6rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 6px;
+    }
+    .save-btn {
+        padding: 0.4rem 0.9rem;
+        border: none;
+        border-radius: 6px;
+        background: var(--bg-color-btn, #00d4aa);
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .save-btn:disabled {
+        background: var(--nav-bg);
+        color: var(--txt-color);
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .role-explainer {
+        background: #fff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+
+        h2 {
+            margin-top: 0;
+            font-size: 1.05rem;
+        }
+        ul {
+            margin: 0;
+            padding-left: 1.2rem;
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+        code {
+            background: var(--nav-bg);
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+        }
+    }
+</style>

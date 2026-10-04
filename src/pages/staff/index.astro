@@ -2,8 +2,11 @@
 import Layout from "../../layouts/Layout.astro";
 import ExcelUploader from "../../components/ExcelUploader.astro";
 import { getByStaff } from "../../lib/staffSales/storage";
-import { supabase } from "../../lib/supabase";
-import { getDisplayName } from "../../lib/adminAuth";
+import {
+    getSessionUser,
+    getDisplayName,
+    isAdminUser,
+} from "../../lib/adminAuth";
 import AuthSessionManager from "../../components/AuthSessionManager.astro";
 
 export const prerender = false;
@@ -15,27 +18,18 @@ const slugOf = (str: string) =>
         .replace(/[^a-z0-9\s-]/g, "")
         .replace(/\s+/g, "-");
 
-// 1. Session Verification & Smart Redirection
-const accessToken = Astro.cookies.get("sb-access-token")?.value;
-const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
-
-if (!accessToken || !refreshToken) {
+// Session Verification & Smart Redirection. getSessionUser() also
+// transparently refreshes an expired access token, so a staff member
+// isn't bounced to login just because their token happened to lapse
+// since their last visit.
+const user = await getSessionUser(Astro.cookies);
+if (!user) {
     return Astro.redirect("/staff/login");
 }
 
-const { data: sessionData, error: sessionError } =
-    await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-    });
-
-if (sessionError || !sessionData.user) {
-    return Astro.redirect("/staff/login");
-}
-
-const user = sessionData.user;
-const isAdmin =
-    user.app_metadata?.role === "admin" || user.user_metadata?.role === "admin";
+// isAdminUser() is true for Admin/Manager AND Owner — both get the full
+// overview below; a plain Staff account gets routed to their own page.
+const isAdmin = isAdminUser(user);
 
 // If a staff member lands on /staff, route them directly to their profile page
 if (!isAdmin) {
@@ -78,6 +72,9 @@ const totalAllStaff = staffList.reduce((sum, s) => sum + s.totalSales, 0);
             loginPath="/admin/login"
             timeoutMinutes={15}
         />
+        <a href="/admin" class="back-link">
+            ← Back to Admin Dashboard
+        </a>
         <h1>Staff Performance Dashboard</h1>
 
         <!-- DRAG & DROP UPLOADER - Admin Only -->
@@ -143,6 +140,13 @@ const totalAllStaff = staffList.reduce((sum, s) => sum + s.totalSales, 0);
 </Layout>
 
 <style>
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #00d4aa;
+        text-decoration: none;
+        font-weight: bold;
+    }
     .uploader-section {
         margin-bottom: 40px;
         padding: 20px;
