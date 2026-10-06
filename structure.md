@@ -75,11 +75,11 @@ Lords/
 │   │   ├── menuImg/
 │   │   │   ├── MenuAlcDrinks.jpg
 │   │   │   ├── MenuColdDrinks.jpg
-│   │   │   ├── MenuDrinks.jpg
 │   │   │   ├── MenuDrinkSpecial(gin).jpeg
-│   │   │   ├── MenuL&L.jpg
 │   │   │   ├── MenuPage1.jpg
 │   │   │   ├── MenuPage2.jpg
+│   │   │   ├── MenuPage3.jpg
+│   │   │   ├── MenuPage4.jpg
 │   │   │   ├── MenuPlatter.jpg
 │   │   │   ├── MenuShooters.jpg
 │   │   │   ├── mondaySpecial.jpg
@@ -129,7 +129,9 @@ Lords/
 │   │   ├── MenuEditor.astro
 │   │   ├── MenuEditorNav.astro
 │   │   ├── MenuImageEditor.astro
+│   │   ├── MenuPdfEditor.astro
 │   │   ├── Nav.astro
+│   │   ├── SiteDialog.astro
 │   │   └── topBtn.astro
 │   ├── db/
 │   │   └── supabase.js
@@ -153,8 +155,12 @@ Lords/
 │   │   ├── adminAuth.ts
 │   │   ├── menu.ts
 │   │   ├── menuImages.ts
+│   │   ├── menuImageStore.ts
 │   │   ├── optimizeImage.ts
+│   │   ├── orders.ts
+│   │   ├── phone.ts
 │   │   ├── siteInfo.ts
+│   │   ├── siteSettings.ts
 │   │   ├── supabase.ts
 │   │   ├── supabaseAdmin.ts
 │   │   ├── Supabaseserver.ts
@@ -167,7 +173,12 @@ Lords/
 │   │   │   ├── login.astro
 │   │   │   ├── menu-crud.ts
 │   │   │   ├── menu-editor.astro
-│   │   │   └── upload-image.ts
+│   │   │   ├── menu-files.ts
+│   │   │   ├── set-user-role.ts
+│   │   │   ├── set-whatsapp-number.ts
+│   │   │   ├── settings.astro
+│   │   │   ├── upload-image.ts
+│   │   │   └── user.astro
 │   │   ├── api/
 │   │   │   ├── auth/
 │   │   │   │   ├── display-name.ts
@@ -175,6 +186,8 @@ Lords/
 │   │   │   │   └── signout.ts
 │   │   │   ├── menu/
 │   │   │   │   └── index.ts
+│   │   │   ├── orders/
+│   │   │   │   └── whatsapp.ts
 │   │   │   ├── logout.ts
 │   │   │   ├── nav.ts
 │   │   │   └── update-sales.ts
@@ -191,15 +204,19 @@ Lords/
 │   │   ├── copy-icons.mjs
 │   │   └── passwordToggle.ts
 │   └── styles/
+│       ├── contact.scss
 │       ├── icons.css
+│       ├── main.scss
+│       ├── menu.scss
 │       └── password-toggle.css
 ├── vendor/
 │   └── xlsx-0.20.3.tgz
 ├── .env
+├── .env.development.local
 ├── .env.local
-├── .env.production
 ├── .gitattributes
 ├── .gitignore
+├── .pages.yml
 ├── AGENTS.md
 ├── astro.config.mjs
 ├── package-lock.json
@@ -209,4 +226,4 @@ Lords/
 ├── tsconfig.json
 └── WebHook.md
 
-27 directories, 182 files
+28 directories, 198 files
