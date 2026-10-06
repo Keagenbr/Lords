@@ -2,11 +2,14 @@
 import { getMenu, type MenuType } from "../../lib/menu";
 import {
     RESTAURANT_NAME,
-    WHATSAPP_NUMBER,
+    getWhatsAppNumber,
     PLATTER_NOTICE_DAYS,
     PLATTER_NOTICE_TITLE,
     PLATTER_NOTICE_TEXT,
 } from "../../lib/siteInfo";
+
+// Owner-editable via /admin/settings — see src/lib/siteSettings.ts.
+const whatsappNumber = await getWhatsAppNumber();
 
 let menuData: MenuType[] = [];
 
@@ -58,7 +61,7 @@ const platterNotice = {
     class="menu-container"
     x-data="menuApp"
     data-menu={menuJson}
-    data-whatsapp={WHATSAPP_NUMBER}
+    data-whatsapp={whatsappNumber}
     data-restaurant={RESTAURANT_NAME}
     data-specials-groups={JSON.stringify(SPECIALS_GROUPS)}
     data-platter-notice={JSON.stringify(platterNotice)}

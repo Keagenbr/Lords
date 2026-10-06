@@ -10,10 +10,12 @@ import {
     TAGLINE,
     LOCATIONS,
     LOCATION_URL,
-    WHATSAPP_LINK,
+    getWhatsAppLink,
 } from "../lib/siteInfo";
 
 const year = new Date().getFullYear();
+// Owner-editable via /admin/settings — see src/lib/siteSettings.ts.
+const whatsappLink = await getWhatsAppLink();
 
 const links = [
     { href: "/", label: "Home", icon: "home" },
@@ -63,7 +65,7 @@ const links = [
                 ))}
                 <li>
                     <a
-                        href={WHATSAPP_LINK}
+                        href={whatsappLink}
                         target="_blank"
                         rel="noopener"
                         data-icon="whatsapp"

@@ -52,15 +52,20 @@ const shortcuts = [
         blurb: "See the menu the way customers do.",
         href: "/menu",
     },
-    // Owner only — lets someone promote/demote Admin/Manager and Staff
-    // accounts. Hidden entirely for Admin/Manager, same as it not existing.
+    // Owner only — hidden entirely for Admin/Manager, same as not existing.
     ...(isOwnerUser(user)
         ? [
               {
                   icon: "user",
                   title: "User Roles",
                   blurb: "Set who is an Owner, Admin/Manager, or Staff.",
-                  href: "/admin/user",
+                  href: "/admin/users",
+              },
+              {
+                  icon: "settings",
+                  title: "Settings",
+                  blurb: "Change the WhatsApp ordering number.",
+                  href: "/admin/settings",
               },
           ]
         : []),
