@@ -47,12 +47,18 @@ const shortcuts = [
         href: "/staff",
     },
     {
+        icon: "settings",
+        title: "Settings",
+        blurb: "Change the WhatsApp ordering number.",
+        href: "/admin/settings",
+    },
+    {
         icon: "live-menu",
         title: "View Live Menu",
         blurb: "See the menu the way customers do.",
         href: "/menu",
     },
-    // Owner only — hidden entirely for Admin/Manager, same as not existing.
+    // Owner only — hidden entirely for Admin/Manager.
     ...(isOwnerUser(user)
         ? [
               {
@@ -60,12 +66,6 @@ const shortcuts = [
                   title: "User Roles",
                   blurb: "Set who is an Owner, Admin/Manager, or Staff.",
                   href: "/admin/users",
-              },
-              {
-                  icon: "settings",
-                  title: "Settings",
-                  blurb: "Change the WhatsApp ordering number.",
-                  href: "/admin/settings",
               },
           ]
         : []),

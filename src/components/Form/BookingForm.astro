@@ -1,0 +1,124 @@
+---
+// src/components/Form/BookingForm.astro
+---
+
+<div class="form-container" x-data="bookingForm()">
+    <h3>Make a Booking (Min 10 People)</h3>
+    <form @submit.prevent="submitBooking" class="flex flex-col gap-4">
+        <label>
+            <span>Your Name *</span>
+            <input type="text" x-model="formData.name" required />
+        </label>
+        <label>
+            <span>Booking Name (Leave blank if same as above)</span>
+            <input
+                type="text"
+                x-model="formData.bookingName"
+                placeholder="e.g., John's 30th"
+            />
+        </label>
+        <label>
+            <span>Contact Phone Number *</span>
+            <input type="tel" x-model="formData.phone" required />
+        </label>
+        <label>
+            <span>Number of People * (Min 10)</span>
+            <input
+                type="number"
+                x-model="formData.personCount"
+                min="10"
+                required
+            />
+        </label>
+        <label>
+            <span>Date *</span>
+            <!-- HTML date input. Alpine will be used to validate against blocked dates -->
+            <input
+                type="date"
+                x-model="formData.date"
+                @change="checkDate"
+                required
+            />
+            <p x-show="dateError" class="error-msg" x-text="dateError"></p>
+        </label>
+
+        <button
+            type="submit"
+            :disabled="loading || dateError !== ''"
+            class="btn-primary"
+        >
+            <span x-text="loading ? 'Requesting...' : 'Request Booking'"></span>
+        </button>
+    </form>
+</div>
+
+<script is:inline>
+    function bookingForm() {
+        return {
+            formData: {
+                name: "",
+                bookingName: "",
+                phone: "",
+                personCount: 10,
+                date: "",
+            },
+            loading: false,
+            dateError: "",
+            blockedDates: [], // Will be populated from Supabase
+
+            async init() {
+                // Fetch blocked dates from API endpoint here
+            },
+            checkDate() {
+                if (this.blockedDates.includes(this.formData.date)) {
+                    this.dateError = "This date is unavailable for bookings.";
+                } else {
+                    this.dateError = "";
+                }
+            },
+            async submitBooking() {
+                this.loading = true;
+                const finalBookingName =
+                    this.formData.bookingName.trim() === ""
+                        ? this.formData.name
+                        : this.formData.bookingName;
+
+                // WhatsApp API call will go here
+
+                this.loading = false;
+            },
+        };
+    }
+</script>
+
+<style lang="scss">
+    /* Use the exact same styles as InquiryForm, or extract them into a shared CSS file */
+    .form-container {
+        background-color: var(--nav-bg);
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px var(--nav-bg-shadowA);
+    }
+    input {
+        width: 100%;
+        padding: 0.5rem;
+        margin-top: 0.5rem;
+        border: 1px solid var(--ham-color-active);
+        border-radius: 4px;
+        background-color: var(--bg-color-light);
+    }
+    .btn-primary {
+        background-color: var(--bg-color-btn);
+        color: var(--text-color-dark);
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    .error-msg {
+        color: red;
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+    }
+</style>

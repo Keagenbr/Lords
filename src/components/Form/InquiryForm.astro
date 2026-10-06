@@ -1,0 +1,77 @@
+---
+// src/components/Form/InquiryForm.astro
+---
+
+<div class="form-container" x-data="inquiryForm()">
+    <h3>General Inquiry</h3>
+    <form @submit.prevent="submitInquiry" class="flex flex-col gap-4">
+        <label>
+            <span>Name</span>
+            <input type="text" x-model="formData.name" required />
+        </label>
+        <label>
+            <span>Email or Phone</span>
+            <input type="text" x-model="formData.contact" required />
+        </label>
+        <label>
+            <span>Message</span>
+            <textarea x-model="formData.message" rows="4" required></textarea>
+        </label>
+
+        <button type="submit" :disabled="loading" class="btn-primary">
+            <span x-text="loading ? 'Sending...' : 'Send Inquiry'"></span>
+        </button>
+        <p x-show="responseMsg" x-text="responseMsg" class="msg"></p>
+    </form>
+</div>
+
+<script is:inline>
+    function inquiryForm() {
+        return {
+            formData: { name: "", contact: "", message: "" },
+            loading: false,
+            responseMsg: "",
+            async submitInquiry() {
+                this.loading = true;
+                // WhatsApp API call will go here
+                this.loading = false;
+            },
+        };
+    }
+</script>
+
+<style lang="scss">
+    .form-container {
+        background-color: var(--nav-bg);
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px var(--nav-bg-shadowA);
+    }
+    input,
+    textarea {
+        width: 100%;
+        padding: 0.5rem;
+        margin-top: 0.5rem;
+        border: 1px solid var(--ham-color-active);
+        border-radius: 4px;
+        background-color: var(--bg-color-light);
+        color: var(--text-color-light);
+    }
+    .btn-primary {
+        background-color: var(--bg-color-btn);
+        color: var(--text-color-dark);
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.3s;
+    }
+    .btn-primary:hover {
+        background-color: var(--text-color-hover);
+    }
+    .msg {
+        color: var(--MenuColor);
+        margin-top: 1rem;
+    }
+</style>

@@ -1,14 +1,14 @@
 ---
-// ->  /admin/settings  (owner only)
+// ->  /admin/settings  (admin and owner)
 import Layout from "../../layouts/Layout.astro";
 import AuthSessionManager from "../../components/AuthSessionManager.astro";
-import { guardOwnerPage, getDisplayName } from "../../lib/adminAuth";
+import { guardAdminPage, getDisplayName } from "../../lib/adminAuth";
 import { getWhatsAppNumber } from "../../lib/siteInfo";
 
 export const prerender = false;
 
-// Signed out -> /admin/login, signed in but not an owner -> 403.
-const { user, response } = await guardOwnerPage(Astro.cookies, Astro.redirect);
+// Signed out -> /admin/login, signed in but not an admin -> 403.
+const { user, response } = await guardAdminPage(Astro.cookies, Astro.redirect);
 if (response) return response;
 
 const currentNumber = await getWhatsAppNumber();
@@ -26,7 +26,7 @@ const initialData = JSON.stringify({ whatsappNumber: currentNumber });
 
         <header class="settings-header">
             <h1>Settings</h1>
-            <p>Owner only.</p>
+            <p>Admin Control Panel</p>
             <a href="/admin" class="back-link">
                 &larr; Back to Admin Portal
             </a>

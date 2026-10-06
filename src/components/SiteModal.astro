@@ -1,0 +1,181 @@
+---
+// src/components/SiteModal.astro
+interface Props {
+    id: string;
+    title: string;
+}
+
+const { id, title } = Astro.props;
+---
+
+<div
+    x-data={`{ open: false }`}
+    x-show="open"
+    x-on:open-modal.window={`if ($event.detail === '${id}') open = true`}
+    x-on:close-modal.window={`if ($event.detail === '${id}') open = false`}
+    @keydown.escape.window="open = false"
+    class="site-modal-root"
+    x-cloak
+>
+    <div class="site-modal-backdrop" @click="open = false"></div>
+
+    <div class="site-modal-container" role="dialog" aria-modal="true">
+        <div class="site-modal-box">
+            <header class="site-modal-head">
+                <h2>{title}</h2>
+                <button
+                    type="button"
+                    class="close-btn"
+                    @click="open = false"
+                    aria-label="Close"
+                >
+                    &times;
+                </button>
+            </header>
+
+            <div class="site-modal-content">
+                <slot />
+            </div>
+
+            <footer class="site-modal-actions">
+                <slot name="actions">
+                    <button
+                        type="button"
+                        class="site-modal-btn is-secondary"
+                        @click="open = false"
+                    >
+                        Close
+                    </button>
+                </slot>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<style lang="scss">
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .site-modal-root {
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .site-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: var(--img-overlay, rgba(0, 0, 0, 0.6));
+        backdrop-filter: blur(3px);
+    }
+
+    .site-modal-container {
+        position: relative;
+        z-index: 2001;
+        width: min(500px, calc(100vw - 2rem));
+        max-height: calc(100vh - 2rem);
+        overflow-y: auto;
+    }
+
+    .site-modal-box {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1.4rem 1.5rem 1.25rem;
+        background: var(--bg-color-light, #fff);
+        color: var(--txt-color);
+        border: 1px solid var(--nav-bg);
+        border-top: 5px solid var(--bg-color-btn, #00d4aa);
+        border-radius: 14px;
+        box-shadow: 0 20px 50px var(--nav-bg-shadowA, rgba(0, 0, 0, 0.15));
+        font-family: inherit;
+    }
+
+    .site-modal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--bg-color-btn, #00d4aa);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            line-height: 1;
+            color: var(--txt-color);
+            cursor: pointer;
+            opacity: 0.7;
+
+            &:hover {
+                opacity: 1;
+            }
+        }
+    }
+
+    .site-modal-content {
+        line-height: 1.55;
+    }
+
+    .site-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.6rem;
+        margin-top: 0.5rem;
+    }
+
+    .site-modal-btn {
+        min-height: 44px;
+        min-width: 6.5rem;
+        padding: 0.55rem 1.2rem;
+        border-radius: 8px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+
+        &.is-secondary {
+            background: transparent;
+            color: var(--bg-color-btn, #00d4aa);
+            border: 2px solid var(--nav-bg);
+
+            &:hover {
+                background: var(--nav-bg);
+            }
+        }
+
+        &.is-primary {
+            background: var(--bg-color-btn, #00d4aa);
+            color: var(--text-color, #fff);
+            border: 2px solid var(--bg-color-btn, #00d4aa);
+
+            &:hover {
+                background: var(--text-color-hover);
+            }
+        }
+    }
+
+    @media (max-width: 768px) {
+        .site-modal-box {
+            padding: 1.2rem 1.1rem 1rem;
+        }
+
+        .site-modal-actions {
+            flex-direction: column-reverse;
+
+            .site-modal-btn {
+                width: 100%;
+            }
+        }
+    }
+</style>
