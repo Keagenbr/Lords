@@ -1,0 +1,172 @@
+---
+// ->  /admin/settings  (owner only)
+import Layout from "../../layouts/Layout.astro";
+import AuthSessionManager from "../../components/AuthSessionManager.astro";
+import { guardOwnerPage, getDisplayName } from "../../lib/adminAuth";
+import { getWhatsAppNumber } from "../../lib/siteInfo";
+
+export const prerender = false;
+
+// Signed out -> /admin/login, signed in but not an owner -> 403.
+const { user, response } = await guardOwnerPage(Astro.cookies, Astro.redirect);
+if (response) return response;
+
+const currentNumber = await getWhatsAppNumber();
+const initialData = JSON.stringify({ whatsappNumber: currentNumber });
+---
+
+<Layout title="Admin - Settings">
+    <main class="settings-container" x-data={`siteSettings(${initialData})`}>
+        <AuthSessionManager
+            displayName={getDisplayName(user)}
+            userEmail={user.email}
+            loginPath="/admin/login"
+            timeoutMinutes={15}
+        />
+
+        <header class="settings-header">
+            <h1>Settings</h1>
+            <p>Owner only.</p>
+            <a href="/admin" class="back-link">
+                &larr; Back to Admin Portal
+            </a>
+        </header>
+
+        <p
+            class="save-status"
+            x-show="statusMessage"
+            x-text="statusMessage"
+            :class="statusIsError ? 'status-error' : 'status-ok'"
+        ></p>
+
+        <section class="setting-card">
+            <label for="whatsapp-number">WhatsApp ordering number</label>
+            <p class="hint">
+                International format, digits only (e.g. 27825550142). This is
+                the number the "Send via WhatsApp" button on the menu opens, and
+                the number linked from the footer.
+            </p>
+            <div class="setting-row">
+                <input
+                    id="whatsapp-number"
+                    type="text"
+                    x-model="whatsappNumber"
+                    placeholder="27825550142"
+                />
+                <button class="save-btn" @click="saveWhatsAppNumber()">
+                    Save
+                </button>
+            </div>
+        </section>
+    </main>
+</Layout>
+
+<script is:inline>
+    document.addEventListener("alpine:init", () => {
+        Alpine.data("siteSettings", (initial) => ({
+            whatsappNumber: initial.whatsappNumber,
+            statusMessage: "",
+            statusIsError: false,
+
+            async saveWhatsAppNumber() {
+                try {
+                    const res = await fetch("/admin/set-whatsapp-number", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ number: this.whatsappNumber }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok)
+                        throw new Error(data.error || "Request failed");
+
+                    this.whatsappNumber = data.number;
+                    this.statusMessage = "Saved.";
+                    this.statusIsError = false;
+                } catch (err) {
+                    this.statusMessage = "Error: " + err.message;
+                    this.statusIsError = true;
+                }
+            },
+        }));
+    });
+</script>
+
+<style>
+    .settings-container {
+        max-width: 700px;
+        margin: 5rem auto 2rem auto;
+        padding: 20px;
+        color: var(--txt-color);
+    }
+    .settings-header {
+        border-bottom: 3px solid var(--MenuColor, #00d4aa);
+        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+
+        h1 {
+            margin: 0 0 0.25rem;
+        }
+        p {
+            margin: 0 0 0.5rem;
+            opacity: 0.75;
+        }
+    }
+    .back-link {
+        color: var(--bg-color-btn, #00d4aa);
+        text-decoration: none;
+        font-weight: 600;
+    }
+    .save-status {
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    .status-ok {
+        background: #f0fff4;
+        color: #276749;
+        border: 1px solid #9ae6b4;
+    }
+    .status-error {
+        background: #fff5f5;
+        color: #c53030;
+        border: 1px solid #feb2b2;
+    }
+    .setting-card {
+        background: #fff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+        }
+    }
+    .hint {
+        font-size: 0.85rem;
+        opacity: 0.75;
+        margin: 0 0 1rem;
+    }
+    .setting-row {
+        display: flex;
+        gap: 0.75rem;
+    }
+    .setting-row input {
+        flex: 1;
+        padding: 0.6rem 0.8rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 8px;
+        font-size: 0.95rem;
+    }
+    .save-btn {
+        padding: 0.6rem 1.2rem;
+        border: none;
+        border-radius: 8px;
+        background: var(--bg-color-btn, #00d4aa);
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+    }
+</style>

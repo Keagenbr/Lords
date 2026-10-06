@@ -1,7 +1,7 @@
 // src/lib/phone.ts
 //
 // Turns whatever the customer typed into the digits-only international
-// format the WhatsApp Cloud API expects (e.g. "082 555 0142" -> "27825550142").
+// format WhatsApp wa.me links expect (e.g. "082 555 0142" -> "27825550142").
 //
 // The same rules are copied into the inline script in
 // src/components/Menu/index.astro so the form can validate as the user types.
