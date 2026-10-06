@@ -59,16 +59,16 @@ const shortcuts = [
         href: "/menu",
     },
     // Owner only — hidden entirely for Admin/Manager.
-    ...(isOwnerUser(user)
-        ? [
-              {
-                  icon: "user",
-                  title: "User Roles",
-                  blurb: "Set who is an Owner, Admin/Manager, or Staff.",
-                  href: "/admin/users",
-              },
-          ]
-        : []),
+    // ...(isOwnerUser(user)
+    //     ? [
+    {
+        icon: "user",
+        title: "User Roles",
+        blurb: "Set who is an Owner, Admin/Manager, or Staff.",
+        href: "/admin/users",
+    },
+    //   ]
+    // : []),
 ];
 ---
 

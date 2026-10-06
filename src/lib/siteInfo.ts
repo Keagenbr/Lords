@@ -7,34 +7,10 @@ import { getSetting } from "./siteSettings";
 export const RESTAURANT_NAME = "Lords & Legends";
 export const TAGLINE = "Good times. Cold drinks. Great company.";
 
-import { supabase } from "./supabase";
-
-const DEFAULT_WHATSAPP_NUMBER = "27825550142";
-
-export async function getWhatsAppNumber(): Promise<string> {
-    try {
-        const { data, error } = await supabase
-            .from("site_settings")
-            .select("value")
-            .eq("key", "whatsapp_number")
-            .maybeSingle();
-
-        if (error) {
-            console.error("[siteInfo] Error fetching whatsapp_number:", error.message);
-            return DEFAULT_WHATSAPP_NUMBER;
-        }
-
-        return data?.value || DEFAULT_WHATSAPP_NUMBER;
-    } catch (err) {
-        console.error("[siteInfo] Unexpected error fetching whatsapp_number:", err);
-        return DEFAULT_WHATSAPP_NUMBER;
-    }
-}
-
 // Used only if the site_settings table has no "whatsapp_number" row yet
 // (e.g. right after the migration, before anyone's saved one via
 // /admin/settings) — not the live value, just a safety-net default.
-// const FALLBACK_WHATSAPP_NUMBER = "27626685787";
+const FALLBACK_WHATSAPP_NUMBER = "27626685787";
 
 /**
  * WhatsApp number in international format, digits only (no + or spaces).
@@ -42,9 +18,9 @@ export async function getWhatsAppNumber(): Promise<string> {
  * not hardcoded, so changing it needs no code deploy. Async because of
  * that: call it from a component's frontmatter with `await`.
  */
-// export async function getWhatsAppNumber(): Promise<string> {
-//   return getSetting("whatsapp_number", FALLBACK_WHATSAPP_NUMBER);
-// }
+export async function getWhatsAppNumber(): Promise<string> {
+  return getSetting("whatsapp_number", FALLBACK_WHATSAPP_NUMBER);
+}
 
 export async function getWhatsAppLink(): Promise<string> {
   return `https://wa.me/${await getWhatsAppNumber()}`;
