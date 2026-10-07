@@ -91,7 +91,10 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   const requiresCollectionDetails = hasPlatter;
 
   if (requiresCollectionDetails && !collectDate) {
-    return json({ ok: false, error: "date_required", field: "collectDate" }, 400);
+    return json(
+      { ok: false, error: "date_required", field: "collectDate" },
+      400,
+    );
   }
 
   const [year, month, day] = collectDate
@@ -100,12 +103,16 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   const parsedDate = collectDate
     ? new Date(Date.UTC(year, month - 1, day))
     : null;
-  if (collectDate && (
-    parsedDate!.getUTCFullYear() !== year ||
-    parsedDate!.getUTCMonth() !== month - 1 ||
-    parsedDate!.getUTCDate() !== day
-  )) {
-    return json({ ok: false, error: "invalid_date", field: "collectDate" }, 400);
+  if (
+    collectDate &&
+    (parsedDate!.getUTCFullYear() !== year ||
+      parsedDate!.getUTCMonth() !== month - 1 ||
+      parsedDate!.getUTCDate() !== day)
+  ) {
+    return json(
+      { ok: false, error: "invalid_date", field: "collectDate" },
+      400,
+    );
   }
 
   const saDate = new Intl.DateTimeFormat("en-CA", {
@@ -115,29 +122,51 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     day: "2-digit",
   }).format(new Date());
   if (collectDate && collectDate < saDate) {
-    return json({ ok: false, error: "invalid_date", field: "collectDate" }, 400);
+    return json(
+      { ok: false, error: "invalid_date", field: "collectDate" },
+      400,
+    );
   }
+
+  // Orders without a platter date are same-day takeaway orders, so use
+  // today's Johannesburg weekday for the pickup-hour and takeaway-day rules.
+  const orderDate = parsedDate ?? new Date(`${saDate}T00:00:00Z`);
+  const orderDayOfWeek = orderDate.getUTCDay();
 
   const collectTime = /^\d{2}:\d{2}$/.test(body?.collectTime)
     ? body.collectTime
     : "";
   if (!collectTime) {
-    return json({ ok: false, error: "time_required", field: "collectTime" }, 400);
+    return json(
+      { ok: false, error: "time_required", field: "collectTime" },
+      400,
+    );
   }
   if (collectTime) {
     const [hour, minute] = collectTime.split(":").map(Number);
-    if (!Number.isInteger(hour) || !Number.isInteger(minute) || minute < 0 || minute > 59) {
+    if (
+      !Number.isInteger(hour) ||
+      !Number.isInteger(minute) ||
+      minute < 0 ||
+      minute > 59
+    ) {
       return json({ ok: false, error: "invalid_time" }, 400);
     }
-    const isSunday = parsedDate?.getUTCDay() === 0;
+    const isSunday = orderDayOfWeek === 0;
     const latestPickup = isSunday ? "16:00" : "20:00";
     if (collectTime < "11:00" || collectTime > latestPickup) {
-      return json({ ok: false, error: "invalid_time", latest: latestPickup }, 400);
+      return json(
+        { ok: false, error: "invalid_time", latest: latestPickup },
+        400,
+      );
     }
   }
 
   if (hasPlatter && collectDate < getMinPlatterDate(PLATTER_NOTICE_DAYS)) {
-    return json({ ok: false, error: "invalid_date", reason: "platter_notice" }, 400);
+    return json(
+      { ok: false, error: "invalid_date", reason: "platter_notice" },
+      400,
+    );
   }
 
   const estTotal = Number.isFinite(+body?.total)
@@ -145,7 +174,9 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     : null;
 
   // ── Re-check takeaway availability on the server. The browser is only a UX layer.
-  const itemIds = items.map((item: any) => String(item.id || "")).filter(Boolean);
+  const itemIds = items
+    .map((item: any) => String(item.id || ""))
+    .filter(Boolean);
   if (itemIds.length !== items.length) {
     return json({ ok: false, error: "invalid_item" }, 400);
   }
@@ -155,23 +186,26 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     .select("id,takeaway,takeaway_days")
     .in("id", itemIds);
   if (menuError) {
-    console.error("[orders/whatsapp] menu availability check failed:", menuError.message);
+    console.error(
+      "[orders/whatsapp] menu availability check failed:",
+      menuError.message,
+    );
     return json({ ok: false, error: "availability_check_failed" }, 500);
   }
 
-  const byId = new Map((menuItems ?? []).map((item: any) => [String(item.id), item]));
+  const byId = new Map(
+    (menuItems ?? []).map((item: any) => [String(item.id), item]),
+  );
   for (const itemId of itemIds) {
     const menuItem = byId.get(itemId);
     if (!menuItem || menuItem.takeaway === false) {
       return json({ ok: false, error: "item_unavailable" }, 409);
     }
-    if (requiresCollectionDetails && parsedDate) {
-      const days = Array.isArray(menuItem.takeaway_days)
-        ? menuItem.takeaway_days.map(Number)
-        : [0, 1, 2, 3, 4, 5, 6];
-      if (!days.includes(parsedDate.getUTCDay())) {
-        return json({ ok: false, error: "item_unavailable" }, 409);
-      }
+    const days = Array.isArray(menuItem.takeaway_days)
+      ? menuItem.takeaway_days.map(Number)
+      : [0, 1, 2, 3, 4, 5, 6];
+    if (!days.includes(orderDayOfWeek)) {
+      return json({ ok: false, error: "item_unavailable" }, 409);
     }
   }
 

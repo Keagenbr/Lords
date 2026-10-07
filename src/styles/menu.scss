@@ -296,6 +296,39 @@
         padding: 0.15rem 0.45rem;
     }
 
+    .item-availability-pair {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+    }
+
+    .takeaway-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #2f6f4e;
+        background: #eef8f1;
+        border: 1px solid #a9d5bc;
+        border-radius: 4px;
+        padding: 0.15rem 0.45rem;
+    }
+
+    .takeaway-unavailable-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-color-hover);
+        background: #f7eee8;
+        border: 1px solid #d8b5a5;
+        border-radius: 4px;
+        padding: 0.15rem 0.45rem;
+    }
+
     /* SVG icon slots (src/styles/icons.css): the flex containers below
    already have their own `gap`, so the icon needs no extra margin. */
     .filter-btn,
@@ -310,6 +343,8 @@
         --icon-gap: 0;
     }
     .dine-in-tag,
+    .takeaway-tag,
+    .takeaway-unavailable-tag,
     .notice-tag {
         display: inline-flex;
         align-items: center;
@@ -826,37 +861,6 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
-    }
-
-    .order-panel-heading {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-    }
-
-    .order-panel-heading h3 {
-        margin-right: auto;
-    }
-
-    .clear-order-btn {
-        border: 1px solid var(--nav-bg);
-        border-radius: 6px;
-        padding: 0.35rem 0.65rem;
-        background: transparent;
-        color: var(--bg-color-btn);
-        font: inherit;
-        font-size: 0.78rem;
-        font-weight: 700;
-        cursor: pointer;
-        white-space: nowrap;
-    }
-
-    .clear-order-btn:hover,
-    .clear-order-btn:focus-visible {
-        background: var(--bg-color-light);
-        border-color: var(--bg-color-btn);
-        outline: none;
     }
 
     /* Cart Panel Details */

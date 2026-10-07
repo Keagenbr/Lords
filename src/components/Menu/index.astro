@@ -209,11 +209,34 @@ const platterNotice = {
                                                     x-text="item.serves"
                                                 ></span>
                                                 <span
-                                                    class="dine-in-tag"
+                                                    class="dine-in-tag dine-in-only-tag"
                                                     data-icon="seat"
                                                     x-show="item.takeaway === false"
                                                 >
-                                                    Dine-in only
+                                                    Dine In Only
+                                                </span>
+                                                <template x-if="item.takeaway !== false">
+                                                    <span class="item-availability-pair">
+                                                        <span
+                                                            class="dine-in-tag"
+                                                            data-icon="seat"
+                                                        >
+                                                            Dine In
+                                                        </span>
+                                                        <span
+                                                            class="takeaway-tag"
+                                                            data-icon="cart"
+                                                        >
+                                                            Takeaway
+                                                        </span>
+                                                    </span>
+                                                </template>
+                                                <span
+                                                    class="takeaway-unavailable-tag"
+                                                    data-icon="clock"
+                                                    x-show="item.takeaway !== false && !isTakeawayAvailableForCurrentOrder(item)"
+                                                >
+                                                    Takeaway unavailable today
                                                 </span>
                                                 <span
                                                     class="notice-tag"
@@ -226,7 +249,7 @@ const platterNotice = {
                                             <button
                                                 class="add-btn"
                                                 data-icon="plus"
-                                                x-show="isOrderable(item, type.id)"
+                                                x-show="isOrderable(item, type.id, cat)"
                                                 @click="openItemModal(item)"
                                             >
                                                 Add to order
@@ -742,7 +765,10 @@ const platterNotice = {
             // Open/closed state per category ID
             openCategories: {},
 
-            EXCLUDED_ORDER_TYPES: ["drinks", "specials"],
+            // Drinks remain view-only. Specials are orderable when their
+            // individual item is takeaway-enabled; drink specials are still
+            // treated as view-only through the category check below.
+            EXCLUDED_ORDER_TYPES: ["drinks"],
 
             // Item modal state
             showItemModal: false,
@@ -958,10 +984,35 @@ const platterNotice = {
                 return defaultItemPlaceholders[item.category_id] || null;
             },
 
-            isOrderable(item, typeId) {
-                if (this.EXCLUDED_ORDER_TYPES.includes(typeId)) return false;
+            isSpecialDrinkCategory(cat) {
+                if (!cat) return false;
+                const text = `${cat.id || ""} ${cat.label || ""}`.toLowerCase();
+                return /specials?_?drinks?|drink specials?|beverage specials?/.test(text);
+            },
+
+            getTakeawayReferenceDate() {
+                // Platter orders have an explicit collection date. All other
+                // takeaway orders are same-day orders, so their availability
+                // is based on today's Johannesburg weekday.
+                return this.hasPlatter && this.collectDate
+                    ? this.collectDate
+                    : this.todayIso();
+            },
+
+            isTakeawayAvailableForCurrentOrder(item) {
+                if (!item || item.takeaway === false) return false;
+                return this.isItemTakeawayOnDate(item, this.getTakeawayReferenceDate());
+            },
+
+            isOrderable(item, typeId, cat) {
+                if (this.EXCLUDED_ORDER_TYPES.includes(String(typeId).toLowerCase())) {
+                    return false;
+                }
+                if (String(typeId).toLowerCase() === "specials" && this.isSpecialDrinkCategory(cat)) {
+                    return false;
+                }
                 if (item.takeaway === false) return false;
-                return true;
+                return this.isTakeawayAvailableForCurrentOrder(item);
             },
 
             openItemModal(item) {
