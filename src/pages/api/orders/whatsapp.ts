@@ -1,7 +1,7 @@
 // src/pages/api/orders/whatsapp.ts
 //
-// POST from the menu cart. Validates the order (WhatsApp number + opt-in
-// are REQUIRED) and stores it in Supabase. That's all this endpoint does —
+// POST from the menu cart. Validates the order and stores it in Supabase.
+// That's all this endpoint does —
 // no WhatsApp Cloud API send happens here. The browser is responsible for
 // opening a wa.me link with the order pre-filled, and the customer sends
 // it to us themselves from their own WhatsApp (same as a normal customer
@@ -12,13 +12,13 @@
 import type { APIRoute } from "astro";
 import { createHash } from "node:crypto";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
-// import { normaliseWhatsAppNumber } from "../../../lib/phone";
+import { PLATTER_NOTICE_DAYS } from "../../../lib/siteInfo";
+import { orderRef } from "../../../lib/orders";
 
 export const prerender = false;
 
 const MAX_LINES = 40;
 const MAX_ORDERS_PER_IP_PER_10_MIN = 5;
-const MAX_ORDERS_PER_PHONE_PER_10_MIN = 3;
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -31,6 +31,22 @@ const clean = (v: unknown, max = 120) =>
     .replace(/[\u0000-\u001F]/g, " ")
     .trim()
     .slice(0, max);
+
+const getMinPlatterDate = (days: number) => {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Johannesburg",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const now = new Date();
+  const parts = formatter.formatToParts(now);
+  const year = Number(parts.find((p) => p.type === "year")?.value);
+  const month = Number(parts.find((p) => p.type === "month")?.value);
+  const day = Number(parts.find((p) => p.type === "day")?.value);
+  const d = new Date(Date.UTC(year, month - 1, day + days));
+  return d.toISOString().slice(0, 10);
+};
 
 export const POST: APIRoute = async ({ request, clientAddress }) => {
   let body: any;
@@ -48,15 +64,8 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   if (!customerName)
     return json({ ok: false, error: "name_required", field: "name" }, 400);
 
-  const customerPhone = normaliseWhatsAppNumber(body?.phone);
-  if (!customerPhone) {
-    return json({ ok: false, error: "invalid_phone", field: "phone" }, 400);
-  }
-  if (body?.optIn !== true) {
-    return json({ ok: false, error: "opt_in_required", field: "optIn" }, 400);
-  }
-
   const items = cart.map((l: any) => ({
+    id: clean(l?.id, 80),
     name: clean(l?.name),
     qty: Math.min(Math.max(parseInt(l?.qty, 10) || 1, 1), 50),
     price: clean(l?.price, 20),
@@ -75,15 +84,96 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   }));
 
   const hasPlatter = Boolean(body?.hasPlatter);
+
   const collectDate = /^\d{4}-\d{2}-\d{2}$/.test(body?.collectDate)
     ? body.collectDate
+    : "";
+  const requiresCollectionDetails = hasPlatter;
+
+  if (requiresCollectionDetails && !collectDate) {
+    return json({ ok: false, error: "date_required", field: "collectDate" }, 400);
+  }
+
+  const [year, month, day] = collectDate
+    ? collectDate.split("-").map(Number)
+    : [NaN, NaN, NaN];
+  const parsedDate = collectDate
+    ? new Date(Date.UTC(year, month - 1, day))
     : null;
+  if (collectDate && (
+    parsedDate!.getUTCFullYear() !== year ||
+    parsedDate!.getUTCMonth() !== month - 1 ||
+    parsedDate!.getUTCDate() !== day
+  )) {
+    return json({ ok: false, error: "invalid_date", field: "collectDate" }, 400);
+  }
+
+  const saDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Johannesburg",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  if (collectDate && collectDate < saDate) {
+    return json({ ok: false, error: "invalid_date", field: "collectDate" }, 400);
+  }
+
   const collectTime = /^\d{2}:\d{2}$/.test(body?.collectTime)
     ? body.collectTime
     : "";
+  if (!collectTime) {
+    return json({ ok: false, error: "time_required", field: "collectTime" }, 400);
+  }
+  if (collectTime) {
+    const [hour, minute] = collectTime.split(":").map(Number);
+    if (!Number.isInteger(hour) || !Number.isInteger(minute) || minute < 0 || minute > 59) {
+      return json({ ok: false, error: "invalid_time" }, 400);
+    }
+    const isSunday = parsedDate?.getUTCDay() === 0;
+    const latestPickup = isSunday ? "16:00" : "20:00";
+    if (collectTime < "11:00" || collectTime > latestPickup) {
+      return json({ ok: false, error: "invalid_time", latest: latestPickup }, 400);
+    }
+  }
+
+  if (hasPlatter && collectDate < getMinPlatterDate(PLATTER_NOTICE_DAYS)) {
+    return json({ ok: false, error: "invalid_date", reason: "platter_notice" }, 400);
+  }
+
   const estTotal = Number.isFinite(+body?.total)
     ? Math.max(0, +body.total)
     : null;
+
+  // ── Re-check takeaway availability on the server. The browser is only a UX layer.
+  const itemIds = items.map((item: any) => String(item.id || "")).filter(Boolean);
+  if (itemIds.length !== items.length) {
+    return json({ ok: false, error: "invalid_item" }, 400);
+  }
+
+  const { data: menuItems, error: menuError } = await supabaseAdmin
+    .from("menu_items")
+    .select("id,takeaway,takeaway_days")
+    .in("id", itemIds);
+  if (menuError) {
+    console.error("[orders/whatsapp] menu availability check failed:", menuError.message);
+    return json({ ok: false, error: "availability_check_failed" }, 500);
+  }
+
+  const byId = new Map((menuItems ?? []).map((item: any) => [String(item.id), item]));
+  for (const itemId of itemIds) {
+    const menuItem = byId.get(itemId);
+    if (!menuItem || menuItem.takeaway === false) {
+      return json({ ok: false, error: "item_unavailable" }, 409);
+    }
+    if (requiresCollectionDetails && parsedDate) {
+      const days = Array.isArray(menuItem.takeaway_days)
+        ? menuItem.takeaway_days.map(Number)
+        : [0, 1, 2, 3, 4, 5, 6];
+      if (!days.includes(parsedDate.getUTCDay())) {
+        return json({ ok: false, error: "item_unavailable" }, 409);
+      }
+    }
+  }
 
   // ── Basic abuse protection (keeps the orders table honest — no longer
   // about WhatsApp send costs, since nothing here sends anything) ──────
@@ -96,22 +186,13 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     .digest("hex");
   const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
-  const [{ count: ipCount }, { count: phoneCount }] = await Promise.all([
-    supabaseAdmin
-      .from("whatsapp_orders")
-      .select("id", { count: "exact", head: true })
-      .eq("ip_hash", ipHash)
-      .gte("created_at", since),
-    supabaseAdmin
-      .from("whatsapp_orders")
-      .select("id", { count: "exact", head: true })
-      .eq("customer_phone", customerPhone)
-      .gte("created_at", since),
-  ]);
-  if (
-    (ipCount ?? 0) >= MAX_ORDERS_PER_IP_PER_10_MIN ||
-    (phoneCount ?? 0) >= MAX_ORDERS_PER_PHONE_PER_10_MIN
-  ) {
+  const { count: ipCount } = await supabaseAdmin
+    .from("whatsapp_orders")
+    .select("id", { count: "exact", head: true })
+    .eq("ip_hash", ipHash)
+    .gte("created_at", since);
+
+  if ((ipCount ?? 0) >= MAX_ORDERS_PER_IP_PER_10_MIN) {
     return json({ ok: false, error: "rate_limited" }, 429);
   }
 
@@ -123,12 +204,8 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     .from("whatsapp_orders")
     .insert({
       customer_name: customerName,
-      customer_phone: customerPhone,
-      customer_opt_in: true,
-      opt_in_at: new Date().toISOString(),
-      opt_in_text: OPT_IN_TEXT,
-      collect_date: collectDate,
-      collect_time: collectTime,
+      collect_date: collectDate || null,
+      collect_time: collectTime || null,
       has_platter: hasPlatter,
       items,
       est_total: estTotal,

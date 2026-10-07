@@ -471,6 +471,247 @@
         margin: 0.25rem 0 1rem;
     }
 
+    .collection-field {
+        margin-bottom: 0.85rem;
+    }
+
+    .collection-trigger {
+        width: 100%;
+        min-height: 68px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem 0.9rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 10px;
+        background: var(--bg-color);
+        color: var(--txt-color);
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        transition:
+            border-color 0.2s,
+            box-shadow 0.2s,
+            background-color 0.2s;
+    }
+
+    .collection-trigger:hover,
+    .collection-trigger:focus-visible,
+    .collection-trigger.is-selected {
+        border-color: var(--MenuColor);
+        outline: none;
+        box-shadow: 0 0 0 3px var(--MenuColorA);
+    }
+
+    .collection-trigger.is-disabled {
+        opacity: 0.75;
+    }
+
+    .collection-trigger-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 0;
+    }
+
+    .collection-trigger-label {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-color-hover);
+    }
+
+    .collection-trigger strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 1rem;
+    }
+
+    .collection-trigger-arrow {
+        flex: none;
+        color: var(--bg-color-btn);
+        font-size: 1.8rem;
+        line-height: 1;
+    }
+
+    .collection-picker-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1200;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background: var(--MenuColorA);
+        backdrop-filter: blur(3px);
+    }
+
+    .collection-picker {
+        width: min(100%, 420px);
+        max-height: min(760px, 90vh);
+        overflow-y: auto;
+        box-sizing: border-box;
+        padding: 1.15rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 16px;
+        background: var(--bg-color);
+        color: var(--txt-color);
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+    }
+
+    .collection-picker-head {
+        display: grid;
+        grid-template-columns: 44px 1fr 44px;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        text-align: center;
+        color: var(--bg-color-btn);
+    }
+
+    .collection-picker-head--time {
+        grid-template-columns: auto 1fr 44px;
+    }
+
+    .picker-nav-btn,
+    .picker-back {
+        min-height: 44px;
+        border: 1px solid var(--nav-bg);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--bg-color-btn);
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+    }
+
+    .picker-nav-btn:hover,
+    .picker-back:hover,
+    .picker-nav-btn:focus-visible,
+    .picker-back:focus-visible {
+        border-color: var(--MenuColor);
+        outline: none;
+    }
+
+    .picker-back {
+        padding: 0 0.7rem;
+        white-space: nowrap;
+    }
+
+    .picker-head-spacer {
+        display: block;
+    }
+
+    .calendar-weekdays,
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 0.35rem;
+    }
+
+    .calendar-weekdays {
+        margin-bottom: 0.35rem;
+    }
+
+    .calendar-weekdays span {
+        padding: 0.25rem 0;
+        color: var(--text-color-hover);
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-align: center;
+    }
+
+    .calendar-day {
+        min-height: 42px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--txt-color);
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .calendar-day:not(:disabled):hover,
+    .calendar-day:not(:disabled):focus-visible {
+        border-color: var(--MenuColor);
+        background: var(--bg-color-light);
+        outline: none;
+    }
+
+    .calendar-day.is-today {
+        border-color: var(--MenuColor);
+    }
+
+    .calendar-day.is-selected {
+        background: var(--bg-color-btn);
+        color: var(--text-color);
+        border-color: var(--bg-color-btn);
+    }
+
+    .calendar-day.is-unavailable {
+        color: #a0aec0;
+        background: #edf2f7;
+        cursor: not-allowed;
+        text-decoration: line-through;
+    }
+
+    .calendar-day.is-empty {
+        pointer-events: none;
+    }
+
+    .picker-note {
+        margin: 0.85rem 0 0;
+        color: #718096;
+        font-size: 0.78rem;
+        line-height: 1.45;
+    }
+
+    .selected-date-summary {
+        margin: -0.3rem 0 1rem;
+        color: var(--text-color-hover);
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .time-options {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.55rem;
+    }
+
+    .time-option {
+        min-height: 48px;
+        border: 2px solid var(--nav-bg);
+        border-radius: 9px;
+        background: #fff;
+        color: var(--txt-color);
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .time-option:hover,
+    .time-option:focus-visible {
+        border-color: var(--MenuColor);
+        outline: none;
+    }
+
+    .time-option.is-selected {
+        background: var(--bg-color-btn);
+        border-color: var(--bg-color-btn);
+        color: var(--text-color);
+    }
+
+    .picker-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 1rem;
+    }
+
     .modal-field {
         margin-bottom: 1rem;
     }
@@ -585,6 +826,37 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
+    }
+
+    .order-panel-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .order-panel-heading h3 {
+        margin-right: auto;
+    }
+
+    .clear-order-btn {
+        border: 1px solid var(--nav-bg);
+        border-radius: 6px;
+        padding: 0.35rem 0.65rem;
+        background: transparent;
+        color: var(--bg-color-btn);
+        font: inherit;
+        font-size: 0.78rem;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .clear-order-btn:hover,
+    .clear-order-btn:focus-visible {
+        background: var(--bg-color-light);
+        border-color: var(--bg-color-btn);
+        outline: none;
     }
 
     /* Cart Panel Details */
@@ -1300,5 +1572,23 @@
             text-decoration: none;
             font-weight: bold;
         }
+    }
+}
+
+@media (max-width: 480px) {
+    .collection-picker-overlay {
+        align-items: flex-end;
+        padding: 0.5rem;
+    }
+
+    .collection-picker {
+        width: 100%;
+        max-height: 88vh;
+        border-radius: 16px 16px 10px 10px;
+        padding: 1rem;
+    }
+
+    .time-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }

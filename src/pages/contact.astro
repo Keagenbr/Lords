@@ -1,11 +1,34 @@
 ---
-import Layout from "../layouts/Layout.astro"; // Import the main layout part
-
-const { title = "Contact Us" } = Astro.props;
+import Layout from "../layouts/Layout.astro";
+import InquiryForm from "../components/Form/InquiryForm.astro";
+import BookingForm from "../components/Form/BookingForm.astro";
 ---
 
-<Layout>
-    <main class="contact">
-        <h1>Welcome to Lords and Legends {title}</h1>
+<Layout title="Contact Us | Lords and Legends">
+    <main class="contact-wrapper">
+        <h1 class="text-center">Contact & Bookings</h1>
+        <div class="form-grid">
+            <InquiryForm />
+            <BookingForm />
+        </div>
     </main>
 </Layout>
+
+<style lang="scss">
+    .contact-wrapper {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 6rem 2rem 2rem 2rem; /* Account for var(--nav-header) */
+    }
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+    @media (min-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+</style>

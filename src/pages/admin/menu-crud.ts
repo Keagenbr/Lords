@@ -35,6 +35,7 @@ const ALLOWED_TABLES: Record<string, { pk: string[]; columns: string[] }> = {
       "image_url",
       "sort_order",
       "takeaway",
+      "takeaway_days",
     ],
   },
   modifier_groups: {

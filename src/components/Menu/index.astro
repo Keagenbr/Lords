@@ -1,7 +1,6 @@
 ---
 import { getMenu, type MenuType } from "../../lib/menu";
 import {
-    RESTAURANT_NAME,
     getWhatsAppNumber,
     PLATTER_NOTICE_DAYS,
     PLATTER_NOTICE_TITLE,
@@ -62,7 +61,6 @@ const platterNotice = {
     x-data="menuApp"
     data-menu={menuJson}
     data-whatsapp={whatsappNumber}
-    data-restaurant={RESTAURANT_NAME}
     data-specials-groups={JSON.stringify(SPECIALS_GROUPS)}
     data-platter-notice={JSON.stringify(platterNotice)}
 >
@@ -402,7 +400,18 @@ const platterNotice = {
         @click.self="showCartPanel = false"
     >
         <div class="modal-box cart-panel" x-show="showCartPanel" x-transition>
-            <h3 data-icon="receipt">Your Order</h3>
+            <div class="order-panel-heading">
+                <h3 data-icon="receipt">Your Order</h3>
+                <button
+                    type="button"
+                    class="clear-order-btn"
+                    x-show="cart.length > 0 && !orderSent"
+                    x-cloak
+                    @click="clearOrder()"
+                >
+                    Clear order
+                </button>
+            </div>
 
             <!-- Shown after the order is saved and WhatsApp has opened -->
             <div class="order-success" role="status" x-show="orderSent" x-cloak>
@@ -480,91 +489,133 @@ const platterNotice = {
                     </p>
                 </div>
 
-                <!-- WhatsApp number + opt-in: REQUIRED for order updates -->
-                <!-- <div class="modal-field">
-                    <label for="order-phone">
-                        WhatsApp number <span class="req">*</span>
-                    </label>
-                    <input
-                        id="order-phone"
-                        type="tel"
-                        inputmode="tel"
-                        autocomplete="tel"
-                        x-model="orderPhone"
-                        @blur="touched.phone = true"
-                        placeholder="e.g. 082 555 0142"
-                        :aria-invalid="touched.phone && !phoneValid"
-                        required
-                    />
-                    <p class="field-hint" x-show="phoneValid" x-cloak>
-                        We'll send updates to{" "}
-                        <strong x-text="phoneDisplay"></strong>
-                     </p>
-                    <p
-                        class="field-error"
-                        x-show="touched.phone && !phoneValid"
-                        x-cloak
-                    >
-                        Please enter a valid WhatsApp mobile number, e.g. 082
-                        555 0142 or +27 82 555 0142.
-                    </p>
+                <!-- Collection date is only required for platter orders. Collection time is required for all takeaway orders. -->
+                <div x-show="hasPlatter" x-cloak>
+                    <div class="notice-box" data-icon="alert" role="alert">
+                        <strong x-text="notice.title"></strong>
+                        <span x-text="notice.text"></span>
+                    </div>
+
+                    <div class="modal-field collection-field">
+                        <button
+                            type="button"
+                            class="collection-trigger"
+                            :class="{ 'is-selected': collectDate }"
+                            @click="openCollectionPicker('date')"
+                            :aria-expanded="collectionPicker === 'date'"
+                        >
+                            <span class="collection-trigger-copy">
+                                <span class="collection-trigger-label">
+                                    Collection date <span class="req">*</span>
+                                </span>
+                                <strong x-text="collectionDateLabel"></strong>
+                            </span>
+                            <span class="collection-trigger-arrow" aria-hidden="true">›</span>
+                        </button>
+                        <p class="field-hint">Choose your date, then you’ll be taken straight to the collection time.</p>
+                        <p class="field-error" x-show="collectionDateError" x-cloak x-text="collectionDateError"></p>
+                    </div>
                 </div>
-                <div class="modal-field checkbox-field">
-                    <label>
-                        <input
-                            type="checkbox"
-                            x-model="optIn"
-                            @change="touched.optIn = true"
-                            required
-                        />
-                        <span>
-                            <span x-text="optInText"></span>{" "}
-                            <span class="req">*</span>
+
+                <div class="modal-field collection-field">
+                    <button
+                        type="button"
+                        class="collection-trigger"
+                        :class="{ 'is-selected': collectTime }"
+                        @click="openCollectionPicker('time')"
+                        :aria-expanded="collectionPicker === 'time'"
+                    >
+                        <span class="collection-trigger-copy">
+                            <span class="collection-trigger-label">
+                                Collection time <span class="req">*</span>
+                            </span>
+                            <strong x-text="collectionTimeLabel"></strong>
                         </span>
-                    </label>
-                    <p
-                        class="field-error"
-                        x-show="touched.optIn && !optIn"
-                        x-cloak
-                    >
-                        Please tick the box to continue.
-                    </p>
+                        <span class="collection-trigger-arrow" aria-hidden="true">›</span>
+                    </button>
+                    <p class="field-hint">Choose your collection time. Monday–Saturday: 11:00–20:00<span x-show="hasPlatter"> · Sunday: 11:00–16:00</span></p>
+                    <p class="field-error" x-show="collectionTimeError" x-cloak x-text="collectionTimeError"></p>
                 </div>
- -->
-                <!-- Any platter in the order: show the notice + ask for a date -->
+
                 <div
-                    class="notice-box"
-                    data-icon="alert"
-                    role="alert"
-                    x-show="hasPlatter"
+                    class="collection-picker-overlay"
+                    x-show="collectionPicker"
                     x-cloak
+                    @click.self="closeCollectionPicker"
                 >
-                    <strong x-text="notice.title"></strong>
-                    <span x-text="notice.text"></span>
-                </div>
-                <div class="modal-field" x-show="hasPlatter" x-cloak>
-                    <label>
-                        Collection date (at least{" "}
-                        <span x-text="notice.days"></span>
-                        days from today)
-                    </label>
-                    <input
-                        type="date"
-                        x-model="collectDate"
-                        :min="minPlatterDate"
-                    />
-                    <p class="field-error" x-show="dateTooSoon" x-cloak>
-                        Please choose a date that is at least
-                        <span x-text="notice.days"></span> days from today.
-                    </p>
-                </div>
-                <div class="modal-field">
-                    <label>Collection time</label>
-                    <input
-                        type="time"
-                        x-model="collectTime"
-                        placeholder="Leave blank for collection in 20-30 mins"
-                    />
+                    <div
+                        class="collection-picker"
+                        role="dialog"
+                        aria-modal="true"
+                        :aria-label="collectionPicker === 'date' ? 'Choose collection date' : 'Choose collection time'"
+                        @keydown.escape.window="closeCollectionPicker"
+                    >
+                        <div x-show="collectionPicker === 'date' && hasPlatter" x-cloak>
+                            <div class="collection-picker-head">
+                                <button type="button" class="picker-nav-btn" @click="previousCalendarMonth" aria-label="Previous month">‹</button>
+                                <strong x-text="calendarMonthLabel"></strong>
+                                <button type="button" class="picker-nav-btn" @click="nextCalendarMonth" aria-label="Next month">›</button>
+                            </div>
+                            <div class="calendar-weekdays" aria-hidden="true">
+                                <template x-for="day in weekdayLabels" :key="day">
+                                    <span x-text="day"></span>
+                                </template>
+                            </div>
+                            <div class="calendar-grid">
+                                <template x-for="cell in calendarDays" :key="cell.key">
+                                    <button
+                                        type="button"
+                                        class="calendar-day"
+                                        :class="{
+                                            'is-empty': !cell.iso,
+                                            'is-today': cell.isToday,
+                                            'is-selected': cell.iso === collectDate,
+                                            'is-unavailable': cell.disabled,
+                                        }"
+                                        :disabled="!cell.iso || cell.disabled"
+                                        @click="selectCollectionDate(cell.iso)"
+                                        x-text="cell.day"
+                                    ></button>
+                                </template>
+                            </div>
+                            <p class="picker-note">Dates are limited to days when every item in your order is available for takeaway.</p>
+                            <p class="picker-note">Platters also require the advance notice shown above.</p>
+                            <div class="picker-actions">
+                                <button type="button" class="cancel-btn" @click="closeCollectionPicker">Close</button>
+                            </div>
+                        </div>
+
+                        <div x-show="collectionPicker === 'time'" x-cloak>
+                            <div class="collection-picker-head collection-picker-head--time">
+                                <button
+                                    type="button"
+                                    class="picker-back"
+                                    @click="hasPlatter ? openCollectionPicker('date') : closeCollectionPicker()"
+                                >
+                                    <span x-show="hasPlatter">‹ Date</span>
+                                    <span x-show="!hasPlatter">‹ Back</span>
+                                </button>
+                                <strong>Collection time</strong>
+                                <span class="picker-head-spacer" aria-hidden="true"></span>
+                            </div>
+                            <p class="selected-date-summary" x-show="hasPlatter" x-text="collectionDateLabel"></p>
+                            <div class="time-options">
+                                <template x-for="time in timeOptions" :key="time">
+                                    <button
+                                        type="button"
+                                        class="time-option"
+                                        :class="{ 'is-selected': time === collectTime }"
+                                        @click="selectCollectionTime(time)"
+                                        x-text="time"
+                                    ></button>
+                                </template>
+                            </div>
+                            <p class="picker-note" x-text="hasPlatter && collectDate && isSunday(collectDate) ? 'Sunday collection hours: 11:00–16:00.' : 'Collection times are available every 30 minutes.'"></p>
+                            <div class="picker-actions">
+                                <button type="button" class="cancel-btn" @click="closeCollectionPicker">Close</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <p class="cart-total" x-show="cartTotal > 0">
@@ -685,9 +736,6 @@ const platterNotice = {
             notice,
             whatsappNumber:
                 document.querySelector("[data-whatsapp]").dataset.whatsapp,
-            restaurantName:
-                document.querySelector("[data-restaurant]").dataset.restaurant,
-
             search: "",
             selectedType: "all",
 
@@ -710,14 +758,11 @@ const platterNotice = {
             collectTime: "",
             collectDate: "",
 
-            // WhatsApp Cloud API ordering
-            orderPhone: "",
-            optIn: false,
-            optInText:
-                "I agree to receive order updates from " +
-                document.querySelector("[data-restaurant]").dataset.restaurant +
-                " on WhatsApp.",
-            touched: { name: false, phone: false, optIn: false },
+            // Collection picker state
+            collectionPicker: "",
+            calendarMonth: null,
+
+            touched: { name: false, date: false, time: false },
             sendingOrder: false,
             orderSent: null, // { ref, name } after a successful save
             orderError: "",
@@ -976,6 +1021,10 @@ const platterNotice = {
                 );
 
                 this.cart.push({
+                    id: this.activeItem.id,
+                    takeaway_days: Array.isArray(this.activeItem.takeaway_days)
+                        ? [...this.activeItem.takeaway_days]
+                        : [0, 1, 2, 3, 4, 5, 6],
                     name: this.activeItem.name,
                     price: this.activeItem.price || "",
                     priceValue:
@@ -991,6 +1040,24 @@ const platterNotice = {
 
             removeFromCart(index) {
                 this.cart.splice(index, 1);
+                if (!this.hasPlatter) {
+                    this.collectDate = "";
+                }
+                if (this.cart.length === 0) {
+                    this.collectDate = "";
+                    this.collectTime = "";
+                    this.collectionPicker = "";
+                }
+            },
+
+            clearOrder() {
+                this.cart = [];
+                this.orderName = "";
+                this.collectDate = "";
+                this.collectTime = "";
+                this.collectionPicker = "";
+                this.orderError = "";
+                this.touched = { name: false, date: false, time: false };
             },
 
             parsePrice(priceStr) {
@@ -1007,10 +1074,9 @@ const platterNotice = {
             // Earliest allowed collection date for platters, as YYYY-MM-DD in
             // the visitor's local time (today + notice days).
             get minPlatterDate() {
-                const d = new Date();
+                const d = this.parseIsoDate(this.todayIso());
                 d.setDate(d.getDate() + this.notice.days);
-                const pad = (n) => String(n).padStart(2, "0");
-                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+                return this.localIso(d);
             },
 
             // A date was chosen but it is sooner than the notice allows.
@@ -1020,6 +1086,83 @@ const platterNotice = {
                     !!this.collectDate &&
                     this.collectDate < this.minPlatterDate
                 );
+            },
+
+            get weekdayLabels() {
+                return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+            },
+
+            get calendarMonthLabel() {
+                if (!this.calendarMonth) return "";
+                return this.calendarMonth.toLocaleDateString("en-ZA", {
+                    month: "long",
+                    year: "numeric",
+                });
+            },
+
+            get collectionDateLabel() {
+                if (!this.collectDate) return "Choose a collection date";
+                return this.formatCollectionDate(this.collectDate);
+            },
+
+            get collectionTimeLabel() {
+                return this.collectTime || "Choose a collection time";
+            },
+
+            get collectionDateError() {
+                if (!this.hasPlatter) return "";
+                if (!this.collectDate) return "Please choose a collection date.";
+                if (this.dateTooSoon) {
+                    return `Please choose a date that is at least ${this.notice.days} days from today.`;
+                }
+                if (!this.isCartDateAvailable(this.collectDate)) {
+                    return "One or more items in your order is not available for takeaway on this date.";
+                }
+                return "";
+            },
+
+            get collectionTimeError() {
+                if (this.cart.length === 0) return "";
+                if (!this.collectTime) return "Please choose a collection time.";
+                return this.isTimeAllowed(this.collectTime) ? "" : "Please choose a time within the collection hours.";
+            },
+
+            get calendarDays() {
+                if (!this.calendarMonth) return [];
+                const year = this.calendarMonth.getFullYear();
+                const month = this.calendarMonth.getMonth();
+                const first = new Date(year, month, 1);
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                // JS Sunday=0; convert to Monday-first calendar index.
+                const leading = (first.getDay() + 6) % 7;
+                const cells = [];
+                for (let i = 0; i < leading; i++) {
+                    cells.push({ key: `empty-${i}`, iso: "", day: "", disabled: true, isToday: false });
+                }
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const d = new Date(year, month, day);
+                    const iso = this.localIso(d);
+                    cells.push({
+                        key: iso,
+                        iso,
+                        day,
+                        disabled: this.isCollectionDateDisabled(iso),
+                        isToday: iso === this.todayIso(),
+                    });
+                }
+                return cells;
+            },
+
+            get timeOptions() {
+                const latest = this.collectDate && this.isSunday(this.collectDate) ? "16:00" : "20:00";
+                const result = [];
+                for (let hour = 11; hour <= Number(latest.slice(0, 2)); hour++) {
+                    for (const minute of [0, 30]) {
+                        const value = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+                        if (value <= latest) result.push(value);
+                    }
+                }
+                return result;
             },
 
             get cartCount() {
@@ -1033,15 +1176,138 @@ const platterNotice = {
                 );
             },
 
-            buildOrderMessage() {
+            localIso(date) {
+                const pad = (n) => String(n).padStart(2, "0");
+                return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+            },
+
+            todayIso() {
+                const parts = new Intl.DateTimeFormat("en-CA", {
+                    timeZone: "Africa/Johannesburg",
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                }).formatToParts(new Date());
+                const year = parts.find((part) => part.type === "year")?.value;
+                const month = parts.find((part) => part.type === "month")?.value;
+                const day = parts.find((part) => part.type === "day")?.value;
+                return `${year}-${month}-${day}`;
+            },
+
+            parseIsoDate(iso) {
+                const [year, month, day] = String(iso).split("-").map(Number);
+                return new Date(year, month - 1, day);
+            },
+
+            formatCollectionDate(iso) {
+                return this.parseIsoDate(iso).toLocaleDateString("en-ZA", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                });
+            },
+
+            isSunday(iso) {
+                return this.parseIsoDate(iso).getDay() === 0;
+            },
+
+            normaliseTakeawayDays(item) {
+                if (!Array.isArray(item?.takeaway_days)) {
+                    return [0, 1, 2, 3, 4, 5, 6];
+                }
+                return item.takeaway_days.map(Number).filter((day) => day >= 0 && day <= 6);
+            },
+
+            isItemTakeawayOnDate(item, iso) {
+                if (!item || item.takeaway === false || !iso) return false;
+                return this.normaliseTakeawayDays(item).includes(this.parseIsoDate(iso).getDay());
+            },
+
+            isCartDateAvailable(iso) {
+                return this.cart.every((line) => this.isItemTakeawayOnDate(line, iso));
+            },
+
+            isCollectionDateDisabled(iso) {
+                if (!iso) return true;
+                if (iso < this.todayIso()) return true;
+                if (this.hasPlatter && iso < this.minPlatterDate) return true;
+                return !this.isCartDateAvailable(iso);
+            },
+
+            isTimeAllowed(time) {
+                if (!/^\d{2}:\d{2}$/.test(String(time))) return false;
+                const latest = this.collectDate && this.isSunday(this.collectDate) ? "16:00" : "20:00";
+                return String(time) >= "11:00" && String(time) <= latest;
+            },
+
+            openCollectionPicker(mode) {
+                if (mode === "date" && !this.hasPlatter) {
+                    mode = "time";
+                }
+                if (!this.calendarMonth) {
+                    this.calendarMonth = this.collectDate
+                        ? this.parseIsoDate(this.collectDate)
+                        : new Date();
+                    this.calendarMonth.setDate(1);
+                } else if (mode === "date" && this.collectDate) {
+                    this.calendarMonth = this.parseIsoDate(this.collectDate);
+                    this.calendarMonth.setDate(1);
+                }
+                if (mode === "time" && !this.isTimeAllowed(this.collectTime)) {
+                    this.collectTime = "";
+                }
+                this.collectionPicker = mode;
+            },
+
+            closeCollectionPicker() {
+                this.collectionPicker = "";
+            },
+
+            previousCalendarMonth() {
+                if (!this.calendarMonth) this.calendarMonth = new Date();
+                this.calendarMonth = new Date(
+                    this.calendarMonth.getFullYear(),
+                    this.calendarMonth.getMonth() - 1,
+                    1,
+                );
+            },
+
+            nextCalendarMonth() {
+                if (!this.calendarMonth) this.calendarMonth = new Date();
+                this.calendarMonth = new Date(
+                    this.calendarMonth.getFullYear(),
+                    this.calendarMonth.getMonth() + 1,
+                    1,
+                );
+            },
+
+            selectCollectionDate(iso) {
+                if (this.isCollectionDateDisabled(iso)) return;
+                this.collectDate = iso;
+                if (!this.isTimeAllowed(this.collectTime)) this.collectTime = "";
+                // The requested flow: selecting the date takes the customer straight to time.
+                this.collectionPicker = "time";
+            },
+
+            selectCollectionTime(time) {
+                if (!this.isTimeAllowed(time)) return;
+                this.collectTime = time;
+                this.collectionPicker = "";
+            },
+
+            buildOrderMessage(orderRef = "") {
                 const lines = [];
-                lines.push(`*NEW ORDER – ${this.restaurantName}*`);
+                lines.push("*NEW ORDER*");
+                if (orderRef) lines.push(`Order Ref: ${orderRef}`);
                 lines.push(`Name: ${this.orderName || "(not given)"}`);
-                if (this.phoneValid)
-                    lines.push(`WhatsApp: ${this.phoneDisplay}`);
+                if (this.hasPlatter) {
+                    lines.push(`Collection date: ${this.collectionDateLabel}`);
+                }
+                lines.push(`Collection time: ${this.collectTime || "(not selected)"}`);
+                lines.push("");
 
                 if (this.hasPlatter) {
-                    // Platters are never "ready in 20-30 mins".
                     const platters = this.cart
                         .filter((l) => l.platter)
                         .map((l) => `${l.qty}x ${l.name}`)
@@ -1049,28 +1315,8 @@ const platterNotice = {
                     lines.push(
                         `⚠️ *${this.notice.title.toUpperCase()}* – ${platters}`,
                     );
-                    const when = this.collectDate
-                        ? new Date(
-                              this.collectDate + "T00:00:00",
-                          ).toLocaleDateString("en-ZA", {
-                              weekday: "short",
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric",
-                          })
-                        : "(to be confirmed – minimum " +
-                          this.notice.days +
-                          " days from today)";
-                    lines.push(`Collection date: ${when}`);
-                    lines.push(
-                        `Collection time: ${this.collectTime || "(to be confirmed)"}`,
-                    );
-                } else {
-                    lines.push(
-                        `Collection time: ${this.collectTime || "(Asap - 20 to 30 mins)"}`,
-                    );
+                    lines.push("");
                 }
-                lines.push("");
 
                 this.cart.forEach((line) => {
                     let itemLine = `${line.qty}x ${line.name}`;
@@ -1096,46 +1342,19 @@ const platterNotice = {
                 return lines.join("\n");
             },
 
-            // ── WhatsApp number validation ─────────────────────────────
-            // Mirrors src/lib/phone.ts (the server re-checks everything).
-            normalisePhone(input) {
-                const raw = String(input || "").trim();
-                if (!raw || !/^\+?[\d\s\-().]+$/.test(raw)) return null;
-                let digits = raw.replace(/\D/g, "");
-                const international =
-                    raw.startsWith("+") || digits.startsWith("00");
-                if (digits.startsWith("00")) digits = digits.slice(2);
-                if (!international) {
-                    if (digits.startsWith("0")) digits = "27" + digits.slice(1);
-                    else if (!digits.startsWith("27")) return null;
-                }
-                if (digits.startsWith("27")) {
-                    return /^27[678]\d{8}$/.test(digits) ? digits : null;
-                }
-                return /^[1-9]\d{7,14}$/.test(digits) ? digits : null;
-            },
-
-            get normalisedPhone() {
-                return this.normalisePhone(this.orderPhone);
-            },
-            get phoneValid() {
-                return !!this.normalisedPhone;
-            },
-            get phoneDisplay() {
-                const d = this.normalisedPhone || "";
-                const m = /^27(\d{2})(\d{3})(\d{4})$/.exec(d);
-                return m ? `+27 ${m[1]} ${m[2]} ${m[3]}` : `+${d}`;
-            },
             get nameValid() {
                 return this.orderName.trim().length > 0;
             },
             get canSubmitOrder() {
                 return (
                     this.cart.length > 0 &&
-                    !this.dateTooSoon &&
                     this.nameValid &&
-                    this.phoneValid &&
-                    this.optIn &&
+                    !!this.collectTime &&
+                    !this.collectionTimeError &&
+                    (!this.hasPlatter || (
+                        !!this.collectDate &&
+                        !this.collectionDateError
+                    )) &&
                     !this.sendingOrder
                 );
             },
@@ -1146,7 +1365,7 @@ const platterNotice = {
             },
 
             async sendOrderViaWhatsApp() {
-                this.touched = { name: true, phone: true, optIn: true };
+                this.touched = { name: true, date: true, time: true };
                 if (!this.canSubmitOrder) return;
 
                 this.sendingOrder = true;
@@ -1161,13 +1380,12 @@ const platterNotice = {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             name: this.orderName.trim(),
-                            phone: this.normalisedPhone,
-                            optIn: this.optIn === true,
                             collectDate: this.collectDate,
                             collectTime: this.collectTime,
                             hasPlatter: this.hasPlatter,
                             total: this.cartTotal,
                             cart: this.cart.map((l) => ({
+                                id: l.id,
                                 name: l.name,
                                 qty: l.qty,
                                 price: l.price,
@@ -1182,7 +1400,7 @@ const platterNotice = {
                         // Saved — now hand off to WhatsApp. Prefix the order
                         // ref so it's easy to match the incoming WhatsApp
                         // message back to the stored record.
-                        const message = `Order Ref: ${data.orderRef}\n${this.buildOrderMessage()}`;
+                        const message = this.buildOrderMessage(data.orderRef);
                         const whatsappUrl = `https://wa.me/${this.whatsappNumber}?text=${encodeURIComponent(message)}`;
 
                         this.orderSent = {
@@ -1194,8 +1412,8 @@ const platterNotice = {
                         this.collectTime = "";
                         this.touched = {
                             name: false,
-                            phone: false,
-                            optIn: false,
+                            date: false,
+                            time: false,
                         };
 
                         // window.open() after an await is often blocked as a
@@ -1205,14 +1423,21 @@ const platterNotice = {
                     }
 
                     // Problems the customer can fix: show them, don't fall back.
-                    if (data.error === "invalid_phone") {
+                    if (data.error === "item_unavailable") {
                         this.orderError =
-                            "That WhatsApp number doesn't look right – please check it.";
+                            "One or more items is not available for takeaway on that collection date. Please choose another date or remove the unavailable item.";
+                        return;
+                    }
+                    if (data.error === "invalid_time") {
+                        this.orderError =
+                            `Please choose a collection time between 11:00 and ${data.latest || "20:00"}.`;
                         return;
                     }
                     if (
-                        data.error === "opt_in_required" ||
-                        data.error === "name_required"
+                        data.error === "name_required" ||
+                        data.error === "invalid_date" ||
+                        data.error === "date_required" ||
+                        data.error === "time_required"
                     ) {
                         this.orderError =
                             "Please fill in all the required fields.";

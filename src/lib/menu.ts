@@ -23,6 +23,7 @@ export interface MenuItem {
   image_url: string | null;
   sort_order: number | null;
   takeaway: boolean | null;
+  takeaway_days: number[] | null;
   /** Inherited from the item's category via category_modifier_groups. */
   modifier_groups: ModifierGroup[];
 }
@@ -69,7 +70,8 @@ export async function getMenu(): Promise<MenuType[]> {
                     serves,
                     image_url,
                     sort_order,
-                    takeaway
+                    takeaway,
+                    takeaway_days
                 )
             )
         `,
