@@ -1,14 +1,14 @@
 ---
-// ->  /admin/settings  (admin and owner)
+// ->  /admin/settings  (owner only)
 import Layout from "../../layouts/Layout.astro";
 import AuthSessionManager from "../../components/AuthSessionManager.astro";
-import { guardAdminPage, getDisplayName } from "../../lib/adminAuth";
+import { guardOwnerPage, getDisplayName } from "../../lib/adminAuth";
 import { getWhatsAppNumber } from "../../lib/siteInfo";
 
 export const prerender = false;
 
-// Signed out -> /admin/login, signed in but not an admin -> 403.
-const { user, response } = await guardAdminPage(Astro.cookies, Astro.redirect);
+// Signed out -> /admin/login, signed in but not an owner -> 403.
+const { user, response } = await guardOwnerPage(Astro.cookies, Astro.redirect);
 if (response) return response;
 
 const currentNumber = await getWhatsAppNumber();
@@ -26,7 +26,7 @@ const initialData = JSON.stringify({ whatsappNumber: currentNumber });
 
         <header class="settings-header">
             <h1>Settings</h1>
-            <p>Admin Control Panel</p>
+            <p>Owner only.</p>
             <a href="/admin" class="back-link">
                 &larr; Back to Admin Portal
             </a>
@@ -51,7 +51,7 @@ const initialData = JSON.stringify({ whatsappNumber: currentNumber });
                     id="whatsapp-number"
                     type="text"
                     x-model="whatsappNumber"
-                    placeholder="WhatsApp number"
+                    placeholder="27825550142"
                 />
                 <button class="save-btn" @click="saveWhatsAppNumber()">
                     Save

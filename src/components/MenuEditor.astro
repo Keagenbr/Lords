@@ -1,7 +1,7 @@
 ---
 // src/components/MenuEditor.astro
 //
-// Edits menu items (text, price, picture, takeaway flag) and the picture of
+// Edits menu items (text, price, picture, takeaway availability/schedule) and the picture of
 // each category. Changes are collected in the browser and written when the
 // admin presses "Save Menu", one row at a time, through /admin/menu-crud
 // (admin-only, allow-listed columns). Pictures are uploaded through
@@ -314,10 +314,35 @@ const menuJson = JSON.stringify(menuData);
                                                         type="checkbox"
                                                         x-model="item.takeaway"
                                                     />
-                                                    <span>
-                                                        Available takeaway
-                                                    </span>
+                                                    <span>Available takeaway</span>
                                                 </label>
+                                            </div>
+
+                                            <div class="takeaway-schedule" x-show="item.takeaway" x-cloak>
+                                                <div class="takeaway-schedule-head">
+                                                    <span class="field-label">Takeaway days</span>
+                                                    <button
+                                                        type="button"
+                                                        class="takeaway-all-btn"
+                                                        @click="setAllTakeawayDays(item)"
+                                                    >
+                                                        Every day
+                                                    </button>
+                                                </div>
+                                                <div class="takeaway-day-options">
+                                                    <template x-for="day in takeawayWeekdays" :key="day.value">
+                                                        <label class="takeaway-day-option" :class="{ 'is-active': item.takeaway_days.includes(day.value) }">
+                                                            <input
+                                                                type="checkbox"
+                                                                :value="day.value"
+                                                                :checked="item.takeaway_days.includes(day.value)"
+                                                                @change="toggleTakeawayDay(item, day.value)"
+                                                            />
+                                                            <span x-text="day.short"></span>
+                                                        </label>
+                                                    </template>
+                                                </div>
+                                                <p class="takeaway-schedule-hint" x-show="item.takeaway_days.length === 0">Select at least one day for takeaway ordering.</p>
                                             </div>
                                         </div>
 
@@ -458,6 +483,9 @@ const menuJson = JSON.stringify(menuData);
                             i.serves = i.serves ?? "";
                             i.image_url = i.image_url ?? "";
                             i.takeaway = i.takeaway !== false;
+                            i.takeaway_days = Array.isArray(i.takeaway_days)
+                                ? i.takeaway_days.map(Number).filter((day) => day >= 0 && day <= 6)
+                                : [1, 2, 3, 4, 5, 6, 0];
                         });
                     });
                 });
@@ -523,6 +551,9 @@ const menuJson = JSON.stringify(menuData);
                     serves: String(item.serves ?? "").trim(),
                     image_url: String(item.image_url ?? "").trim(),
                     takeaway: !!item.takeaway,
+                    takeaway_days: Array.isArray(item.takeaway_days)
+                        ? [...new Set(item.takeaway_days.map(Number).filter((day) => day >= 0 && day <= 6))].sort((a, b) => a - b)
+                        : [0, 1, 2, 3, 4, 5, 6],
                 };
             },
 
@@ -574,6 +605,28 @@ const menuJson = JSON.stringify(menuData);
                 return n;
             },
 
+            takeawayWeekdays: [
+                { value: 1, short: "Mon" },
+                { value: 2, short: "Tue" },
+                { value: 3, short: "Wed" },
+                { value: 4, short: "Thu" },
+                { value: 5, short: "Fri" },
+                { value: 6, short: "Sat" },
+                { value: 0, short: "Sun" },
+            ],
+
+            toggleTakeawayDay(item, day) {
+                const days = Array.isArray(item.takeaway_days) ? [...item.takeaway_days] : [];
+                const index = days.indexOf(day);
+                if (index === -1) days.push(day);
+                else days.splice(index, 1);
+                item.takeaway_days = [...new Set(days.map(Number).filter((value) => value >= 0 && value <= 6))].sort((a, b) => a - b);
+            },
+
+            setAllTakeawayDays(item) {
+                item.takeaway_days = [0, 1, 2, 3, 4, 5, 6];
+            },
+
             // ── UI helpers ─────────────────────────────────────────
             toggleCategory(catId) {
                 this.openCategories[catId] = !this.openCategories[catId];
@@ -619,6 +672,7 @@ const menuJson = JSON.stringify(menuData);
                     description: "",
                     serves: "",
                     takeaway: true,
+                    takeaway_days: [0, 1, 2, 3, 4, 5, 6],
                     image_url: "",
                     sort_order: last + 1,
                 });
@@ -788,6 +842,21 @@ const menuJson = JSON.stringify(menuData);
                 // Every changed or new item needs a name.
                 for (const type of this.menu) {
                     for (const cat of type.categories) {
+                for (const type of this.menu) {
+                    for (const cat of type.categories) {
+                        const invalidSchedule = cat.items.find(
+                            (i) => this.isItemDirty(i) && i.takeaway === true && (!Array.isArray(i.takeaway_days) || i.takeaway_days.length === 0),
+                        );
+                        if (invalidSchedule) {
+                            this.status = {
+                                type: "error",
+                                message: `Select at least one takeaway day for "${invalidSchedule.name || "this item"}".`,
+                            };
+                            return;
+                        }
+                    }
+                }
+
                         const unnamed = cat.items.find(
                             (i) =>
                                 this.isItemDirty(i) &&
@@ -1388,6 +1457,73 @@ const menuJson = JSON.stringify(menuData);
         min-width: 10rem;
     }
 
+    .takeaway-schedule {
+        margin-top: 0.25rem;
+        padding: 0.65rem 0.75rem 0.75rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 8px;
+        background: var(--bg-color-light);
+    }
+
+    .takeaway-schedule-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .takeaway-all-btn {
+        min-height: 32px;
+        padding: 0 0.65rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 999px;
+        background: #fff;
+        color: var(--bg-color-btn);
+        font: inherit;
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .takeaway-day-options {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 0.35rem;
+    }
+
+    .takeaway-day-option {
+        min-height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--nav-bg);
+        border-radius: 7px;
+        background: #fff;
+        color: var(--txt-color);
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .takeaway-day-option input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .takeaway-day-option.is-active {
+        background: var(--bg-color-btn);
+        border-color: var(--bg-color-btn);
+        color: var(--text-color);
+    }
+
+    .takeaway-schedule-hint {
+        margin: 0.5rem 0 0;
+        color: #c53030;
+        font-size: 0.75rem;
+    }
+
     .toggle-checkbox {
         display: inline-flex;
         align-items: center;
@@ -1587,6 +1723,10 @@ const menuJson = JSON.stringify(menuData);
             display: grid;
             grid-template-columns: 1fr;
             gap: 0.25rem;
+        }
+
+        .takeaway-day-options {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
         }
         .serves-input {
             min-width: 0;

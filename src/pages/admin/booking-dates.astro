@@ -1,0 +1,635 @@
+---
+// -> /admin/booking-dates (Admin + Owner)
+import Layout from "../../layouts/Layout.astro";
+import AuthSessionManager from "../../components/AuthSessionManager.astro";
+import {
+    guardAdminPage,
+    getDisplayName,
+    getUserRole,
+} from "../../lib/adminAuth";
+import { supabaseAdmin } from "../../lib/supabaseAdmin";
+
+export const prerender = false;
+
+const { user, response } = await guardAdminPage(Astro.cookies, Astro.redirect);
+if (response) return response;
+
+const { data: rows, error: listError } = await supabaseAdmin
+    .from("blocked_dates")
+    .select("id,start_date,end_date,reason,created_at")
+    .order("start_date", { ascending: true });
+
+const initialBlocks = JSON.stringify(rows ?? []);
+const role = getUserRole(user);
+---
+
+<Layout title="Admin - Booking Dates">
+    <main class="booking-dates-container" x-data={`blockedDatesManager(${initialBlocks})`}>
+        <AuthSessionManager
+            displayName={getDisplayName(user)}
+            userEmail={user.email}
+            loginPath="/admin/login"
+            timeoutMinutes={15}
+        />
+
+        <header class="booking-dates-header">
+            <h1>Booking Dates</h1>
+            <p>
+                Admin/Owner access. Block dates customers should not be able to
+                request for group bookings. Current role: <strong>{role}</strong>.
+            </p>
+            <a href="/admin" class="back-link">&larr; Back to Admin Portal</a>
+        </header>
+
+        {listError && (
+            <p class="notice error">Couldn't load blocked dates: {listError.message}</p>
+        )}
+
+        <p
+            class="save-status"
+            x-show="statusMessage"
+            x-text="statusMessage"
+            :class="statusIsError ? 'status-error' : 'status-ok'"
+        ></p>
+
+        <section class="setting-card">
+            <h2>Block a date or date range</h2>
+            <p class="hint">
+                Use the same date for Start and End when only one day should be
+                unavailable. Deleting a block immediately makes those dates
+                bookable again.
+            </p>
+
+            <form class="block-form" @submit.prevent="openAddConfirmation()">
+                <div class="date-grid">
+                    <div>
+                        <label for="block-start">Start date</label>
+                        <input
+                            id="block-start"
+                            type="date"
+                            x-model="startDate"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label for="block-end">End date</label>
+                        <input
+                            id="block-end"
+                            type="date"
+                            x-model="endDate"
+                            required
+                        />
+                    </div>
+                </div>
+
+                <div>
+                    <label for="block-reason">Reason (optional)</label>
+                    <input
+                        id="block-reason"
+                        type="text"
+                        maxlength="200"
+                        x-model="reason"
+                        placeholder="e.g. Private function"
+                    />
+                </div>
+
+                <button class="save-btn" type="submit" :disabled="saving">
+                    <span x-text="saving ? 'Saving…' : 'Block Dates'"></span>
+                </button>
+            </form>
+        </section>
+
+        <section class="blocks-card">
+            <div class="section-heading">
+                <div>
+                    <h2>Blocked dates</h2>
+                    <p class="hint">These dates are checked again on every booking submission.</p>
+                </div>
+                <span class="count-pill" x-text="`${blocks.length} block${blocks.length === 1 ? '' : 's'}`"></span>
+            </div>
+
+            <div x-show="blocks.length === 0" class="empty-state">
+                No blocked dates are currently set.
+            </div>
+
+            <div class="blocks-list" x-show="blocks.length > 0">
+                <template x-for="block in sortedBlocks()" :key="block.id">
+                    <article class="block-row">
+                        <div class="block-row__text">
+                            <strong x-text="formatRange(block)"></strong>
+                            <span x-show="block.reason" x-text="block.reason"></span>
+                        </div>
+                        <button
+                            type="button"
+                            class="danger-btn"
+                            @click="openRemoveConfirmation(block)"
+                            :disabled="deletingId === block.id"
+                        >
+                            <span x-text="deletingId === block.id ? 'Removing…' : 'Unblock'"></span>
+                        </button>
+                    </article>
+                </template>
+            </div>
+        </section>
+
+        <div
+            class="booking-confirm-overlay"
+            x-show="confirmOpen"
+            x-cloak
+            @click.self="closeConfirm()"
+            @keydown.escape.window="closeConfirm()"
+        >
+            <div
+                class="booking-confirm-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="booking-confirm-title"
+                aria-describedby="booking-confirm-message"
+            >
+                <div class="booking-confirm-icon" aria-hidden="true" x-text="confirmAction === 'remove' ? '!' : '✓'"></div>
+                <h2 id="booking-confirm-title" x-text="confirmTitle"></h2>
+                <p id="booking-confirm-message" x-text="confirmMessage"></p>
+                <div class="booking-confirm-actions">
+                    <button type="button" class="booking-confirm-cancel" @click="closeConfirm()">Cancel</button>
+                    <button
+                        type="button"
+                        class="booking-confirm-primary"
+                        :class="confirmAction === 'remove' ? 'is-danger' : ''"
+                        @click="confirmAction === 'remove' ? performRemoveBlock() : performAddBlock()"
+                        :disabled="confirmBusy"
+                    >
+                        <span x-text="confirmBusy ? (confirmAction === 'remove' ? 'Unblocking…' : 'Blocking…') : confirmAction === 'remove' ? 'Unblock dates' : 'Block dates'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+</Layout>
+
+<script is:inline>
+    document.addEventListener("alpine:init", () => {
+        Alpine.data("blockedDatesManager", (initialBlocks) => ({
+            blocks: initialBlocks || [],
+            startDate: "",
+            endDate: "",
+            reason: "",
+            saving: false,
+            deletingId: "",
+            statusMessage: "",
+            statusIsError: false,
+            confirmOpen: false,
+            confirmAction: "",
+            confirmTitle: "",
+            confirmMessage: "",
+            confirmBlock: null,
+            confirmBusy: false,
+
+            formatDate(iso) {
+                return new Intl.DateTimeFormat("en-ZA", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                }).format(new Date(`${iso}T12:00:00`));
+            },
+
+            formatRange(block) {
+                return block.start_date === block.end_date
+                    ? this.formatDate(block.start_date)
+                    : `${this.formatDate(block.start_date)} – ${this.formatDate(block.end_date)}`;
+            },
+
+            sortedBlocks() {
+                return [...this.blocks].sort((a, b) =>
+                    a.start_date.localeCompare(b.start_date),
+                );
+            },
+
+            openAddConfirmation() {
+                this.statusMessage = "";
+                this.statusIsError = false;
+
+                if (!this.startDate || !this.endDate) {
+                    this.statusMessage = "Choose both start and end dates.";
+                    this.statusIsError = true;
+                    return;
+                }
+                if (this.endDate < this.startDate) {
+                    this.statusMessage = "End date cannot be before start date.";
+                    this.statusIsError = true;
+                    return;
+                }
+
+                const range = this.startDate === this.endDate
+                    ? this.formatDate(this.startDate)
+                    : `${this.formatDate(this.startDate)} – ${this.formatDate(this.endDate)}`;
+                const reasonText = this.reason.trim() ? ` Reason: ${this.reason.trim()}` : "";
+
+                this.confirmAction = "add";
+                this.confirmTitle = "Block these dates?";
+                this.confirmMessage = `${range}.${reasonText}`;
+                this.confirmBlock = null;
+                this.confirmOpen = true;
+            },
+
+            openRemoveConfirmation(block) {
+                this.statusMessage = "";
+                this.statusIsError = false;
+                this.confirmAction = "remove";
+                this.confirmTitle = "Unblock these dates?";
+                this.confirmMessage = `This will make ${this.formatRange(block)} available for group bookings again.`;
+                this.confirmBlock = block;
+                this.confirmOpen = true;
+            },
+
+            closeConfirm() {
+                this.confirmOpen = false;
+                this.confirmAction = "";
+                this.confirmBlock = null;
+            },
+
+            async performAddBlock() {
+                if (this.confirmBusy) return;
+                this.confirmBusy = true;
+                this.saving = true;
+                this.statusMessage = "";
+                this.statusIsError = false;
+                try {
+                    const res = await fetch("/admin/blocked-dates", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify({
+                            startDate: this.startDate,
+                            endDate: this.endDate,
+                            reason: this.reason,
+                        }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || "Could not block dates.");
+
+                    this.blocks.push(data.block);
+                    this.blocks.sort((a, b) => a.start_date.localeCompare(b.start_date));
+                    this.startDate = "";
+                    this.endDate = "";
+                    this.reason = "";
+                    this.statusMessage = "Dates blocked successfully.";
+                    this.statusIsError = false;
+                    this.confirmBusy = false;
+                    this.closeConfirm();
+                } catch (error) {
+                    this.confirmBusy = false;
+                    this.closeConfirm();
+                    this.statusMessage = error instanceof Error ? error.message : "Could not block dates.";
+                    this.statusIsError = true;
+                } finally {
+                    this.saving = false;
+                }
+            },
+
+            async performRemoveBlock() {
+                if (this.confirmBusy || !this.confirmBlock) return;
+                const block = this.confirmBlock;
+                this.confirmBusy = true;
+                this.deletingId = block.id;
+                this.statusMessage = "";
+                this.statusIsError = false;
+                try {
+                    const res = await fetch("/admin/blocked-dates", {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify({ id: block.id }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || "Could not unblock dates.");
+
+                    this.blocks = this.blocks.filter((item) => item.id !== block.id);
+                    this.statusMessage = "Dates unblocked successfully.";
+                    this.statusIsError = false;
+                    this.confirmBusy = false;
+                    this.closeConfirm();
+                } catch (error) {
+                    this.confirmBusy = false;
+                    this.closeConfirm();
+                    this.statusMessage = error instanceof Error ? error.message : "Could not unblock dates.";
+                    this.statusIsError = true;
+                } finally {
+                    this.deletingId = "";
+                }
+            },
+        }));
+    });
+</script>
+
+<style lang="scss">
+    .booking-dates-container {
+        max-width: 900px;
+        margin: 5rem auto 2rem;
+        padding: 20px;
+        color: var(--txt-color);
+    }
+
+    .booking-dates-header {
+        border-bottom: 3px solid var(--MenuColor, #00d4aa);
+        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+
+        h1 {
+            margin: 0 0 0.25rem;
+        }
+
+        p {
+            margin: 0 0 0.5rem;
+            opacity: 0.78;
+        }
+    }
+
+    .back-link {
+        color: var(--bg-color-btn, #00d4aa);
+        text-decoration: none;
+        font-weight: 700;
+    }
+
+    .notice.error,
+    .save-status {
+        padding: 0.7rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+
+    .notice.error,
+    .status-error {
+        background: #fff5f5;
+        color: #c53030;
+        border: 1px solid #feb2b2;
+    }
+
+    .status-ok {
+        background: #f0fff4;
+        color: #276749;
+        border: 1px solid #9ae6b4;
+    }
+
+    .setting-card,
+    .blocks-card {
+        background: #fff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    h2 {
+        margin: 0 0 0.35rem;
+        font-size: 1.15rem;
+    }
+
+    .hint {
+        margin: 0 0 1rem;
+        font-size: 0.86rem;
+        opacity: 0.75;
+        line-height: 1.55;
+    }
+
+    .block-form {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .date-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    label {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 0.4rem;
+    }
+
+    input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.65rem 0.8rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 8px;
+        font: inherit;
+        color: var(--txt-color);
+        background: #fff;
+    }
+
+    input:focus {
+        outline: none;
+        border-color: var(--MenuColor);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--MenuColor) 18%, transparent);
+    }
+
+    .save-btn,
+    .danger-btn {
+        min-height: 44px;
+        padding: 0.6rem 1rem;
+        border: none;
+        border-radius: 8px;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .save-btn {
+        justify-self: start;
+        background: var(--bg-color-btn);
+        color: var(--text-color-dark);
+    }
+
+    .save-btn:hover:not(:disabled) {
+        background: var(--text-color-hover);
+    }
+
+    .danger-btn {
+        background: #fff5f5;
+        color: #a33a30;
+        border: 1px solid #e8b4ad;
+    }
+
+    .danger-btn:hover:not(:disabled) {
+        background: #ffe8e5;
+    }
+
+    .save-btn:disabled,
+    .danger-btn:disabled {
+        cursor: wait;
+        opacity: 0.65;
+    }
+
+    .section-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .count-pill {
+        flex: 0 0 auto;
+        padding: 0.3rem 0.65rem;
+        border-radius: 999px;
+        background: var(--nav-bg);
+        color: var(--bg-color-btn);
+        font-size: 0.8rem;
+        font-weight: 800;
+    }
+
+    .empty-state {
+        border: 1px dashed var(--nav-bg);
+        border-radius: 8px;
+        padding: 1rem;
+        opacity: 0.75;
+    }
+
+    .blocks-list {
+        display: grid;
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+
+    .block-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 9px;
+        padding: 0.8rem 0.9rem;
+    }
+
+    .block-row__text {
+        display: grid;
+        gap: 0.2rem;
+        min-width: 0;
+
+        strong {
+            font-size: 0.95rem;
+        }
+
+        span {
+            font-size: 0.82rem;
+            opacity: 0.72;
+        }
+    }
+
+    .booking-confirm-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 3000;
+        display: grid;
+        place-items: center;
+        padding: 1.25rem;
+        background: rgb(33 24 24 / 72%);
+        backdrop-filter: blur(4px);
+    }
+
+    .booking-confirm-dialog {
+        width: min(480px, 100%);
+        box-sizing: border-box;
+        padding: 1.5rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 18px;
+        background: var(--body-bg, #f8efec);
+        color: var(--txt-color);
+        box-shadow: 0 18px 50px rgb(33 24 24 / 28%);
+        text-align: center;
+    }
+
+    .booking-confirm-icon {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 0.9rem;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        border: 2px solid var(--bg-color-btn);
+        color: var(--bg-color-btn);
+        font-weight: 800;
+        font-size: 1.1rem;
+    }
+
+    .booking-confirm-dialog h2 {
+        margin-bottom: 0.55rem;
+        color: var(--txt-color);
+        font-size: 1.25rem;
+    }
+
+    .booking-confirm-dialog p {
+        margin: 0;
+        color: var(--txt-color);
+        opacity: 0.78;
+        line-height: 1.55;
+    }
+
+    .booking-confirm-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+    }
+
+    .booking-confirm-cancel,
+    .booking-confirm-primary {
+        min-height: 44px;
+        padding: 0.65rem 1rem;
+        border-radius: 9px;
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+    }
+
+    .booking-confirm-cancel {
+        background: transparent;
+        color: var(--txt-color);
+        border: 2px solid var(--nav-bg);
+    }
+
+    .booking-confirm-primary {
+        background: var(--bg-color-btn);
+        color: var(--text-color-dark);
+        border: 2px solid var(--bg-color-btn);
+    }
+
+    .booking-confirm-primary.is-danger {
+        background: transparent;
+        color: #8c3d34;
+        border-color: #cf9a91;
+    }
+
+    .booking-confirm-cancel:hover:not(:disabled),
+    .booking-confirm-primary:hover:not(:disabled) {
+        filter: brightness(0.97);
+    }
+
+    .booking-confirm-cancel:disabled,
+    .booking-confirm-primary:disabled {
+        cursor: wait;
+        opacity: 0.6;
+    }
+
+    @media (max-width: 768px) {
+        .booking-dates-container {
+            margin-top: 1rem;
+            padding: 12px;
+        }
+
+        .date-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .block-row {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .danger-btn {
+            width: 100%;
+        }
+    }
+</style>

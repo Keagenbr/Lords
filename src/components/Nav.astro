@@ -62,7 +62,10 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                     x-cloak
                 >
                     <template x-for="type in menuTypes" :key="type.id">
-                        <div class="dropdown-row" @mouseenter="subIn(type.id)">
+                        <div
+                            class="dropdown-row"
+                            @mouseenter="subIn(type.id)"
+                        >
                             <!-- Drinks / Food: item with its own category dropdown -->
                             <template x-if="hasSub(type)">
                                 <div>
@@ -127,13 +130,6 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                     data-icon="menu-editor"
                 >
                     <span class="nav-link-text">Menu Editor</span>
-                </a>
-                <a
-                    href="/admin/settings"
-                    class="nav-link nav-settings-btn"
-                    data-icon="settings"
-                >
-                    <span class="nav-link-text">Settings</span>
                 </a>
             </template>
         </div>
@@ -297,13 +293,6 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                 >
                     <span>Menu Editor</span>
                 </a>
-                <a
-                    href="/admin/settings"
-                    class="nav-link nav-settings-btn"
-                    data-icon="settings"
-                >
-                    <span class="nav-link-text">Settings</span>
-                </a>
             </template>
         </div>
     </div>
@@ -358,10 +347,7 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                 };
                 return this.types
                     .map((type, index) => ({ type, index }))
-                    .sort(
-                        (a, b) =>
-                            rank(a.type) - rank(b.type) || a.index - b.index,
-                    )
+                    .sort((a, b) => rank(a.type) - rank(b.type) || a.index - b.index)
                     .map((entry) => entry.type);
             },
 
@@ -431,11 +417,7 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
             },
 
             onTypeClick(event, type) {
-                if (
-                    !this.canHover() &&
-                    this.hasSub(type) &&
-                    this.openType !== type.id
-                ) {
+                if (!this.canHover() && this.hasSub(type) && this.openType !== type.id) {
                     event.preventDefault();
                     this.openType = type.id;
                     return;
@@ -461,9 +443,7 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
 
             toggleMobileMenu() {
                 this.mobileMenuOpen = !this.mobileMenuOpen;
-                document.body.style.overflow = this.mobileMenuOpen
-                    ? "hidden"
-                    : "";
+                document.body.style.overflow = this.mobileMenuOpen ? "hidden" : "";
             },
 
             closeMobileMenu() {
