@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
-import { getAdminUser } from "../../lib/adminAuth";
+import { getAdminUser, isOwnerUser } from "../../lib/adminAuth";
 
 export const prerender = false;
 
@@ -36,6 +36,7 @@ const ALLOWED_TABLES: Record<string, { pk: string[]; columns: string[] }> = {
       "sort_order",
       "takeaway",
       "takeaway_days",
+      "two_for_one",
     ],
   },
   modifier_groups: {
@@ -89,6 +90,72 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     );
   }
 
+  const OWNER_ONLY_TABLES = new Set([
+    "modifier_groups",
+    "modifier_options",
+    "category_modifier_groups",
+  ]);
+
+const TWO_FOR_ONE_GROUP_IDS = new Set(["side_choice", "sauce_selection"]);
+
+async function assertTwoForOneHasChoice(itemId: string) {
+  const { data: item, error: itemError } = await supabaseAdmin
+    .from("menu_items")
+    .select("id,category_id")
+    .eq("id", itemId)
+    .maybeSingle();
+  if (itemError) throw itemError;
+  if (!item) {
+    const error = new Error("The menu item could not be found.");
+    (error as any).code = "two_for_one_requires_choice";
+    throw error;
+  }
+
+  const [itemLinksResult, categoryLinksResult] = await Promise.all([
+    supabaseAdmin
+      .from("menu_item_modifier_groups")
+      .select("group_id")
+      .eq("item_id", itemId),
+    supabaseAdmin
+      .from("category_modifier_groups")
+      .select("group_id")
+      .eq("category_id", item.category_id),
+  ]);
+
+  if (itemLinksResult.error || categoryLinksResult.error) {
+    throw itemLinksResult.error || categoryLinksResult.error;
+  }
+
+  const groupIds = new Set([
+    ...(itemLinksResult.data ?? []).map((row: any) => String(row.group_id)),
+    ...(categoryLinksResult.data ?? []).map((row: any) => String(row.group_id)),
+  ]);
+  const eligible = [...groupIds].filter((id) => TWO_FOR_ONE_GROUP_IDS.has(id));
+
+  if (eligible.length === 0) {
+    const error = new Error("A 2 for 1 item must have a Side choice or Sauce selection assigned first.");
+    (error as any).code = "two_for_one_requires_choice";
+    throw error;
+  }
+
+  const { data: options, error: optionsError } = await supabaseAdmin
+    .from("modifier_options")
+    .select("group_id")
+    .in("group_id", eligible);
+  if (optionsError) throw optionsError;
+
+  const groupsWithOptions = new Set((options ?? []).map((row: any) => String(row.group_id)));
+  if (!eligible.some((id) => groupsWithOptions.has(id))) {
+    const error = new Error("The assigned Side choice or Sauce selection has no options yet.");
+    (error as any).code = "two_for_one_requires_choice";
+    throw error;
+  }
+}
+
+  if (OWNER_ONLY_TABLES.has(String(table)) && !isOwnerUser(user)) {
+    return json({ error: "Forbidden: Owner access required for menu choices." }, 403);
+  }
+
   // Strip anything not on the allow-list for this table
   const cleanData: Record<string, unknown> = {};
   for (const col of meta.columns) {
@@ -99,6 +166,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   try {
     if (action === "create") {
+      if (table === "menu_items" && cleanData.two_for_one === true) {
+        return json({
+          error: "two_for_one_requires_choice",
+          message: "Create the menu item first, assign a Side choice or Sauce selection, save it, then enable 2 for 1.",
+        }, 409);
+      }
       const { data: inserted, error } = await supabaseAdmin
         .from(table)
         .insert(cleanData)
@@ -111,6 +184,20 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     if (action === "update") {
+      if (table === "menu_items" && cleanData.two_for_one === true) {
+        try {
+          await assertTwoForOneHasChoice(String(data?.id || ""));
+        } catch (error: any) {
+          if (error?.code === "two_for_one_requires_choice") {
+            return json({
+              error: "two_for_one_requires_choice",
+              message: error.message,
+            }, 409);
+          }
+          throw error;
+        }
+      }
+
       // Never write the primary key back onto itself: identity/generated
       // id columns reject "SET id = ..." even when the value is unchanged.
       const updateData: Record<string, unknown> = { ...cleanData };

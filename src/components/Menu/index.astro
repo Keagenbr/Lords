@@ -209,6 +209,13 @@ const platterNotice = {
                                                     x-text="item.serves"
                                                 ></span>
                                                 <span
+                                                    class="two-for-one-tag"
+                                                    data-icon="receipt"
+                                                    x-show="item.two_for_one"
+                                                >
+                                                    2 for 1
+                                                </span>
+                                                <span
                                                     class="dine-in-tag dine-in-only-tag"
                                                     data-icon="seat"
                                                     x-show="item.takeaway === false"
@@ -314,14 +321,16 @@ const platterNotice = {
                         <span x-text="notice.text"></span>
                     </div>
 
-                    <!-- Modifier groups: "single" = radio, "multiple" = checkboxes
-                         (checkboxes can each add a price, e.g. Extra Sauce,
-                         Schnitzel Add-ons — set up in /admin/menu-editor) -->
+                    <!-- Standard modifier groups. For 2-for-1 items, Side choice / Sauce selection
+                         are handled by the dedicated two-slot chooser below. -->
                     <template
                         x-for="group in (activeItem.modifier_groups || [])"
                         :key="group.id"
                     >
-                        <div class="modal-field">
+                        <div
+                            class="modal-field"
+                            x-show="!activeItem.two_for_one || !isTwoForOneChoiceGroup(group)"
+                        >
                             <label x-text="group.name"></label>
 
                             <div
@@ -365,6 +374,110 @@ const platterNotice = {
                         </div>
                     </template>
 
+                    <!-- 2 for 1 special: choose two different options from each assigned Side choice / Sauce selection group. -->
+                    <div class="two-for-one-choice-panel" x-show="activeItem.two_for_one" x-cloak>
+                        <div class="two-for-one-choice-head">
+                            <strong>2 for 1 special</strong>
+                            <span>Choose two different options from each available side or sauce group.</span>
+                        </div>
+
+                        <div class="two-for-one-choice-groups">
+                            <template x-for="group in twoForOneChoiceGroups" :key="group.id">
+                                <section class="two-for-one-choice-group">
+                                    <div class="two-for-one-choice-group-title">
+                                        <strong x-text="group.name"></strong>
+                                        <span>Choose 2</span>
+                                    </div>
+
+                                    <div class="two-for-one-choice-grid">
+                                        <div class="two-for-one-choice-field">
+                                            <span>Choice 1</span>
+                                            <div
+                                                class="themed-choice-dropdown"
+                                                @keydown.escape.window="closeTwoForOneDropdown(group.id, 0)"
+                                                @click.outside="closeTwoForOneDropdown(group.id, 0)"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    class="themed-choice-trigger"
+                                                    :class="{ 'is-open': isTwoForOneDropdownOpen(group.id, 0) }"
+                                                    @click="toggleTwoForOneDropdown(group.id, 0)"
+                                                    :aria-expanded="isTwoForOneDropdownOpen(group.id, 0)"
+                                                >
+                                                    <span x-text="twoForOneChoiceLabel(group, 0)"></span>
+                                                    <span class="themed-choice-arrow" aria-hidden="true">⌄</span>
+                                                </button>
+                                                <div
+                                                    class="themed-choice-menu"
+                                                    x-show="isTwoForOneDropdownOpen(group.id, 0)"
+                                                    x-cloak
+                                                >
+                                                    <template x-for="option in group.options" :key="option.id">
+                                                        <button
+                                                            type="button"
+                                                            class="themed-choice-option"
+                                                            :class="{ 'is-selected': twoForOneSelections[group.id]?.[0] === option.id }"
+                                                            @click="chooseTwoForOneOption(group.id, 0, option.id)"
+                                                        >
+                                                            <span x-text="option.name"></span>
+                                                            <small x-show="option.price > 0" x-text="`+R${option.price.toFixed(2)}`" x-cloak></small>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="two-for-one-choice-field">
+                                            <span>Choice 2</span>
+                                            <div
+                                                class="themed-choice-dropdown"
+                                                @keydown.escape.window="closeTwoForOneDropdown(group.id, 1)"
+                                                @click.outside="closeTwoForOneDropdown(group.id, 1)"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    class="themed-choice-trigger"
+                                                    :class="{ 'is-open': isTwoForOneDropdownOpen(group.id, 1) }"
+                                                    @click="toggleTwoForOneDropdown(group.id, 1)"
+                                                    :aria-expanded="isTwoForOneDropdownOpen(group.id, 1)"
+                                                >
+                                                    <span x-text="twoForOneChoiceLabel(group, 1)"></span>
+                                                    <span class="themed-choice-arrow" aria-hidden="true">⌄</span>
+                                                </button>
+                                                <div
+                                                    class="themed-choice-menu"
+                                                    x-show="isTwoForOneDropdownOpen(group.id, 1)"
+                                                    x-cloak
+                                                >
+                                                    <template x-for="option in group.options" :key="option.id">
+                                                        <button
+                                                            type="button"
+                                                            class="themed-choice-option"
+                                                            :class="{ 'is-selected': twoForOneSelections[group.id]?.[1] === option.id, 'is-disabled': twoForOneSelections[group.id]?.[0] === option.id }"
+                                                            :disabled="twoForOneSelections[group.id]?.[0] === option.id"
+                                                            @click="chooseTwoForOneOption(group.id, 1, option.id)"
+                                                        >
+                                                            <span x-text="option.name"></span>
+                                                            <small x-show="option.price > 0" x-text="`+R${option.price.toFixed(2)}`" x-cloak></small>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+                            </template>
+                        </div>
+
+                        <p
+                            class="two-for-one-choice-error"
+                            x-show="activeItem.two_for_one && !twoForOneChoicesValid"
+                            x-cloak
+                        >
+                            Please choose two different options from every available Side choice or Sauce selection group.
+                        </p>
+                    </div>
+
                     <!-- Quantity -->
                     <div class="modal-field">
                         <label>Quantity</label>
@@ -396,7 +509,11 @@ const platterNotice = {
                         <button class="cancel-btn" @click="closeItemModal">
                             Cancel
                         </button>
-                        <button class="confirm-btn" @click="confirmAddToCart">
+                        <button
+                            class="confirm-btn"
+                            @click="confirmAddToCart"
+                            :disabled="activeItem?.two_for_one && !twoForOneChoicesValid"
+                        >
                             Add to order
                         </button>
                     </div>
@@ -774,6 +891,8 @@ const platterNotice = {
             showItemModal: false,
             activeItem: null,
             modalChoices: {},
+            twoForOneSelections: {},
+            twoForOneDropdown: { groupId: "", slot: -1 },
             modalQty: 1,
             modalNote: "",
 
@@ -1018,7 +1137,10 @@ const platterNotice = {
             openItemModal(item) {
                 this.activeItem = item;
                 this.modalChoices = {};
+                this.twoForOneSelections = {};
+                this.twoForOneDropdown = { groupId: "", slot: -1 };
                 (item.modifier_groups || []).forEach((group) => {
+                    if (item.two_for_one && this.isTwoForOneChoiceGroup(group)) return;
                     this.modalChoices[group.id] =
                         group.selection_type === "multiple"
                             ? []
@@ -1039,6 +1161,60 @@ const platterNotice = {
                 else this.modalChoices[groupId].splice(idx, 1);
             },
 
+            isTwoForOneChoiceGroup(group) {
+                const id = String(group?.id || "");
+                return id === "side_choice" || id === "sauce_selection";
+            },
+
+            get twoForOneChoiceGroups() {
+                if (!this.activeItem?.two_for_one) return [];
+                return (this.activeItem.modifier_groups || []).filter(
+                    (group) => this.isTwoForOneChoiceGroup(group) && Array.isArray(group.options) && group.options.length > 0,
+                );
+            },
+
+            twoForOneChoiceLabel(group, slot) {
+                const selectedId = this.twoForOneSelections?.[group.id]?.[slot] || "";
+                const selected = (group.options || []).find((option) => option.id === selectedId);
+                return selected ? selected.name : "Choose an option";
+            },
+
+            isTwoForOneDropdownOpen(groupId, slot) {
+                return this.twoForOneDropdown?.groupId === String(groupId) && this.twoForOneDropdown?.slot === slot;
+            },
+
+            toggleTwoForOneDropdown(groupId, slot) {
+                const id = String(groupId);
+                if (this.isTwoForOneDropdownOpen(id, slot)) {
+                    this.closeTwoForOneDropdown(id, slot);
+                    return;
+                }
+                this.twoForOneDropdown = { groupId: id, slot };
+            },
+
+            closeTwoForOneDropdown(groupId = "", slot = -1) {
+                if (!groupId || this.twoForOneDropdown.groupId === String(groupId) && this.twoForOneDropdown.slot === slot) {
+                    this.twoForOneDropdown = { groupId: "", slot: -1 };
+                }
+            },
+
+            chooseTwoForOneOption(groupId, slot, optionId) {
+                const id = String(groupId);
+                if (!this.twoForOneSelections[id]) this.twoForOneSelections[id] = ["", ""];
+                this.twoForOneSelections[id][slot] = String(optionId);
+                this.closeTwoForOneDropdown(id, slot);
+            },
+
+            get twoForOneChoicesValid() {
+                if (!this.activeItem?.two_for_one) return true;
+                const groups = this.twoForOneChoiceGroups;
+                if (!groups.length) return false;
+                return groups.every((group) => {
+                    const choices = this.twoForOneSelections?.[group.id] || ["", ""];
+                    return Boolean(choices[0]) && Boolean(choices[1]) && choices[0] !== choices[1];
+                });
+            },
+
             closeItemModal() {
                 this.showItemModal = false;
                 this.activeItem = null;
@@ -1046,8 +1222,11 @@ const platterNotice = {
 
             confirmAddToCart() {
                 if (!this.activeItem) return;
+                if (this.activeItem.two_for_one && !this.twoForOneChoicesValid) return;
+
                 const options = [];
                 (this.activeItem.modifier_groups || []).forEach((group) => {
+                    if (this.activeItem.two_for_one && this.isTwoForOneChoiceGroup(group)) return;
                     const chosen = this.modalChoices[group.id];
                     const ids =
                         group.selection_type === "multiple"
@@ -1068,6 +1247,25 @@ const platterNotice = {
                         }
                     });
                 });
+
+                if (this.activeItem.two_for_one) {
+                    this.twoForOneChoiceGroups.forEach((group) => {
+                        const selections = this.twoForOneSelections[group.id] || [];
+                        selections.forEach((optionId, index) => {
+                            const selected = (group.options || []).find((option) => option.id === optionId);
+                            if (selected) {
+                                options.push({
+                                    groupId: group.id,
+                                    optionId: selected.id,
+                                    label: `${group.name} ${index + 1} for 1`,
+                                    value: selected.name,
+                                    price: selected.price,
+                                });
+                            }
+                        });
+                    });
+                }
+
                 const addOnsTotal = options.reduce(
                     (sum, o) => sum + (o.price || 0),
                     0,
@@ -1086,6 +1284,7 @@ const platterNotice = {
                     note: this.modalNote.trim(),
                     qty: this.modalQty,
                     platter: !!this.activeItem._platter,
+                    two_for_one: !!this.activeItem.two_for_one,
                 });
                 this.closeItemModal();
                 this.showCartPanel = true;
@@ -1443,6 +1642,7 @@ const platterNotice = {
                                 qty: l.qty,
                                 price: l.price,
                                 note: l.note,
+                                two_for_one: !!l.two_for_one,
                                 options: l.options || [],
                             })),
                         }),
@@ -1494,6 +1694,11 @@ const platterNotice = {
                     ) {
                         this.orderError =
                             "Please fill in all the required fields.";
+                        return;
+                    }
+                    if (data.error === "invalid_two_for_one") {
+                        this.orderError =
+                            "Please choose two different sides or sauces for the 2 for 1 item.";
                         return;
                     }
                     if (data.error === "rate_limited") {

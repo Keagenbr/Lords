@@ -2,10 +2,11 @@
 // src/components/MenuEditorNav.astro
 // Sub-navigation shown at the top of every Menu Editor page.
 interface Props {
-    active: "items" | "main-menu" | "specials" | "platter";
+    active: "items" | "main-menu" | "specials" | "platter" | "choice-selections";
+    owner?: boolean;
 }
 
-const { active } = Astro.props;
+const { active, owner = false } = Astro.props;
 
 const links = [
     {
@@ -49,6 +50,19 @@ const links = [
                 </a>
             ))
         }
+        {owner && (
+            <div class="subnav-owner-group" aria-label="Owner tools">
+                <span class="subnav-owner-label">Owner</span>
+                <a
+                    href="/admin/menu-editor/choice-selections"
+                    class:list={["subnav-btn", "subnav-owner-btn", { active: active === "choice-selections" }]}
+                    data-icon="edit"
+                    aria-current={active === "choice-selections" ? "page" : undefined}
+                >
+                    <span>Choice Selections</span>
+                </a>
+            </div>
+        )}
         <a href="/admin" class="subnav-btn subnav-back" data-icon="back">
             <span>Admin panel</span>
         </a>
@@ -98,6 +112,27 @@ const links = [
         }
     }
 
+    .subnav-owner-group {
+        display: flex;
+        align-items: center;
+        gap: .45rem;
+        margin-left: .25rem;
+        padding-left: .75rem;
+        border-left: 1px solid var(--nav-bg);
+    }
+
+    .subnav-owner-label {
+        font-size: .7rem;
+        font-weight: 900;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: var(--text-color-hover);
+    }
+
+    .subnav-owner-btn {
+        border-color: color-mix(in srgb, var(--MenuColor) 48%, var(--nav-bg));
+    }
+
     .subnav-back {
         margin-left: auto;
         border-style: dashed;
@@ -131,6 +166,21 @@ const links = [
             min-height: 44px;
             scroll-snap-align: start;
         }
+        .subnav-owner-group {
+            flex: none;
+            margin-left: 0;
+            padding-left: 0;
+            border-left: 0;
+        }
+
+        .subnav-owner-label {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            padding: .45rem .2rem;
+            background: var(--bg-color-light);
+        }
+
         .subnav-back {
             margin-left: 0;
         }

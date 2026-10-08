@@ -13,6 +13,13 @@ let menuData: MenuType[] = [];
 let modifierGroups: Awaited<ReturnType<typeof getModifierGroups>> = [];
 let loadError = "";
 
+interface Props {
+    owner?: boolean;
+    canEditItemOptions?: boolean;
+}
+
+const { owner = false, canEditItemOptions = true } = Astro.props;
+
 try {
     [menuData, modifierGroups] = await Promise.all([
         getMenu(),
@@ -32,6 +39,8 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
     x-data="menuEditorApp"
     data-menu={menuJson}
     data-modifier-groups={modifierGroupsJson}
+    data-owner={owner ? "true" : "false"}
+    data-can-edit-item-options={canEditItemOptions ? "true" : "false"}
     data-storage-base={STORAGE_PUBLIC_BASE}
     data-load-error={loadError}
 >
@@ -71,6 +80,51 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
                 ></span>
                 <span x-text="isSaving ? 'Saving Changes...' : 'Save Menu'"></span>
             </button>
+        </div>
+    </div>
+
+    <!-- Choice / 2-for-1 guard popup -->
+    <div
+        class="choice-guard-overlay"
+        x-show="choicePopup.open"
+        x-cloak
+        @click.self="closeChoicePopup()"
+        @keydown.escape.window="closeChoicePopup()"
+    >
+        <div
+            class="choice-guard-popup"
+            :class="choicePopup.type === 'refresh' ? 'is-refresh' : 'is-error'"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="choiceGuardTitle"
+        >
+            <div class="choice-guard-accent" aria-hidden="true"></div>
+            <div class="choice-guard-copy">
+                <span class="choice-guard-kicker" x-text="choicePopup.type === 'refresh' ? 'Refresh required' : 'Selection required'"></span>
+                <h2 id="choiceGuardTitle" x-text="choicePopup.title"></h2>
+                <p x-text="choicePopup.message"></p>
+            </div>
+            <div class="choice-guard-actions">
+                <button
+                    type="button"
+                    class="choice-guard-secondary"
+                    x-show="choicePopup.action !== 'refresh'"
+                    x-cloak
+                    @click="closeChoicePopup()"
+                >
+                    Close
+                </button>
+                <button
+                    type="button"
+                    class="choice-guard-primary"
+                    x-show="choicePopup.action === 'refresh'"
+                    x-cloak
+                    @click="refreshAfterChoiceChange()"
+                    x-ref="choicePopupClose"
+                >
+                    Refresh page
+                </button>
+            </div>
         </div>
     </div>
 
@@ -351,14 +405,28 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
                                                 <p class="takeaway-schedule-hint" x-show="item.takeaway_days.length === 0">Select at least one day for takeaway ordering.</p>
                                             </div>
 
-                                            <div class="modifier-assignment" x-show="modifierGroupsCatalog.length > 0" x-cloak>
+                                            <div class="modifier-assignment" x-show="canEditItemOptions && isItemSelectionEditorOpen(item)" x-cloak>
                                                 <div class="modifier-assignment-head">
                                                     <div>
                                                         <span class="field-label">Item selections</span>
                                                         <p class="modifier-assignment-hint">Attach options to this item only. Category-linked modifiers are inherited automatically.</p>
                                                     </div>
                                                 </div>
-                                                <div class="modifier-assignment-list">
+
+                                                <label class="two-for-one-toggle" :class="{ 'is-active': item.two_for_one }">
+                                                    <input
+                                                        type="checkbox"
+                                                        :checked="item.two_for_one"
+                                                        @click.prevent="toggleTwoForOne(item)"
+                                                        :aria-checked="item.two_for_one ? 'true' : 'false'"
+                                                    />
+                                                    <span class="two-for-one-toggle-copy">
+                                                        <strong>2 for 1 special</strong>
+                                                        <small>Requires Side choice or Sauce selection. Customers choose two different options from each assigned eligible group.</small>
+                                                    </span>
+                                                </label>
+
+                                                <div class="modifier-assignment-list" x-show="modifierGroupsCatalog.length > 0">
                                                     <template x-for="group in modifierGroupsCatalog" :key="group.id">
                                                         <label class="modifier-assignment-option" :class="{ 'is-active': item.item_modifier_group_ids.includes(group.id) }">
                                                             <input
@@ -384,6 +452,22 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
                                                 x-cloak
                                                 x-text="isNewItem(item) ? 'New' : 'Edited'"
                                             ></span>
+                                            <button
+                                                type="button"
+                                                class="selection-edit-btn"
+                                                x-show="canEditItemOptions"
+                                                x-cloak
+                                                @click="toggleItemSelectionEditor(item)"
+                                                :aria-expanded="isItemSelectionEditorOpen(item)"
+                                                title="Edit item selections"
+                                            >
+                                                <span
+                                                    class="ico-only"
+                                                    data-icon="edit"
+                                                    aria-hidden="true"
+                                                ></span>
+                                                <span x-text="isItemSelectionEditorOpen(item) ? 'Close selections' : 'Edit selections'"></span>
+                                            </button>
                                             <button
                                                 type="button"
                                                 class="delete-item-btn"
@@ -462,6 +546,10 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
             menu: [],
             storageBase: "",
             modifierGroupsCatalog: [],
+            owner: false,
+            canEditItemOptions: true,
+            selectionEditorOpen: {},
+            choicePopup: { open: false, type: "error", title: "", message: "", action: "close" },
 
             // What the database currently holds, used to find unsaved edits.
             baseline: {}, // item id -> JSON snapshot
@@ -486,6 +574,8 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
             init() {
                 const el = this.$el;
                 this.storageBase = el.dataset.storageBase || "";
+                this.owner = el.dataset.owner === "true";
+                this.canEditItemOptions = el.dataset.canEditItemOptions !== "false";
 
                 try {
                     this.modifierGroupsCatalog = JSON.parse(el.dataset.modifierGroups || "[]");
@@ -521,6 +611,7 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
                             i.serves = i.serves ?? "";
                             i.image_url = i.image_url ?? "";
                             i.takeaway = i.takeaway !== false;
+                            i.two_for_one = i.two_for_one === true;
                             i.takeaway_days = Array.isArray(i.takeaway_days)
                                 ? i.takeaway_days.map(Number).filter((day) => day >= 0 && day <= 6)
                                 : [1, 2, 3, 4, 5, 6, 0];
@@ -592,6 +683,7 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
                     serves: String(item.serves ?? "").trim(),
                     image_url: String(item.image_url ?? "").trim(),
                     takeaway: !!item.takeaway,
+                    two_for_one: !!item.two_for_one,
                     takeaway_days: Array.isArray(item.takeaway_days)
                         ? [...new Set(item.takeaway_days.map(Number).filter((day) => day >= 0 && day <= 6))].sort((a, b) => a - b)
                         : [0, 1, 2, 3, 4, 5, 6],
@@ -682,6 +774,94 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
                 item.item_modifier_group_ids = [...new Set(ids)].sort();
             },
 
+            getItemModifierGroupIds(item) {
+                const itemIds = Array.isArray(item?.item_modifier_group_ids)
+                    ? item.item_modifier_group_ids.map(String)
+                    : [];
+                const inheritedIds = Array.isArray(item?.modifier_groups)
+                    ? item.modifier_groups.map((group) => String(group.id))
+                    : [];
+                return [...new Set([...itemIds, ...inheritedIds])];
+            },
+
+            getEligibleTwoForOneGroups(item) {
+                const ids = new Set(this.getItemModifierGroupIds(item));
+                return this.modifierGroupsCatalog.filter(
+                    (group) =>
+                        ids.has(String(group.id)) &&
+                        (String(group.id) === "side_choice" || String(group.id) === "sauce_selection") &&
+                        Array.isArray(group.options) &&
+                        group.options.length > 0,
+                );
+            },
+
+            modifierAssignmentsChanged(item) {
+                if (!item || this.isNewItem(item)) {
+                    return Array.isArray(item?.item_modifier_group_ids) && item.item_modifier_group_ids.length > 0;
+                }
+                const current = Array.isArray(item.item_modifier_group_ids)
+                    ? [...new Set(item.item_modifier_group_ids.map(String))].sort()
+                    : [];
+                const baseline = this.baselineModifierIds(item);
+                return JSON.stringify(current) !== JSON.stringify(baseline);
+            },
+
+            showChoicePopup({ type = "error", title, message, action = "close" }) {
+                this.choicePopup = { open: true, type, title, message, action };
+                this.$nextTick(() => {
+                    this.$refs.choicePopupClose?.focus?.();
+                });
+            },
+
+            closeChoicePopup() {
+                this.choicePopup.open = false;
+            },
+
+            refreshAfterChoiceChange() {
+                window.location.reload();
+            },
+
+            toggleTwoForOne(item) {
+                if (!this.canEditItemOptions || !item?.id) return;
+
+                if (item.two_for_one) {
+                    item.two_for_one = false;
+                    return;
+                }
+
+                const eligibleGroups = this.getEligibleTwoForOneGroups(item);
+                if (eligibleGroups.length === 0) {
+                    this.showChoicePopup({
+                        type: "error",
+                        title: "2 for 1 cannot be enabled yet",
+                        message: `This item does not currently have a Side choice or Sauce selection assigned. Open Edit selections for this item, add at least one of those choice groups, press Save Menu, then refresh the page before enabling 2 for 1.`,
+                    });
+                    return;
+                }
+
+                if (this.modifierAssignmentsChanged(item)) {
+                    this.showChoicePopup({
+                        type: "refresh",
+                        title: "Please refresh before enabling 2 for 1",
+                        message: `A choice assignment for "${item.name || "this item"}" was changed recently. Save the choice assignment first, then refresh this page so the latest choice options are loaded before turning on the 2 for 1 special.`,
+                        action: "refresh",
+                    });
+                    return;
+                }
+
+                item.two_for_one = true;
+            },
+
+            isItemSelectionEditorOpen(item) {
+                return this.canEditItemOptions && !!this.selectionEditorOpen[String(item?.id)];
+            },
+
+            toggleItemSelectionEditor(item) {
+                if (!this.canEditItemOptions || !item?.id) return;
+                const id = String(item.id);
+                this.selectionEditorOpen[id] = !this.selectionEditorOpen[id];
+            },
+
             // ── UI helpers ─────────────────────────────────────────
             toggleCategory(catId) {
                 this.openCategories[catId] = !this.openCategories[catId];
@@ -733,6 +913,7 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
                     sort_order: last + 1,
                 });
                 this.openCategories[category.id] = true;
+                if (this.canEditItemOptions) this.selectionEditorOpen[tempId] = true;
                 this.$nextTick(() => {
                     const rows = this.$el.querySelectorAll(
                         `[data-item-id="${tempId}"]`,
@@ -755,6 +936,7 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
                 });
                 if (!ok || category.items[index] !== item) return;
                 if (!this.isNewItem(item)) this.deletedIds.push(item.id);
+                delete this.selectionEditorOpen[String(item.id)];
                 category.items.splice(index, 1);
             },
 
@@ -888,7 +1070,12 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
                     body: JSON.stringify({ action, table, data }),
                 });
                 const body = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(this.errorText(res, body));
+                if (!res.ok) {
+                    const error = Object.assign(new Error(this.errorText(res, body)), {
+                        code: body?.error || "request_failed",
+                    });
+                    throw error;
+                }
                 return body;
             },
 
@@ -940,6 +1127,17 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
                         const invalidSchedule = cat.items.find(
                             (i) => this.isItemDirty(i) && i.takeaway === true && (!Array.isArray(i.takeaway_days) || i.takeaway_days.length === 0),
                         );
+                        const invalidTwoForOne = cat.items.find(
+                            (i) => this.isItemDirty(i) && i.two_for_one === true && this.getEligibleTwoForOneGroups(i).length === 0,
+                        );
+                        if (invalidTwoForOne) {
+                            this.showChoicePopup({
+                                type: "error",
+                                title: "2 for 1 cannot be saved",
+                                message: `"${invalidTwoForOne.name || "This item"}" must have a Side choice or Sauce selection assigned before the 2 for 1 special can be saved. Open Edit selections, assign a choice group, save it, refresh the page, and then enable 2 for 1.`,
+                            });
+                            return;
+                        }
                         if (invalidSchedule) {
                             this.status = {
                                 type: "error",
@@ -1013,18 +1211,33 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
                                     const desiredModifierIds = Array.isArray(item.item_modifier_group_ids)
                                         ? [...item.item_modifier_group_ids]
                                         : [];
+                                    const createPayload = {
+                                        ...payload,
+                                        two_for_one: false,
+                                        category_id: cat.id,
+                                        sort_order: item.sort_order,
+                                    };
                                     const { row } = await this.callCrud(
                                         "create",
                                         "menu_items",
-                                        {
-                                            ...payload,
-                                            category_id: cat.id,
-                                            sort_order: item.sort_order,
-                                        },
+                                        createPayload,
                                     );
                                     item.id = row.id;
                                     item.item_modifier_group_ids = desiredModifierIds;
+                                    await this.syncItemModifierGroups(item);
+                                    if (payload.two_for_one) {
+                                        await this.callCrud(
+                                            "update",
+                                            "menu_items",
+                                            { id: item.id, two_for_one: true },
+                                        );
+                                    }
                                 } else {
+                                    // Choice assignments are synced first when the 2-for-1 flag is being
+                                    // enabled, so the server can verify that the item already has an eligible choice.
+                                    if (payload.two_for_one) {
+                                        await this.syncItemModifierGroups(item);
+                                    }
                                     await this.callCrud(
                                         "update",
                                         "menu_items",
@@ -1033,15 +1246,23 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
                                             id: item.id,
                                         },
                                     );
+                                    if (!payload.two_for_one) {
+                                        await this.syncItemModifierGroups(item);
+                                    }
                                 }
-
-                                await this.syncItemModifierGroups(item);
 
                                 this.baseline[item.id] = JSON.stringify(
                                     this.itemPayload(item),
                                 );
                                 saved++;
                             } catch (err) {
+                                if (err?.code === "two_for_one_requires_choice") {
+                                    this.showChoicePopup({
+                                        type: "error",
+                                        title: "2 for 1 could not be enabled",
+                                        message: `The server could not confirm a Side choice or Sauce selection for "${payload.name || "this item"}". Open Edit selections, assign at least one eligible choice group, press Save Menu, refresh the page, and then enable the 2 for 1 special.`,
+                                    });
+                                }
                                 errors.push(
                                     `"${payload.name}": ${err.message}`,
                                 );
@@ -1710,12 +1931,195 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
         }
     }
 
+    .two-for-one-toggle {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.65rem;
+        margin: 0.7rem 0 0.65rem;
+        padding: 0.7rem 0.75rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 9px;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .two-for-one-toggle.is-active {
+        border-color: var(--MenuColor);
+        background: color-mix(in srgb, var(--MenuColor) 8%, white);
+    }
+
+    .two-for-one-toggle input {
+        width: 19px;
+        height: 19px;
+        margin-top: 2px;
+        flex: none;
+        accent-color: var(--bg-color-btn);
+    }
+
+    .two-for-one-toggle-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        min-width: 0;
+    }
+
+    .two-for-one-toggle-copy strong {
+        font-size: 0.84rem;
+        color: var(--bg-color-btn);
+    }
+
+    .two-for-one-toggle-copy small {
+        font-size: 0.72rem;
+        line-height: 1.35;
+        color: #718096;
+    }
+
+    .choice-guard-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 3000;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 1.25rem 1rem;
+        background: rgba(18, 24, 33, 0.28);
+        backdrop-filter: blur(2px);
+    }
+
+    .choice-guard-popup {
+        width: min(620px, 100%);
+        display: grid;
+        grid-template-columns: 6px minmax(0, 1fr) auto;
+        gap: 0;
+        background: var(--bg-color-light);
+        border: 1px solid color-mix(in srgb, var(--bg-color-btn) 30%, transparent);
+        border-radius: 14px;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        color: var(--txt-color);
+    }
+
+    .choice-guard-accent {
+        background: var(--text-color-hover);
+    }
+
+    .choice-guard-popup.is-refresh .choice-guard-accent {
+        background: var(--MenuColor);
+    }
+
+    .choice-guard-copy {
+        padding: 1rem 1.1rem;
+        min-width: 0;
+    }
+
+    .choice-guard-kicker {
+        display: block;
+        margin-bottom: 0.2rem;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-color-hover);
+    }
+
+    .choice-guard-popup.is-refresh .choice-guard-kicker {
+        color: var(--MenuColor);
+    }
+
+    .choice-guard-copy h2 {
+        margin: 0;
+        font-size: 1rem;
+        color: var(--bg-color-btn);
+    }
+
+    .choice-guard-copy p {
+        margin: 0.4rem 0 0;
+        font-size: 0.82rem;
+        line-height: 1.5;
+        color: #4a5568;
+    }
+
+    .choice-guard-actions {
+        display: flex;
+        align-items: flex-end;
+        padding: 1rem 1rem 0.9rem 0.4rem;
+    }
+
+    .choice-guard-primary,
+    .choice-guard-secondary {
+        min-height: 40px;
+        padding: 0 0.8rem;
+        border-radius: 8px;
+        font: inherit;
+        font-size: 0.78rem;
+        font-weight: 800;
+        cursor: pointer;
+    }
+
+    .choice-guard-primary {
+        border: 1px solid var(--bg-color-btn);
+        background: var(--bg-color-btn);
+        color: var(--text-color);
+    }
+
+    .choice-guard-secondary {
+        border: 1px solid var(--nav-bg);
+        background: #fff;
+        color: var(--bg-color-btn);
+    }
+
+    @media (max-width: 640px) {
+        .choice-guard-popup {
+            grid-template-columns: 5px minmax(0, 1fr);
+        }
+        .choice-guard-actions {
+            grid-column: 2;
+            padding: 0 1rem 1rem 1.1rem;
+            align-items: stretch;
+        }
+        .choice-guard-primary,
+        .choice-guard-secondary {
+            width: 100%;
+        }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .choice-guard-popup {
+            animation: choiceGuardEnter 0.18s ease-out;
+        }
+        @keyframes choiceGuardEnter {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    }
+
     .item-actions {
         display: flex;
         flex-direction: column;
         align-items: flex-end;
         justify-content: space-between;
         gap: 0.5rem;
+    }
+
+    .selection-edit-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-height: 44px;
+        padding: 0 0.75rem;
+        border: 1px solid var(--MenuColor);
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--MenuColor) 9%, white);
+        color: var(--bg-color-btn);
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .selection-edit-btn:hover,
+    .selection-edit-btn[aria-expanded="true"] {
+        background: var(--MenuColor);
+        color: #fff;
     }
 
     .dirty-badge {
@@ -1904,7 +2308,7 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
             min-width: 0;
         }
 
-        .item-actions {
+    .item-actions {
             grid-area: actions;
             flex-direction: row-reverse;
             align-items: center;

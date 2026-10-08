@@ -7,12 +7,12 @@ import Layout from "../../../layouts/Layout.astro";
 import MenuEditorNav from "../../../components/MenuEditorNav.astro";
 import MenuImageEditor from "../../../components/MenuImageEditor.astro";
 import MenuPdfEditor from "../../../components/MenuPdfEditor.astro";
-import { guardAdminPage } from "../../../lib/adminAuth";
+import { guardAdminPage, isOwnerUser } from "../../../lib/adminAuth";
 import { IMAGE_SECTIONS, type ImageSectionKey } from "../../../lib/menuImages";
 
 export const prerender = false;
 
-const { response } = await guardAdminPage(Astro.cookies, Astro.redirect);
+const { user, response } = await guardAdminPage(Astro.cookies, Astro.redirect);
 if (response) return response;
 
 const key = Astro.params.section as ImageSectionKey;
@@ -23,7 +23,7 @@ const section = IMAGE_SECTIONS[key];
 ---
 
 <Layout title={`Menu Editor - ${section.title}`}>
-    <MenuEditorNav active={key} />
+    <MenuEditorNav active={key} owner={isOwnerUser(user)} />
     <MenuImageEditor section={key}>
         {key === "main-menu" && <MenuPdfEditor />}
     </MenuImageEditor>

@@ -70,8 +70,9 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     qty: Math.min(Math.max(parseInt(l?.qty, 10) || 1, 1), 50),
     price: clean(l?.price, 20),
     note: clean(l?.note, 200),
+    two_for_one: Boolean(l?.two_for_one),
     options: (Array.isArray(l?.options) ? l.options : [])
-      .slice(0, 10)
+      .slice(0, 12)
       .map((o: any) => ({
         groupId: clean(o?.groupId, 80),
         optionId: clean(o?.optionId, 80),
@@ -92,10 +93,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   const requiresCollectionDetails = hasPlatter;
 
   if (requiresCollectionDetails && !collectDate) {
-    return json(
-      { ok: false, error: "date_required", field: "collectDate" },
-      400,
-    );
+    return json({ ok: false, error: "date_required", field: "collectDate" }, 400);
   }
 
   const [year, month, day] = collectDate
@@ -104,16 +102,12 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   const parsedDate = collectDate
     ? new Date(Date.UTC(year, month - 1, day))
     : null;
-  if (
-    collectDate &&
-    (parsedDate!.getUTCFullYear() !== year ||
-      parsedDate!.getUTCMonth() !== month - 1 ||
-      parsedDate!.getUTCDate() !== day)
-  ) {
-    return json(
-      { ok: false, error: "invalid_date", field: "collectDate" },
-      400,
-    );
+  if (collectDate && (
+    parsedDate!.getUTCFullYear() !== year ||
+    parsedDate!.getUTCMonth() !== month - 1 ||
+    parsedDate!.getUTCDate() !== day
+  )) {
+    return json({ ok: false, error: "invalid_date", field: "collectDate" }, 400);
   }
 
   const saDate = new Intl.DateTimeFormat("en-CA", {
@@ -123,10 +117,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     day: "2-digit",
   }).format(new Date());
   if (collectDate && collectDate < saDate) {
-    return json(
-      { ok: false, error: "invalid_date", field: "collectDate" },
-      400,
-    );
+    return json({ ok: false, error: "invalid_date", field: "collectDate" }, 400);
   }
 
   // Orders without a platter date are same-day takeaway orders, so use
@@ -138,36 +129,22 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     ? body.collectTime
     : "";
   if (!collectTime) {
-    return json(
-      { ok: false, error: "time_required", field: "collectTime" },
-      400,
-    );
+    return json({ ok: false, error: "time_required", field: "collectTime" }, 400);
   }
   if (collectTime) {
     const [hour, minute] = collectTime.split(":").map(Number);
-    if (
-      !Number.isInteger(hour) ||
-      !Number.isInteger(minute) ||
-      minute < 0 ||
-      minute > 59
-    ) {
+    if (!Number.isInteger(hour) || !Number.isInteger(minute) || minute < 0 || minute > 59) {
       return json({ ok: false, error: "invalid_time" }, 400);
     }
     const isSunday = orderDayOfWeek === 0;
     const latestPickup = isSunday ? "16:00" : "20:00";
     if (collectTime < "11:00" || collectTime > latestPickup) {
-      return json(
-        { ok: false, error: "invalid_time", latest: latestPickup },
-        400,
-      );
+      return json({ ok: false, error: "invalid_time", latest: latestPickup }, 400);
     }
   }
 
   if (hasPlatter && collectDate < getMinPlatterDate(PLATTER_NOTICE_DAYS)) {
-    return json(
-      { ok: false, error: "invalid_date", reason: "platter_notice" },
-      400,
-    );
+    return json({ ok: false, error: "invalid_date", reason: "platter_notice" }, 400);
   }
 
   const estTotal = Number.isFinite(+body?.total)
@@ -175,28 +152,21 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     : null;
 
   // ── Re-check takeaway availability on the server. The browser is only a UX layer.
-  const itemIds = items
-    .map((item: any) => String(item.id || ""))
-    .filter(Boolean);
+  const itemIds = items.map((item: any) => String(item.id || "")).filter(Boolean);
   if (itemIds.length !== items.length) {
     return json({ ok: false, error: "invalid_item" }, 400);
   }
 
   const { data: menuItems, error: menuError } = await supabaseAdmin
     .from("menu_items")
-    .select("id,category_id,takeaway,takeaway_days")
+    .select("id,category_id,takeaway,takeaway_days,two_for_one")
     .in("id", itemIds);
   if (menuError) {
-    console.error(
-      "[orders/whatsapp] menu availability check failed:",
-      menuError.message,
-    );
+    console.error("[orders/whatsapp] menu availability check failed:", menuError.message);
     return json({ ok: false, error: "availability_check_failed" }, 500);
   }
 
-  const byId = new Map(
-    (menuItems ?? []).map((item: any) => [String(item.id), item]),
-  );
+  const byId = new Map((menuItems ?? []).map((item: any) => [String(item.id), item]));
   for (const itemId of itemIds) {
     const menuItem = byId.get(itemId);
     if (!menuItem || menuItem.takeaway === false) {
@@ -219,9 +189,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     { data: modifierOptions, error: modifierOptionsError },
     { data: modifierGroups, error: modifierGroupsError },
   ] = await Promise.all([
-    supabaseAdmin
-      .from("category_modifier_groups")
-      .select("category_id,group_id"),
+    supabaseAdmin.from("category_modifier_groups").select("category_id,group_id"),
     supabaseAdmin
       .from("menu_item_modifier_groups")
       .select("item_id,group_id")
@@ -230,12 +198,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     supabaseAdmin.from("modifier_groups").select("id,name"),
   ]);
 
-  if (
-    categoryLinksError ||
-    itemLinksError ||
-    modifierOptionsError ||
-    modifierGroupsError
-  ) {
+  if (categoryLinksError || itemLinksError || modifierOptionsError || modifierGroupsError) {
     console.error(
       "[orders/whatsapp] modifier validation query failed:",
       categoryLinksError?.message ||
@@ -271,6 +234,12 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
       String(group.name ?? group.id),
     ]),
   );
+  const groupSelectionTypeById = new Map(
+    (modifierGroups ?? []).map((group: any) => [
+      String(group.id),
+      group.selection_type === "multiple" ? "multiple" : "single",
+    ]),
+  );
   const optionById = new Map(
     (modifierOptions ?? []).map((option: any) => [
       String(option.id),
@@ -286,6 +255,11 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     const allowedGroups = allowedGroupsByItem.get(String(item.id));
     if (!allowedGroups) return json({ ok: false, error: "invalid_item" }, 400);
 
+    const singleGroupCounts = new Map();
+    const twoForOneSelectionsByGroup = new Map<string, string[]>();
+    const menuItem = byId.get(String(item.id));
+    const twoForOneEnabled = Boolean(menuItem?.two_for_one);
+
     for (const option of item.options) {
       if (!option.groupId || !option.optionId) {
         return json({ ok: false, error: "invalid_modifier" }, 400);
@@ -299,9 +273,47 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
         return json({ ok: false, error: "invalid_modifier" }, 400);
       }
 
+      const selectionType = groupSelectionTypeById.get(dbOption.groupId);
+      if (!selectionType) {
+        return json({ ok: false, error: "invalid_modifier" }, 400);
+      }
+      if (selectionType === "single") {
+        const isTwoForOneGroup = dbOption.groupId === "side_choice" || dbOption.groupId === "sauce_selection";
+        if (twoForOneEnabled && isTwoForOneGroup) {
+          const selections = twoForOneSelectionsByGroup.get(dbOption.groupId) ?? [];
+          selections.push(String(option.optionId));
+          twoForOneSelectionsByGroup.set(dbOption.groupId, selections);
+        } else {
+          const count = (singleGroupCounts.get(dbOption.groupId) ?? 0) + 1;
+          if (count > 1) {
+            return json({ ok: false, error: "invalid_modifier" }, 400);
+          }
+          singleGroupCounts.set(dbOption.groupId, count);
+        }
+      }
+
       option.label = groupNameById.get(dbOption.groupId) || option.label;
       option.value = dbOption.name;
       option.price = dbOption.price;
+    }
+
+    if (twoForOneEnabled) {
+      const eligibleGroups = ["side_choice", "sauce_selection"].filter((groupId) =>
+        allowedGroups.has(groupId),
+      );
+      if (eligibleGroups.length === 0) {
+        return json({ ok: false, error: "invalid_two_for_one" }, 400);
+      }
+
+      // A 2-for-1 item gets two different selections within every eligible
+      // choice group assigned to that item. For example: two different sides
+      // AND two different sauces when both groups are present.
+      for (const groupId of eligibleGroups) {
+        const uniqueSelections = [...new Set(twoForOneSelectionsByGroup.get(groupId) ?? [])];
+        if (uniqueSelections.length !== 2) {
+          return json({ ok: false, error: "invalid_two_for_one" }, 400);
+        }
+      }
     }
   }
 

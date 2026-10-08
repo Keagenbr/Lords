@@ -1,0 +1,1497 @@
+---
+// Owner-only editor for the menu choice/modifier library.
+// Normal Admin users can edit menu items, but only Owners can create/edit/delete
+// choice groups, their options, and the category/item assignments.
+---
+
+<section
+    id="choice-selections"
+    class="choice-editor"
+    x-data="menuChoiceEditorApp"
+>
+    <div class="choice-editor-header">
+        <div>
+            <div class="choice-editor-kicker">
+                <span class="choice-owner-badge">Owner only</span>
+                <span>Order selection library</span>
+            </div>
+            <h2>Choice selections</h2>
+            <p>
+                Create and edit the choices customers see when they add a menu
+                item to an order. Assign a choice group to a whole category or
+                to individual menu items.
+            </p>
+        </div>
+        <div class="choice-editor-actions">
+            <button
+                type="button"
+                class="choice-secondary-btn"
+                @click="load()"
+                :disabled="loading || saving"
+            >
+                <span
+                    class="ico-only"
+                    data-icon="refresh"
+                    aria-hidden="true"
+                ></span>
+                Refresh
+            </button>
+            <button
+                type="button"
+                class="choice-primary-btn"
+                @click="addGroup()"
+                :disabled="loading || saving"
+            >
+                + Add choice group
+            </button>
+        </div>
+    </div>
+
+    <div class="choice-help">
+        <strong>How it works</strong>
+        <span>
+            A category assignment applies the choice group to every item in that
+            category. An individual item assignment applies it only to that
+            item. A group can use either or both.
+        </span>
+    </div>
+
+    <div
+        class="choice-status"
+        x-show="status.message"
+        x-cloak
+        :class="status.type"
+        role="status"
+    >
+        <span x-text="status.message"></span>
+        <button
+            type="button"
+            @click="status = { type: '', message: '' }"
+            aria-label="Dismiss"
+        >
+            ✕
+        </button>
+    </div>
+
+    <div class="choice-toolbar" x-show="groups.length > 0" x-cloak>
+        <input
+            type="search"
+            x-model="assignmentSearch"
+            placeholder="Filter categories or menu items..."
+            aria-label="Filter category and menu item assignments"
+        />
+        <span
+            class="choice-count"
+            x-text="`${groups.length} choice group${groups.length === 1 ? '' : 's'}`"
+        ></span>
+    </div>
+
+    <div class="choice-loading" x-show="loading" x-cloak>
+        Loading choice selections…
+    </div>
+
+    <div class="choice-empty" x-show="!loading && groups.length === 0" x-cloak>
+        <strong>No choice groups yet.</strong>
+        <span>
+            Add your first selection group to make it available in the item
+            ordering modal.
+        </span>
+        <button type="button" class="choice-primary-btn" @click="addGroup()">
+            + Add choice group
+        </button>
+    </div>
+
+    <div
+        class="choice-group-list"
+        x-show="!loading && groups.length > 0"
+        x-cloak
+    >
+        <template x-for="(group, groupIndex) in groups" :key="group.id">
+            <article
+                class="choice-group-card"
+                :class="{ 'is-new': group._new, 'is-dirty': isDirty(group), 'is-saving': group._saving }"
+            >
+                <div class="choice-group-card-header">
+                    <div>
+                        <span
+                            class="choice-group-number"
+                            x-text="`Choice group ${groupIndex + 1}`"
+                        ></span>
+                        <h3 x-text="group.name || 'Untitled choice group'"></h3>
+                    </div>
+                    <div class="choice-group-card-actions">
+                        <span
+                            class="choice-dirty-badge"
+                            x-show="isDirty(group)"
+                            x-cloak
+                            x-text="group._new ? 'New' : 'Unsaved'"
+                        ></span>
+                        <button
+                            type="button"
+                            class="choice-edit-btn"
+                            x-show="!group._editing && !group._new"
+                            @click="startEdit(group)"
+                        >
+                            <span
+                                class="ico-only"
+                                data-icon="edit"
+                                aria-hidden="true"
+                            ></span>
+                            Edit
+                        </button>
+                        <button
+                            type="button"
+                            class="choice-danger-btn"
+                            x-show="group._editing"
+                            @click="deleteGroup(groupIndex)"
+                            :disabled="group._saving || saving"
+                        >
+                            Delete group
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Read-only view until the Owner presses Edit. -->
+                <div
+                    class="choice-group-summary"
+                    x-show="!group._editing && !group._new"
+                >
+                    <div class="choice-summary-meta">
+                        <span
+                            class="choice-summary-type"
+                            x-text="group.selection_type === 'multiple' ? 'Multiple choice' : 'Single choice'"
+                        ></span>
+                        <span
+                            class="choice-summary-sort"
+                            x-text="`Sort ${group.sort_order}`"
+                        ></span>
+                    </div>
+                    <div class="choice-summary-options">
+                        <template
+                            x-for="option in group.options"
+                            :key="option.id"
+                        >
+                            <span class="choice-summary-pill">
+                                <span x-text="option.name"></span>
+                                <small
+                                    x-show="Number(option.price) > 0"
+                                    x-text="`+R${Number(option.price).toFixed(2)}`"
+                                ></small>
+                            </span>
+                        </template>
+                    </div>
+                    <div class="choice-summary-assignments">
+                        <span
+                            class="choice-summary-assignment-count"
+                            x-text="`${group.categoryIds.length} categor${group.categoryIds.length === 1 ? 'y' : 'ies'}`"
+                        ></span>
+                        <span
+                            class="choice-summary-assignment-count"
+                            x-text="`${group.itemIds.length} item${group.itemIds.length === 1 ? '' : 's'}`"
+                        ></span>
+                    </div>
+                </div>
+
+                <div
+                    class="choice-group-editor"
+                    x-show="group._editing"
+                    x-cloak
+                >
+                    <div class="choice-group-fields">
+                        <label>
+                            <span>Group name</span>
+                            <input
+                                type="text"
+                                maxlength="80"
+                                x-model="group.name"
+                                placeholder="e.g. Side choice"
+                            />
+                        </label>
+                        <label>
+                            <span>Selection type</span>
+                            <select x-model="group.selection_type">
+                                <option value="single">Single choice</option>
+                                <option value="multiple">
+                                    Multiple choice
+                                </option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Sort order</span>
+                            <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                x-model.number="group.sort_order"
+                            />
+                        </label>
+                    </div>
+
+                    <div class="choice-id-row">
+                        <span>Internal id</span>
+                        <code x-text="group.id"></code>
+                        <small>
+                            Used internally; changing the display name does not
+                            break existing assignments.
+                        </small>
+                    </div>
+
+                    <section class="choice-options-section">
+                        <div class="choice-section-heading">
+                            <div>
+                                <h4>Choice items</h4>
+                                <p>
+                                    These are the options the customer selects.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                class="choice-secondary-btn"
+                                @click="addOption(group)"
+                            >
+                                + Add option
+                            </button>
+                        </div>
+
+                        <div class="choice-options-list">
+                            <div class="choice-option-row choice-option-row--head">
+                                <span>Option</span>
+                                <span>Extra price</span>
+                                <span></span>
+                            </div>
+                            <template
+                                x-for="(option, optionIndex) in group.options"
+                                :key="option.id"
+                            >
+                                <div class="choice-option-row">
+                                    <input
+                                        type="text"
+                                        maxlength="100"
+                                        x-model="option.name"
+                                        placeholder="Choice name"
+                                    />
+                                    <div class="price-input-wrap">
+                                        <span>R</span>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            x-model.number="option.price"
+                                            inputmode="decimal"
+                                            aria-label="Extra price"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="choice-icon-danger"
+                                        @click="removeOption(group, optionIndex)"
+                                        :disabled="group.options.length <= 1"
+                                        :title="group.options.length <= 1 ? 'A group needs at least one option' : 'Delete option'"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </section>
+
+                    <section class="choice-assignment-section">
+                        <div class="choice-section-heading">
+                            <div>
+                                <h4>Applies to categories and menu items</h4>
+                                <p>
+                                    Open each selector below to choose where
+                                    this choice group should appear in the order
+                                    modal.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="choice-assignment-dropdowns">
+                            <details class="choice-assignment-dropdown">
+                                <summary>
+                                    <span>
+                                        <strong>Category selection</strong>
+                                        <small>
+                                            Apply this choice to every item in
+                                            selected categories.
+                                        </small>
+                                    </span>
+                                    <span
+                                        class="choice-dropdown-count"
+                                        x-text="`${group.categoryIds.length} selected`"
+                                    ></span>
+                                </summary>
+                                <div class="choice-assignment-dropdown-body">
+                                    <template
+                                        x-for="type in menuTypes"
+                                        :key="type.id"
+                                    >
+                                        <section
+                                            class="choice-assignment-type-block"
+                                            x-show="type.categories.some(category => matchesSearch(category.label))"
+                                        >
+                                            <h5
+                                                class="choice-assignment-type-heading"
+                                                x-text="type.label"
+                                            ></h5>
+                                            <div class="choice-category-grid">
+                                                <template
+                                                    x-for="category in type.categories"
+                                                    :key="category.id"
+                                                >
+                                                    <label
+                                                        class="choice-assignment-tile"
+                                                        x-show="matchesSearch(category.label)"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            :checked="group.categoryIds.includes(category.id)"
+                                                            @change="toggleId(group.categoryIds, category.id, $event.target.checked)"
+                                                        />
+                                                        <span x-text="category.label.replace(/_/g, ' ')"></span>
+                                                    </label>
+                                                </template>
+                                            </div>
+                                        </section>
+                                    </template>
+                                </div>
+                            </details>
+
+                            <details class="choice-assignment-dropdown">
+                                <summary>
+                                    <span>
+                                        <strong>Menu item selection</strong>
+                                        <small>
+                                            Apply this choice only to selected
+                                            menu items.
+                                        </small>
+                                    </span>
+                                    <span
+                                        class="choice-dropdown-count"
+                                        x-text="`${group.itemIds.length} selected`"
+                                    ></span>
+                                </summary>
+                                <div class="choice-assignment-dropdown-body">
+                                    <template
+                                        x-for="type in menuTypes"
+                                        :key="type.id"
+                                    >
+                                        <section
+                                            class="choice-assignment-type-block"
+                                            x-show="type.categories.some(category => category.items.some(item => matchesSearch(item.name)) || matchesSearch(category.label))"
+                                        >
+                                            <h5
+                                                class="choice-assignment-type-heading"
+                                                x-text="type.label"
+                                            ></h5>
+                                            <template
+                                                x-for="category in type.categories"
+                                                :key="category.id"
+                                            >
+                                                <div
+                                                    class="choice-assignment-category-block"
+                                                    x-show="matchesSearch(category.label) || category.items.some(item => matchesSearch(item.name))"
+                                                >
+                                                    <div class="choice-assignment-subhead">
+                                                        <span x-text="category.label.replace(/_/g, ' ')"></span>
+                                                    </div>
+                                                    <div class="choice-item-grid">
+                                                        <template
+                                                            x-for="item in category.items"
+                                                            :key="item.id"
+                                                        >
+                                                            <label
+                                                                class="choice-assignment-tile choice-assignment-tile--item"
+                                                                x-show="matchesSearch(item.name) || matchesSearch(category.label)"
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    :checked="group.itemIds.includes(item.id)"
+                                                                    @change="toggleId(group.itemIds, item.id, $event.target.checked)"
+                                                                />
+                                                                <span x-text="item.name"></span>
+                                                            </label>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </section>
+                                    </template>
+                                </div>
+                            </details>
+                        </div>
+                    </section>
+
+                    <div class="choice-save-row">
+                        <span
+                            class="choice-save-note"
+                            x-show="group._new"
+                            x-cloak
+                        >
+                            This group will be created when you save it.
+                        </span>
+                        <span
+                            class="choice-save-note"
+                            x-show="!group._new && !isDirty(group)"
+                            x-cloak
+                        >
+                            Saved
+                        </span>
+                        <button
+                            type="button"
+                            class="choice-secondary-btn"
+                            x-show="!group._new"
+                            @click="cancelEdit(groupIndex)"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            class="choice-primary-btn"
+                            @click="saveGroup(group)"
+                            :disabled="group._saving || saving || !isDirty(group)"
+                        >
+                            <span x-text="group._saving ? 'Saving…' : group._new ? 'Create choice group' : 'Save changes'"></span>
+                        </button>
+                    </div>
+                </div>
+            </article>
+        </template>
+    </div>
+</section>
+
+<script is:inline>
+    document.addEventListener("alpine:init", () => {
+        Alpine.data("menuChoiceEditorApp", () => ({
+            groups: [],
+            menuTypes: [],
+            loading: true,
+            saving: false,
+            assignmentSearch: "",
+            status: { type: "", message: "" },
+
+            async init() {
+                await this.load();
+            },
+
+            async load() {
+                this.loading = true;
+                try {
+                    const res = await fetch("/admin/menu-choices", {
+                        credentials: "same-origin",
+                    });
+                    const body = await res.json().catch(() => ({}));
+                    if (!res.ok)
+                        throw new Error(
+                            body?.error || `Request failed (${res.status})`,
+                        );
+                    this.menuTypes = body.menuTypes || [];
+                    this.groups = (body.groups || []).map((group) =>
+                        this.withBaseline(group),
+                    );
+                    this.status = { type: "", message: "" };
+                } catch (error) {
+                    this.status = {
+                        type: "error",
+                        message:
+                            error?.message ||
+                            "Could not load choice selections.",
+                    };
+                    this.groups = [];
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            slugify(value) {
+                return (
+                    String(value || "group")
+                        .toLowerCase()
+                        .trim()
+                        .replace(/[^a-z0-9]+/g, "_")
+                        .replace(/^_+|_+$/g, "")
+                        .slice(0, 40) || "group"
+                );
+            },
+
+            addGroup() {
+                const maxOrder = this.groups.reduce(
+                    (max, group) =>
+                        Math.max(max, Number(group.sort_order) || 0),
+                    95,
+                );
+                const id = `custom_${this.slugify("choice")}_${Date.now()}`;
+                const group = this.withBaseline({
+                    id,
+                    name: "New choice group",
+                    selection_type: "single",
+                    sort_order: maxOrder + 1,
+                    options: [
+                        {
+                            id: `${id}_option_1`,
+                            name: "New option",
+                            price: 0,
+                            sort_order: 1,
+                        },
+                    ],
+                    categoryIds: [],
+                    itemIds: [],
+                    _new: true,
+                });
+                this.groups.push(group);
+                this.status = {
+                    type: "info",
+                    message: "New choice group added. Complete it and save.",
+                };
+                this.$nextTick(() => {
+                    const cards =
+                        this.$el.querySelectorAll(".choice-group-card");
+                    cards[cards.length - 1]?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                    });
+                });
+            },
+
+            withBaseline(group) {
+                const normalised = {
+                    id: String(group.id),
+                    name: String(group.name || ""),
+                    selection_type:
+                        group.selection_type === "multiple"
+                            ? "multiple"
+                            : "single",
+                    sort_order: Number(group.sort_order ?? 0),
+                    options: (Array.isArray(group.options)
+                        ? group.options
+                        : []
+                    ).map((option, index) => ({
+                        id: String(option.id),
+                        name: String(option.name || ""),
+                        price: Number(option.price ?? 0),
+                        sort_order: Number(option.sort_order ?? index + 1),
+                    })),
+                    categoryIds: Array.isArray(group.categoryIds)
+                        ? [...new Set(group.categoryIds.map(String))]
+                        : [],
+                    itemIds: Array.isArray(group.itemIds)
+                        ? [...new Set(group.itemIds.map(String))]
+                        : [],
+                    _new: Boolean(group._new),
+                    _editing: Boolean(group._new),
+                    _saving: false,
+                };
+                normalised._baseline = JSON.stringify(this.payload(normalised));
+                return normalised;
+            },
+
+            payload(group) {
+                return {
+                    id: String(group.id || "").trim(),
+                    name: String(group.name || "").trim(),
+                    selection_type:
+                        group.selection_type === "multiple"
+                            ? "multiple"
+                            : "single",
+                    sort_order: Number(group.sort_order) || 0,
+                    options: (group.options || []).map((option, index) => ({
+                        id: String(option.id || "").trim(),
+                        name: String(option.name || "").trim(),
+                        price: Math.max(0, Number(option.price) || 0),
+                        sort_order: Number(option.sort_order) || index + 1,
+                    })),
+                    categoryIds: [
+                        ...new Set((group.categoryIds || []).map(String)),
+                    ].sort(),
+                    itemIds: [
+                        ...new Set((group.itemIds || []).map(String)),
+                    ].sort(),
+                };
+            },
+
+            isDirty(group) {
+                return (
+                    group._new ||
+                    group._baseline !== JSON.stringify(this.payload(group))
+                );
+            },
+
+            startEdit(group) {
+                group._editing = true;
+                this.status = { type: "", message: "" };
+            },
+
+            async cancelEdit(index) {
+                const group = this.groups[index];
+                if (!group || group._new) return;
+                if (this.isDirty(group)) {
+                    if (!window.siteDialog) return;
+                    const ok = await window.siteDialog.confirm({
+                        title: `Discard changes to “${group.name || "this choice group"}”?`,
+                        message:
+                            "Your unsaved choice and assignment changes will be discarded.",
+                        confirmText: "Discard changes",
+                        cancelText: "Keep editing",
+                        tone: "danger",
+                    });
+                    if (!ok) return;
+                }
+                try {
+                    const snapshot = JSON.parse(group._baseline);
+                    const restored = this.withBaseline(snapshot);
+                    restored._editing = false;
+                    this.groups.splice(index, 1, restored);
+                } catch {
+                    group._editing = false;
+                }
+            },
+
+            addOption(group) {
+                const maxOrder = group.options.reduce(
+                    (max, option) =>
+                        Math.max(max, Number(option.sort_order) || 0),
+                    0,
+                );
+                group.options.push({
+                    id: `${group.id}_option_${Date.now()}_${maxOrder + 1}`,
+                    name: "New option",
+                    price: 0,
+                    sort_order: maxOrder + 1,
+                });
+            },
+
+            async removeOption(group, index) {
+                if (group.options.length <= 1) return;
+                const option = group.options[index];
+                const ok = await this.confirm({
+                    title: `Delete “${option?.name || "this option"}”?`,
+                    message:
+                        "This removes the option from the customer selection list.",
+                });
+                if (ok) group.options.splice(index, 1);
+            },
+
+            toggleId(target, id, checked) {
+                const value = String(id);
+                const set = new Set((target || []).map(String));
+                if (checked) set.add(value);
+                else set.delete(value);
+                target.splice(0, target.length, ...Array.from(set));
+            },
+
+            matchesSearch(value) {
+                const query = this.assignmentSearch.trim().toLowerCase();
+                if (!query) return true;
+                return String(value || "")
+                    .toLowerCase()
+                    .includes(query);
+            },
+
+            async saveGroup(group) {
+                if (group._saving || this.saving) return;
+                if (!String(group.name || "").trim()) {
+                    this.status = {
+                        type: "error",
+                        message: "Every choice group needs a name.",
+                    };
+                    return;
+                }
+                if (!group.options?.length) {
+                    this.status = {
+                        type: "error",
+                        message: `“${group.name}” needs at least one option.`,
+                    };
+                    return;
+                }
+
+                group._saving = true;
+                this.saving = true;
+                try {
+                    const res = await fetch("/admin/menu-choices", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify({
+                            action: "save",
+                            group: this.payload(group),
+                        }),
+                    });
+                    const body = await res.json().catch(() => ({}));
+                    if (!res.ok)
+                        throw new Error(
+                            body?.error || `Request failed (${res.status})`,
+                        );
+
+                    const saved = this.withBaseline(body.group);
+                    saved._editing = false;
+                    const index = this.groups.indexOf(group);
+                    if (index >= 0) this.groups.splice(index, 1, saved);
+                    this.status = {
+                        type: "success",
+                        message: `“${saved.name}” saved.`,
+                    };
+                } catch (error) {
+                    this.status = {
+                        type: "error",
+                        message:
+                            error?.message ||
+                            "Could not save the choice group.",
+                    };
+                } finally {
+                    group._saving = false;
+                    this.saving = false;
+                }
+            },
+
+            async deleteGroup(index) {
+                const group = this.groups[index];
+                if (!group) return;
+                if (group._new) {
+                    this.groups.splice(index, 1);
+                    return;
+                }
+                const ok = await this.confirm({
+                    title: `Delete “${group.name}”?`,
+                    message:
+                        "This removes the choice group, its options, and every category/item assignment using it.",
+                });
+                if (!ok) return;
+
+                this.saving = true;
+                try {
+                    const res = await fetch("/admin/menu-choices", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify({
+                            action: "delete",
+                            groupId: group.id,
+                        }),
+                    });
+                    const body = await res.json().catch(() => ({}));
+                    if (!res.ok)
+                        throw new Error(
+                            body?.error || `Request failed (${res.status})`,
+                        );
+                    this.groups.splice(index, 1);
+                    this.status = {
+                        type: "success",
+                        message: `“${group.name}” deleted.`,
+                    };
+                } catch (error) {
+                    this.status = {
+                        type: "error",
+                        message:
+                            error?.message ||
+                            "Could not delete the choice group.",
+                    };
+                } finally {
+                    this.saving = false;
+                }
+            },
+
+            async confirm({ title, message }) {
+                if (!window.siteDialog) return false;
+                return window.siteDialog.confirm({
+                    title,
+                    message,
+                    confirmText: "Delete",
+                    cancelText: "Cancel",
+                    tone: "danger",
+                });
+            },
+        }));
+    });
+</script>
+
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .choice-editor {
+        max-width: 1400px;
+        margin: var(--nav-header) auto 4rem;
+        padding: 0 1.25rem;
+        color: var(--txt-color, #2d3748);
+    }
+
+    .choice-editor-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.35rem 1.45rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    }
+
+    .choice-editor-kicker {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        opacity: 0.72;
+    }
+
+    .choice-owner-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        background: var(--bg-color-btn);
+        color: var(--text-color);
+        font-size: 0.68rem;
+        letter-spacing: 0.04em;
+    }
+
+    .choice-editor h2 {
+        margin: 0.35rem 0 0.35rem;
+        color: var(--bg-color-btn);
+        font-size: 1.55rem;
+    }
+
+    .choice-editor-header p {
+        margin: 0;
+        max-width: 760px;
+        line-height: 1.55;
+        font-size: 0.92rem;
+        opacity: 0.78;
+    }
+
+    .choice-editor-actions {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .choice-primary-btn,
+    .choice-secondary-btn,
+    .choice-danger-btn,
+    .choice-icon-danger {
+        border-radius: 9px;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 700;
+    }
+
+    .choice-primary-btn {
+        border: 1px solid var(--bg-color-btn);
+        background: var(--bg-color-btn);
+        color: #fff;
+        padding: 0.68rem 0.95rem;
+    }
+
+    .choice-secondary-btn {
+        border: 1px solid var(--nav-bg);
+        background: #fff;
+        color: var(--bg-color-btn);
+        padding: 0.62rem 0.85rem;
+    }
+
+    .choice-danger-btn {
+        border: 1px solid #fed7d7;
+        background: #fff5f5;
+        color: #c53030;
+        padding: 0.56rem 0.75rem;
+        font-size: 0.82rem;
+    }
+
+    .choice-primary-btn:disabled,
+    .choice-secondary-btn:disabled,
+    .choice-danger-btn:disabled,
+    .choice-icon-danger:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .choice-help {
+        display: flex;
+        gap: 0.7rem;
+        margin: 1rem 0;
+        padding: 0.85rem 1rem;
+        border-left: 4px solid var(--MenuColor);
+        border-radius: 8px;
+        background: var(--bg-color-light);
+        font-size: 0.86rem;
+        line-height: 1.5;
+    }
+
+    .choice-help strong {
+        color: var(--bg-color-btn);
+    }
+
+    .choice-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.7rem 0.9rem;
+        margin-bottom: 1rem;
+        border-radius: 9px;
+        font-weight: 700;
+        font-size: 0.88rem;
+    }
+
+    .choice-status.success {
+        background: #f0fff4;
+        border: 1px solid #9ae6b4;
+        color: #276749;
+    }
+    .choice-status.error {
+        background: #fff5f5;
+        border: 1px solid #feb2b2;
+        color: #c53030;
+    }
+    .choice-status.info {
+        background: #ebf8ff;
+        border: 1px solid #90cdf4;
+        color: #2b6cb0;
+    }
+    .choice-status button {
+        border: 0;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+    }
+
+    .choice-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .choice-toolbar input {
+        flex: 1;
+        min-width: 0;
+        padding: 0.68rem 0.85rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 9px;
+        font: inherit;
+    }
+
+    .choice-count {
+        white-space: nowrap;
+        padding: 0.42rem 0.65rem;
+        border-radius: 999px;
+        background: var(--nav-bg);
+        color: var(--bg-color-btn);
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .choice-loading,
+    .choice-empty {
+        padding: 1.25rem;
+        border: 1px dashed var(--nav-bg);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.8);
+        text-align: center;
+    }
+
+    .choice-empty {
+        display: grid;
+        gap: 0.5rem;
+        justify-items: center;
+    }
+
+    .choice-empty span {
+        opacity: 0.75;
+        font-size: 0.88rem;
+    }
+
+    .choice-group-list {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .choice-group-card {
+        border: 1px solid var(--nav-bg);
+        border-radius: 16px;
+        background: #fff;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+    }
+
+    .choice-group-card.is-new {
+        border-color: var(--MenuColor);
+    }
+    .choice-group-card.is-dirty {
+        box-shadow: 0 6px 20px rgba(15, 174, 189, 0.1);
+    }
+
+    .choice-group-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1rem 1.15rem;
+        border-bottom: 1px solid var(--bg-color-light);
+        background: linear-gradient(180deg, #fff, var(--bg-color-light));
+    }
+
+    .choice-group-number {
+        display: block;
+        margin-bottom: 0.2rem;
+        font-size: 0.72rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        opacity: 0.62;
+        font-weight: 700;
+    }
+
+    .choice-group-card h3 {
+        margin: 0;
+        color: var(--bg-color-btn);
+        font-size: 1.18rem;
+    }
+
+    .choice-group-card-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+    }
+
+    .choice-dirty-badge {
+        padding: 0.2rem 0.5rem;
+        border-radius: 999px;
+        background: #fffaf0;
+        color: #975a16;
+        border: 1px solid #fbd38d;
+        font-size: 0.68rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .choice-group-fields {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr) minmax(
+                110px,
+                0.55fr
+            );
+        gap: 0.75rem;
+        padding: 1rem 1.15rem 0.65rem;
+    }
+
+    .choice-group-fields label,
+    .choice-options-section label {
+        display: grid;
+        gap: 0.35rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
+    .choice-group-fields input,
+    .choice-group-fields select,
+    .choice-option-row input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.62rem 0.72rem;
+        border: 2px solid var(--nav-bg);
+        border-radius: 8px;
+        background: #fff;
+        color: #2d3748;
+        font: inherit;
+    }
+
+    .choice-id-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        padding: 0 1.15rem 1rem;
+        font-size: 0.75rem;
+        opacity: 0.75;
+    }
+
+    .choice-id-row code {
+        padding: 0.16rem 0.35rem;
+        border-radius: 5px;
+        background: var(--bg-color-light);
+    }
+
+    .choice-id-row small {
+        flex-basis: 100%;
+        font-size: 0.72rem;
+    }
+
+    .choice-options-section,
+    .choice-assignment-section {
+        margin: 0 1.15rem 1rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .choice-section-heading {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.85rem 0.95rem;
+        background: var(--bg-color-light);
+        border-bottom: 1px solid var(--nav-bg);
+    }
+
+    .choice-section-heading h4 {
+        margin: 0 0 0.15rem;
+        color: var(--bg-color-btn);
+    }
+    .choice-section-heading p {
+        margin: 0;
+        font-size: 0.76rem;
+        opacity: 0.72;
+    }
+
+    .choice-options-list {
+        padding: 0.55rem 0.7rem 0.7rem;
+    }
+
+    .choice-option-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(150px, 0.35fr) 36px;
+        gap: 0.55rem;
+        align-items: center;
+        padding: 0.35rem 0;
+    }
+
+    .choice-option-row--head {
+        padding: 0.15rem 0 0.45rem;
+        grid-template-columns: minmax(0, 1fr) minmax(150px, 0.35fr) 36px;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        opacity: 0.55;
+    }
+
+    .price-input-wrap {
+        position: relative;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        border: 2px solid var(--nav-bg);
+        border-radius: 8px;
+        overflow: hidden;
+        background: #fff;
+    }
+
+    .price-input-wrap span {
+        padding-left: 0.65rem;
+        font-weight: 800;
+        opacity: 0.6;
+    }
+    .price-input-wrap input {
+        border: 0;
+        border-radius: 0;
+        padding-left: 0.25rem;
+    }
+
+    .choice-icon-danger {
+        width: 34px;
+        height: 34px;
+        border: 1px solid #fed7d7;
+        background: #fff5f5;
+        color: #c53030;
+        font-size: 1.1rem;
+    }
+
+    .choice-group-summary {
+        padding: 1.1rem 1.15rem;
+        display: grid;
+        gap: 0.9rem;
+    }
+
+    .choice-summary-meta,
+    .choice-summary-assignments {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .choice-summary-type,
+    .choice-summary-sort,
+    .choice-summary-assignment-count {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 0.2rem 0.6rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 999px;
+        background: var(--bg-color-light);
+        color: var(--bg-color-btn);
+        font-size: 0.72rem;
+        font-weight: 800;
+    }
+
+    .choice-summary-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }
+
+    .choice-summary-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.42rem 0.65rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 999px;
+        background: #fff;
+        color: var(--txt-color);
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .choice-summary-pill small {
+        color: var(--MenuColor);
+        font-size: 0.68rem;
+        font-weight: 800;
+    }
+
+    .choice-edit-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        min-height: 38px;
+        padding: 0 0.75rem;
+        border: 1px solid var(--MenuColor);
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--MenuColor) 9%, white);
+        color: var(--bg-color-btn);
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 800;
+        cursor: pointer;
+    }
+
+    .choice-edit-btn:hover {
+        background: var(--MenuColor);
+        color: #fff;
+    }
+
+    .choice-assignment-dropdowns {
+        display: grid;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: #fff;
+    }
+
+    .choice-assignment-dropdown {
+        border: 1px solid var(--nav-bg);
+        border-radius: 11px;
+        overflow: hidden;
+        background: #fff;
+    }
+
+    .choice-assignment-dropdown summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.8rem 0.9rem;
+        cursor: pointer;
+        list-style: none;
+        background: var(--bg-color-light);
+        color: var(--bg-color-btn);
+    }
+
+    .choice-assignment-dropdown summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .choice-assignment-dropdown summary::after {
+        content: "⌄";
+        flex: 0 0 auto;
+        font-size: 1rem;
+        line-height: 1;
+        transition: transform 0.18s ease;
+    }
+
+    .choice-assignment-dropdown[open] summary::after {
+        transform: rotate(180deg);
+    }
+
+    .choice-assignment-dropdown summary > span:first-child {
+        display: grid;
+        gap: 0.15rem;
+        min-width: 0;
+    }
+
+    .choice-assignment-dropdown summary strong {
+        font-size: 0.88rem;
+    }
+    .choice-assignment-dropdown summary small {
+        font-size: 0.72rem;
+        opacity: 0.7;
+        font-weight: 600;
+    }
+
+    .choice-dropdown-count {
+        flex: 0 0 auto;
+        padding: 0.25rem 0.55rem;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid var(--nav-bg);
+        font-size: 0.7rem;
+        font-weight: 800;
+    }
+
+    .choice-assignment-dropdown-body {
+        display: grid;
+        gap: 1rem;
+        max-height: 420px;
+        overflow: auto;
+        padding: 0.9rem;
+    }
+
+    .choice-assignment-type-block {
+        display: grid;
+        gap: 0.5rem;
+    }
+
+    .choice-assignment-type-heading {
+        margin: 0;
+        padding: 0.45rem 0.55rem;
+        border-left: 3px solid var(--MenuColor);
+        border-radius: 5px;
+        background: var(--bg-color-light);
+        color: var(--bg-color-btn);
+        font-size: 0.74rem;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .choice-category-grid,
+    .choice-item-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.45rem;
+    }
+
+    .choice-assignment-category-block {
+        display: grid;
+        gap: 0.35rem;
+    }
+
+    .choice-assignment-subhead {
+        padding: 0.3rem 0.45rem;
+        color: var(--text-color-hover);
+        font-size: 0.75rem;
+        font-weight: 900;
+        text-transform: capitalize;
+    }
+
+    .choice-assignment-tile {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 42px;
+        padding: 0.48rem 0.55rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--txt-color);
+        font-size: 0.76rem;
+        font-weight: 700;
+        line-height: 1.25;
+        cursor: pointer;
+    }
+
+    .choice-assignment-tile:hover {
+        border-color: var(--MenuColor);
+        background: color-mix(in srgb, var(--MenuColor) 6%, white);
+    }
+
+    .choice-assignment-tile input {
+        flex: 0 0 auto;
+        width: 17px;
+        height: 17px;
+        accent-color: var(--bg-color-btn);
+    }
+
+    .choice-save-row {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 0.85rem;
+        padding: 0.9rem 1.15rem 1.1rem;
+        border-top: 1px solid var(--bg-color-light);
+    }
+
+    .choice-save-note {
+        margin-right: auto;
+        font-size: 0.78rem;
+        opacity: 0.7;
+    }
+
+    @media (max-width: 900px) {
+        .choice-category-grid,
+        .choice-item-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .choice-editor-header {
+            flex-direction: column;
+        }
+        .choice-editor-actions {
+            justify-content: flex-start;
+        }
+        .choice-group-fields {
+            grid-template-columns: 1fr;
+        }
+        .choice-assignment-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .choice-editor {
+            margin-top: var(--nav-headerM);
+            padding: 0 0.75rem;
+        }
+        .choice-group-card-header {
+            flex-direction: column;
+        }
+        .choice-group-card-actions {
+            width: 100%;
+            justify-content: space-between;
+        }
+        .choice-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .choice-count {
+            align-self: flex-start;
+        }
+        .choice-section-heading {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+        .choice-category-grid,
+        .choice-item-grid {
+            grid-template-columns: 1fr;
+        }
+        .choice-option-row,
+        .choice-option-row--head {
+            grid-template-columns: minmax(0, 1fr) 120px 36px;
+        }
+        .choice-save-row {
+            align-items: stretch;
+            flex-direction: column;
+        }
+        .choice-save-note {
+            margin-right: 0;
+        }
+        .choice-save-row .choice-primary-btn {
+            width: 100%;
+        }
+    }
+</style>

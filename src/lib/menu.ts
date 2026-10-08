@@ -24,6 +24,7 @@ export interface MenuItem {
   sort_order: number | null;
   takeaway: boolean | null;
   takeaway_days: number[] | null;
+  two_for_one: boolean;
   /** Modifier groups inherited from the item's category plus item-specific groups. */
   modifier_groups: ModifierGroup[];
   /** Only the groups explicitly assigned to this individual item. */
@@ -51,13 +52,11 @@ export interface MenuType {
  * to offer groups which are not currently attached to an item.
  */
 export async function getModifierGroups(): Promise<ModifierGroup[]> {
-  const [
-    { data: groups, error: groupError },
-    { data: options, error: optionError },
-  ] = await Promise.all([
-    supabase.from("modifier_groups").select("*").order("sort_order"),
-    supabase.from("modifier_options").select("*").order("sort_order"),
-  ]);
+  const [{ data: groups, error: groupError }, { data: options, error: optionError }] =
+    await Promise.all([
+      supabase.from("modifier_groups").select("*").order("sort_order"),
+      supabase.from("modifier_options").select("*").order("sort_order"),
+    ]);
 
   if (groupError) throw groupError;
   if (optionError) throw optionError;
@@ -106,7 +105,8 @@ export async function getMenu(): Promise<MenuType[]> {
                     image_url,
                     sort_order,
                     takeaway,
-                    takeaway_days
+                    takeaway_days,
+                    two_for_one
                 )
             )
         `,
@@ -123,8 +123,7 @@ export async function getMenu(): Promise<MenuType[]> {
     throw error;
   }
   if (groupError || optionError || categoryGroupError || itemGroupError) {
-    const modifierError =
-      groupError || optionError || categoryGroupError || itemGroupError;
+    const modifierError = groupError || optionError || categoryGroupError || itemGroupError;
     console.error("Supabase modifier query error:", modifierError);
     throw modifierError;
   }
@@ -176,11 +175,10 @@ export async function getMenu(): Promise<MenuType[]> {
         ...category,
         items: category.items.map((item) => {
           const itemSpecificIds = groupsByItem[String(item.id)] || [];
-          const combinedIds = [
-            ...new Set([...categoryGroupIds, ...itemSpecificIds]),
-          ];
+          const combinedIds = [...new Set([...categoryGroupIds, ...itemSpecificIds])];
           return {
             ...item,
+            two_for_one: item.two_for_one === true,
             item_modifier_group_ids: [...new Set(itemSpecificIds)],
             modifier_groups: combinedIds
               .map((id) => groupsById[id])

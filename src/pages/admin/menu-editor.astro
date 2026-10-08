@@ -3,17 +3,17 @@
 import Layout from "../../layouts/Layout.astro";
 import MenuEditor from "../../components/MenuEditor.astro";
 import MenuEditorNav from "../../components/MenuEditorNav.astro";
-import { guardAdminPage } from "../../lib/adminAuth";
+import { guardAdminPage, isOwnerUser } from "../../lib/adminAuth";
 
 // Must render per request: it reads the login cookies and the live menu.
 export const prerender = false;
 
 // Signed out -> /admin/login, signed in but not an admin -> 403.
-const { response } = await guardAdminPage(Astro.cookies, Astro.redirect);
+const { user, response } = await guardAdminPage(Astro.cookies, Astro.redirect);
 if (response) return response;
 ---
 
 <Layout title="Menu Editor">
-    <MenuEditorNav active="items" />
-    <MenuEditor />
+    <MenuEditorNav active="items" owner={isOwnerUser(user)} />
+    <MenuEditor owner={isOwnerUser(user)} canEditItemOptions={true} />
 </Layout>
