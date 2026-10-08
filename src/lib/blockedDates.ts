@@ -35,3 +35,33 @@ export function isDateBlocked(
             block.start_date <= bookingDate && block.end_date >= bookingDate,
     );
 }
+
+
+export interface BookingTimeBlock {
+    id: string;
+    block_date: string;
+    start_time: string;
+    end_time: string;
+    reason: string | null;
+    source_booking_id?: string | null;
+}
+
+/**
+ * Publicly readable time-slot blocks created by Admin/Owner staff.
+ * The public booking picker uses these to disable individual times while the
+ * existing blocked_dates table continues to represent whole-day closures.
+ */
+export async function getBookingTimeBlocks(): Promise<BookingTimeBlock[]> {
+    const { data, error } = await supabase
+        .from("booking_time_blocks")
+        .select("id,block_date,start_time,end_time")
+        .order("block_date", { ascending: true })
+        .order("start_time", { ascending: true });
+
+    if (error) {
+        console.error("[bookingTimeBlocks] public read failed:", error.message);
+        return [];
+    }
+
+    return (data ?? []) as BookingTimeBlock[];
+}

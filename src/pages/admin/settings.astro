@@ -3,7 +3,7 @@
 import Layout from "../../layouts/Layout.astro";
 import AuthSessionManager from "../../components/AuthSessionManager.astro";
 import { guardOwnerPage, getDisplayName } from "../../lib/adminAuth";
-import { getWhatsAppNumber } from "../../lib/siteInfo";
+import { getBookingCalendarLocation, getWhatsAppNumber } from "../../lib/siteInfo";
 
 export const prerender = false;
 
@@ -12,7 +12,11 @@ const { user, response } = await guardOwnerPage(Astro.cookies, Astro.redirect);
 if (response) return response;
 
 const currentNumber = await getWhatsAppNumber();
-const initialData = JSON.stringify({ whatsappNumber: currentNumber });
+const currentBookingLocation = await getBookingCalendarLocation();
+const initialData = JSON.stringify({
+    whatsappNumber: currentNumber,
+    bookingCalendarLocation: currentBookingLocation,
+});
 ---
 
 <Layout title="Admin - Settings">
@@ -58,6 +62,26 @@ const initialData = JSON.stringify({ whatsappNumber: currentNumber });
                 </button>
             </div>
         </section>
+
+        <section class="setting-card">
+            <label for="booking-calendar-location">Group booking calendar location</label>
+            <p class="hint">
+                This is the location pre-filled when an Owner/Admin adds a confirmed group booking to Google Calendar.
+                Use the full street address or the location wording you want shown on the event.
+            </p>
+            <div class="setting-row">
+                <input
+                    id="booking-calendar-location"
+                    type="text"
+                    maxlength="500"
+                    x-model="bookingCalendarLocation"
+                    placeholder="Lords &amp; Legends, Amanzimtoti, South Coast"
+                />
+                <button class="save-btn" @click="saveBookingCalendarLocation()">
+                    Save
+                </button>
+            </div>
+        </section>
     </main>
 </Layout>
 
@@ -65,6 +89,7 @@ const initialData = JSON.stringify({ whatsappNumber: currentNumber });
     document.addEventListener("alpine:init", () => {
         Alpine.data("siteSettings", (initial) => ({
             whatsappNumber: initial.whatsappNumber,
+            bookingCalendarLocation: initial.bookingCalendarLocation,
             statusMessage: "",
             statusIsError: false,
 
@@ -81,6 +106,26 @@ const initialData = JSON.stringify({ whatsappNumber: currentNumber });
 
                     this.whatsappNumber = data.number;
                     this.statusMessage = "Saved.";
+                    this.statusIsError = false;
+                } catch (err) {
+                    this.statusMessage = "Error: " + err.message;
+                    this.statusIsError = true;
+                }
+            },
+
+            async saveBookingCalendarLocation() {
+                try {
+                    const res = await fetch("/admin/set-booking-location", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ location: this.bookingCalendarLocation }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok)
+                        throw new Error(data.error || "Request failed");
+
+                    this.bookingCalendarLocation = data.location;
+                    this.statusMessage = "Calendar location saved.";
                     this.statusIsError = false;
                 } catch (err) {
                     this.statusMessage = "Error: " + err.message;

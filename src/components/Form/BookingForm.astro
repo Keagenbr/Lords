@@ -4,10 +4,18 @@ import type { BlockedDate } from "../../lib/blockedDates";
 interface Props {
     whatsappNumber: string;
     blockedDates?: BlockedDate[];
+    bookingTimeBlocks?: Array<{
+        id: string;
+        block_date: string;
+        start_time: string;
+        end_time: string;
+        reason?: string | null;
+    }>;
 }
 
-const { whatsappNumber, blockedDates = [] } = Astro.props;
+const { whatsappNumber, blockedDates = [], bookingTimeBlocks = [] } = Astro.props;
 const blockedDatesJson = JSON.stringify(blockedDates);
+const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
 ---
 
 <section class="form-card" aria-labelledby="booking-title">
@@ -25,6 +33,7 @@ const blockedDatesJson = JSON.stringify(blockedDates);
         data-booking-form
         data-whatsapp-number={whatsappNumber}
         data-blocked-dates={blockedDatesJson}
+        data-booking-time-blocks={bookingTimeBlocksJson}
         novalidate
     >
         <div class="form-grid form-grid--two">
@@ -306,6 +315,14 @@ const blockedDatesJson = JSON.stringify(blockedDates);
             reason?: string | null;
         }>;
 
+        const timeBlocks = JSON.parse(form.dataset.bookingTimeBlocks || "[]") as Array<{
+            id: string;
+            block_date: string;
+            start_time: string;
+            end_time: string;
+            reason?: string | null;
+        }>;
+
         let calendarMonth = new Date();
         calendarMonth.setDate(1);
         let pickerMode: "date" | "time" = "date";
@@ -361,7 +378,7 @@ const blockedDatesJson = JSON.stringify(blockedDates);
             return { earliest: "10:30", latest: "19:30" };
         };
 
-        const getTimeOptions = (iso: string) => {
+        const getAllTimeOptions = (iso: string) => {
             const range = getTimeRange(iso);
             if (!range) return [];
             const result: string[] = [];
@@ -373,6 +390,20 @@ const blockedDatesJson = JSON.stringify(blockedDates);
             }
             return result;
         };
+
+        const normaliseBlockTime = (value: string) => String(value || "").slice(0, 5);
+
+        const getTimeBlock = (iso: string, time: string) =>
+            timeBlocks.find((block) =>
+                block.block_date === iso &&
+                normaliseBlockTime(block.start_time) <= time &&
+                normaliseBlockTime(block.end_time) > time,
+            );
+
+        const getTimeOptions = (iso: string) =>
+            getAllTimeOptions(iso).filter((time) => !getTimeBlock(iso, time));
+
+        const hasAvailableTimes = (iso: string) => getTimeOptions(iso).length > 0;
 
         const setError = (field: string, message = "") => {
             const target = form.querySelector<HTMLElement>(`[data-error-for="${field}"]`);
@@ -386,7 +417,12 @@ const blockedDatesJson = JSON.stringify(blockedDates);
         };
 
         const isDateBlocked = (iso: string) => !!getBlock(iso);
-        const isDateUnavailable = (iso: string) => !iso || iso < todayLocalIso() || isDateBlocked(iso) || isSunday(iso);
+        const isDateUnavailable = (iso: string) =>
+            !iso ||
+            iso < todayLocalIso() ||
+            isDateBlocked(iso) ||
+            isSunday(iso) ||
+            !hasAvailableTimes(iso);
 
         const validateDate = () => {
             const value = dateInput.value;
@@ -419,7 +455,13 @@ const blockedDatesJson = JSON.stringify(blockedDates);
                 return false;
             }
             if (!options.includes(value)) {
-                setError("bookingTime", "Please choose a time between 10:30 and 19:30, Monday to Saturday.");
+                const blocked = getTimeBlock(dateInput.value, value);
+                setError(
+                    "bookingTime",
+                    blocked
+                        ? `That time is unavailable${blocked.reason ? `: ${blocked.reason}` : "."}`
+                        : "Please choose a time between 10:30 and 19:30, Monday to Saturday.",
+                );
                 return false;
             }
             setError("bookingTime");
@@ -467,16 +509,19 @@ const blockedDatesJson = JSON.stringify(blockedDates);
                 if (unavailable) button.classList.add("is-unavailable");
                 if (block) button.classList.add("is-blocked");
                 if (sunday && !block) button.classList.add("is-booking-closed");
+                if (!block && !sunday && !hasAvailableTimes(iso)) button.classList.add("is-time-blocked");
                 button.textContent = String(day);
                 button.disabled = unavailable;
 
                 const labelParts = [formatDate(iso)];
                 if (block) labelParts.push(`Blocked${block.reason ? `: ${block.reason}` : ""}`);
                 else if (sunday) labelParts.push("Group bookings unavailable on Sunday");
+                else if (!hasAvailableTimes(iso)) labelParts.push("No booking times available");
                 if (iso === todayLocalIso()) labelParts.push("Today");
                 button.setAttribute("aria-label", labelParts.join(" — "));
                 if (block) button.title = block.reason ? `Blocked: ${block.reason}` : "Blocked date";
                 else if (sunday) button.title = "Group bookings are currently available Monday to Saturday only";
+                else if (!hasAvailableTimes(iso)) button.title = "No booking times are currently available";
 
                 button.addEventListener("click", () => selectDate(iso));
                 calendar.append(button);
@@ -499,15 +544,23 @@ const blockedDatesJson = JSON.stringify(blockedDates);
             }
 
             timeNote.textContent = "Bookings are available every 30 minutes from 10:30 to 19:30.";
-            options.forEach((time) => {
+            const allOptions = getAllTimeOptions(dateInput.value);
+            allOptions.forEach((time) => {
+                const blocked = getTimeBlock(dateInput.value, time);
                 const button = document.createElement("button");
                 button.type = "button";
                 button.className = "time-option";
-                button.textContent = time;
+                if (blocked) button.classList.add("is-blocked");
                 if (time === timeInput.value) button.classList.add("is-selected");
-                button.addEventListener("click", () => selectTime(time));
+                button.disabled = Boolean(blocked);
+                button.textContent = blocked ? `${time} · Unavailable` : time;
+                if (blocked) button.title = blocked.reason ? `Unavailable: ${blocked.reason}` : "Unavailable";
+                else button.addEventListener("click", () => selectTime(time));
                 timeOptions.append(button);
             });
+            if (allOptions.length && options.length === 0) {
+                timeNote.textContent = "All booking times for this date are currently unavailable.";
+            }
         };
 
         const openPicker = (mode: "date" | "time") => {
@@ -712,6 +765,14 @@ const blockedDatesJson = JSON.stringify(blockedDates);
                     );
                     return;
                 }
+                if (result.error === "time_blocked") {
+                    setError(
+                        "bookingTime",
+                        result.reason ? `That time is unavailable: ${result.reason}` : "That time has just become unavailable. Please choose another time.",
+                    );
+                    renderTimeOptions();
+                    return;
+                }
                 if (result.error === "sunday_unavailable") {
                     setError("bookingDate", "Group booking times are currently available Monday to Saturday only.");
                     return;
@@ -882,6 +943,27 @@ const blockedDatesJson = JSON.stringify(blockedDates);
 
     [data-booking-picker][hidden] {
         display: none !important;
+    }
+
+    .calendar-day.is-time-blocked {
+        position: relative;
+    }
+
+    .calendar-day.is-time-blocked::after {
+        content: "";
+        position: absolute;
+        right: 0.35rem;
+        bottom: 0.25rem;
+        width: 0.35rem;
+        height: 0.35rem;
+        border-radius: 50%;
+        background: var(--text-color-hover);
+    }
+
+    .time-option.is-blocked {
+        cursor: not-allowed;
+        opacity: 0.5;
+        text-decoration: line-through;
     }
 
     @media (max-width: 700px) {

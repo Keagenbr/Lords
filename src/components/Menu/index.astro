@@ -1059,6 +1059,8 @@ const platterNotice = {
                         const opt = group.options.find((o) => o.id === optId);
                         if (opt) {
                             options.push({
+                                groupId: group.id,
+                                optionId: opt.id,
                                 label: group.name,
                                 value: opt.name,
                                 price: opt.price,

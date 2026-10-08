@@ -73,10 +73,11 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     options: (Array.isArray(l?.options) ? l.options : [])
       .slice(0, 10)
       .map((o: any) => ({
+        groupId: clean(o?.groupId, 80),
+        optionId: clean(o?.optionId, 80),
         label: clean(o?.label, 40),
         value: clean(o?.value, 60),
-        // Optional — only present for modifier options with a price > 0
-        // (e.g. Extra Sauce, Schnitzel Add-ons). Clamped to a sane range.
+        // Price is replaced with the database value after modifier validation.
         price: Number.isFinite(+o?.price)
           ? Math.min(Math.max(+o.price, 0), 10000)
           : 0,
@@ -183,7 +184,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 
   const { data: menuItems, error: menuError } = await supabaseAdmin
     .from("menu_items")
-    .select("id,takeaway,takeaway_days")
+    .select("id,category_id,takeaway,takeaway_days")
     .in("id", itemIds);
   if (menuError) {
     console.error(
@@ -206,6 +207,101 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
       : [0, 1, 2, 3, 4, 5, 6];
     if (!days.includes(orderDayOfWeek)) {
       return json({ ok: false, error: "item_unavailable" }, 409);
+    }
+  }
+
+  // ── Validate modifier selections against the groups actually assigned to
+  // each menu item. This prevents a forged request from adding a topping or
+  // sauce choice to an item that does not offer it.
+  const [
+    { data: categoryLinks, error: categoryLinksError },
+    { data: itemLinks, error: itemLinksError },
+    { data: modifierOptions, error: modifierOptionsError },
+    { data: modifierGroups, error: modifierGroupsError },
+  ] = await Promise.all([
+    supabaseAdmin
+      .from("category_modifier_groups")
+      .select("category_id,group_id"),
+    supabaseAdmin
+      .from("menu_item_modifier_groups")
+      .select("item_id,group_id")
+      .in("item_id", itemIds),
+    supabaseAdmin.from("modifier_options").select("id,group_id,name,price"),
+    supabaseAdmin.from("modifier_groups").select("id,name"),
+  ]);
+
+  if (
+    categoryLinksError ||
+    itemLinksError ||
+    modifierOptionsError ||
+    modifierGroupsError
+  ) {
+    console.error(
+      "[orders/whatsapp] modifier validation query failed:",
+      categoryLinksError?.message ||
+        itemLinksError?.message ||
+        modifierOptionsError?.message ||
+        modifierGroupsError?.message,
+    );
+    return json({ ok: false, error: "modifier_check_failed" }, 500);
+  }
+
+  const groupsByCategory = new Map<string, string[]>();
+  for (const link of categoryLinks ?? []) {
+    const categoryId = String(link.category_id);
+    const groups = groupsByCategory.get(categoryId) ?? [];
+    groups.push(String(link.group_id));
+    groupsByCategory.set(categoryId, groups);
+  }
+
+  const allowedGroupsByItem = new Map<string, Set<string>>();
+  for (const menuItem of menuItems ?? []) {
+    const allowed = new Set<string>(
+      groupsByCategory.get(String(menuItem.category_id)) ?? [],
+    );
+    allowedGroupsByItem.set(String(menuItem.id), allowed);
+  }
+  for (const link of itemLinks ?? []) {
+    allowedGroupsByItem.get(String(link.item_id))?.add(String(link.group_id));
+  }
+
+  const groupNameById = new Map(
+    (modifierGroups ?? []).map((group: any) => [
+      String(group.id),
+      String(group.name ?? group.id),
+    ]),
+  );
+  const optionById = new Map(
+    (modifierOptions ?? []).map((option: any) => [
+      String(option.id),
+      {
+        groupId: String(option.group_id),
+        name: String(option.name ?? ""),
+        price: Number(option.price ?? 0),
+      },
+    ]),
+  );
+
+  for (const item of items) {
+    const allowedGroups = allowedGroupsByItem.get(String(item.id));
+    if (!allowedGroups) return json({ ok: false, error: "invalid_item" }, 400);
+
+    for (const option of item.options) {
+      if (!option.groupId || !option.optionId) {
+        return json({ ok: false, error: "invalid_modifier" }, 400);
+      }
+      const dbOption = optionById.get(option.optionId);
+      if (
+        !dbOption ||
+        dbOption.groupId !== option.groupId ||
+        !allowedGroups.has(option.groupId)
+      ) {
+        return json({ ok: false, error: "invalid_modifier" }, 400);
+      }
+
+      option.label = groupNameById.get(dbOption.groupId) || option.label;
+      option.value = dbOption.name;
+      option.price = dbOption.price;
     }
   }
 

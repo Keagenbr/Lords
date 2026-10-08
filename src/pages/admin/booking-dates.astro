@@ -8,23 +8,96 @@ import {
     getUserRole,
 } from "../../lib/adminAuth";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
+import { getBookingCalendarLocation } from "../../lib/siteInfo";
+import { buildGoogleCalendarTemplateUrl } from "../../lib/googleCalendar";
 
 export const prerender = false;
 
 const { user, response } = await guardAdminPage(Astro.cookies, Astro.redirect);
 if (response) return response;
 
-const { data: rows, error: listError } = await supabaseAdmin
-    .from("blocked_dates")
-    .select("id,start_date,end_date,reason,created_at")
-    .order("start_date", { ascending: true });
+const todayParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Johannesburg",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+}).formatToParts(new Date());
+const southAfricaToday = `${todayParts.find((p) => p.type === "year")?.value}-${todayParts.find((p) => p.type === "month")?.value}-${todayParts.find((p) => p.type === "day")?.value}`;
 
-const initialBlocks = JSON.stringify(rows ?? []);
+const [blockedResult, pendingResult, timeBlockResult, confirmedResult] = await Promise.all([
+    supabaseAdmin
+        .from("blocked_dates")
+        .select("id,start_date,end_date,reason,created_at,created_by,source_booking_id")
+        .order("start_date", { ascending: true }),
+    supabaseAdmin
+        .from("booking_requests")
+        .select(
+            "id,booking_no,created_at,people_count,contact_name,booking_name,contact_phone,booking_date,booking_time,status,decided_at,decided_by,decision_note",
+        )
+        .eq("status", "requested")
+        .order("created_at", { ascending: true }),
+    supabaseAdmin
+        .from("booking_time_blocks")
+        .select("id,block_date,start_time,end_time,reason,created_at,created_by,source_booking_id")
+        .order("block_date", { ascending: true })
+        .order("start_time", { ascending: true }),
+    supabaseAdmin
+        .from("booking_requests")
+        .select(
+            "id,booking_no,created_at,people_count,contact_name,booking_name,contact_phone,booking_date,booking_time,status,decided_at,decided_by,decision_note",
+        )
+        .eq("status", "confirmed")
+        .gte("booking_date", southAfricaToday)
+        .order("booking_date", { ascending: true })
+        .order("booking_time", { ascending: true })
+        .limit(200),
+]);
+
+const rows = blockedResult.data ?? [];
+const pendingBookings = pendingResult.data ?? [];
+const timeBlockRows = timeBlockResult.data ?? [];
+const bookingCalendarLocation = await getBookingCalendarLocation();
+const confirmedBookings = (confirmedResult.data ?? []).map((booking) => {
+    if (!booking.booking_date || !booking.booking_time) {
+        return { ...booking, calendarUrl: null };
+    }
+
+    let calendarUrl: string | null = null;
+    try {
+        calendarUrl = buildGoogleCalendarTemplateUrl({
+            title: `Lords & Legends - Group Booking - ${booking.booking_name || booking.contact_name || `LL-B${booking.booking_no}`}`,
+            date: booking.booking_date,
+            startTime: booking.booking_time,
+            details: [
+                "Lords & Legends group booking",
+                `Booking Ref: LL-B${booking.booking_no}`,
+                `People: ${booking.people_count}`,
+                `Contact: ${booking.contact_name}`,
+            ].join("\n"),
+            location: bookingCalendarLocation,
+        });
+    } catch (error) {
+        console.error(`[admin/booking-dates] calendar URL generation failed for ${booking.id}:`, error);
+    }
+
+    return { ...booking, calendarUrl };
+});
+
+const initialBlocks = JSON.stringify(rows);
+const initialPending = JSON.stringify(pendingBookings);
+const initialTimeBlocks = JSON.stringify(timeBlockRows);
+const initialConfirmed = JSON.stringify(confirmedBookings);
+const initialCalendarLocation = JSON.stringify(bookingCalendarLocation);
 const role = getUserRole(user);
+
+const listError = blockedResult.error || pendingResult.error || timeBlockResult.error || confirmedResult.error;
 ---
 
 <Layout title="Admin - Booking Dates">
-    <main class="booking-dates-container" x-data={`blockedDatesManager(${initialBlocks})`}>
+    <main
+        class="booking-dates-container"
+        x-data={`bookingDatesManager(${initialBlocks}, ${initialPending}, ${initialTimeBlocks}, ${initialConfirmed}, ${initialCalendarLocation})`}
+    >
         <AuthSessionManager
             displayName={getDisplayName(user)}
             userEmail={user.email}
@@ -35,14 +108,13 @@ const role = getUserRole(user);
         <header class="booking-dates-header">
             <h1>Booking Dates</h1>
             <p>
-                Admin/Owner access. Block dates customers should not be able to
-                request for group bookings. Current role: <strong>{role}</strong>.
+                Admin/Owner access. Block dates or individual times customers should not be able to request for group bookings. Current role: <strong>{role}</strong>.
             </p>
             <a href="/admin" class="back-link">&larr; Back to Admin Portal</a>
         </header>
 
         {listError && (
-            <p class="notice error">Couldn't load blocked dates: {listError.message}</p>
+            <p class="notice error">Some booking availability data could not be loaded: {listError.message}</p>
         )}
 
         <p
@@ -50,35 +122,41 @@ const role = getUserRole(user);
             x-show="statusMessage"
             x-text="statusMessage"
             :class="statusIsError ? 'status-error' : 'status-ok'"
+            x-cloak
         ></p>
+
+        <template x-if="pendingBookings.length > 0 || activeBooking">
+            <div class="pending-booking-launcher-wrap">
+                <button
+                    type="button"
+                    class="pending-booking-launcher"
+                    @click="openReviewPanel()"
+                >
+                    <span class="pending-booking-dot" aria-hidden="true"></span>
+                    <span>
+                        <strong x-text="pendingBookings.length"></strong>
+                        <span x-text="pendingBookings.length === 1 ? 'pending booking request' : 'pending booking requests'"></span>
+                    </span>
+                    <span class="pending-booking-launcher-arrow" aria-hidden="true">›</span>
+                </button>
+            </div>
+        </template>
 
         <section class="setting-card">
             <h2>Block a date or date range</h2>
             <p class="hint">
-                Use the same date for Start and End when only one day should be
-                unavailable. Deleting a block immediately makes those dates
-                bookable again.
+                Use the same date for Start and End when only one day should be unavailable. Individual time blocks can be created after confirming a booking below.
             </p>
 
-            <form class="block-form" @submit.prevent="openAddConfirmation()">
+            <form class="block-form" @submit.prevent="addBlock()">
                 <div class="date-grid">
                     <div>
                         <label for="block-start">Start date</label>
-                        <input
-                            id="block-start"
-                            type="date"
-                            x-model="startDate"
-                            required
-                        />
+                        <input id="block-start" type="date" x-model="startDate" required />
                     </div>
                     <div>
                         <label for="block-end">End date</label>
-                        <input
-                            id="block-end"
-                            type="date"
-                            x-model="endDate"
-                            required
-                        />
+                        <input id="block-end" type="date" x-model="endDate" required />
                     </div>
                 </div>
 
@@ -108,68 +186,395 @@ const role = getUserRole(user);
                 <span class="count-pill" x-text="`${blocks.length} block${blocks.length === 1 ? '' : 's'}`"></span>
             </div>
 
+            <div class="selection-toolbar" x-show="blocks.length > 0" x-cloak>
+                <label class="selection-check selection-check--master">
+                    <input
+                        type="checkbox"
+                        :checked="allBlocksSelected"
+                        :indeterminate="selectedBlockIds.length > 0 && !allBlocksSelected"
+                        @change="toggleAllBlocks($event.target.checked)"
+                        aria-label="Select all blocked dates"
+                    />
+                    <span>Select all</span>
+                </label>
+                <span class="selection-count" x-text="selectedBlockIds.length ? `${selectedBlockIds.length} selected` : 'Select blocks to delete'" aria-live="polite"></span>
+                <button
+                    type="button"
+                    class="bulk-delete-btn"
+                    x-show="selectedBlockIds.length > 0"
+                    @click="deleteSelectedBlocks()"
+                    :disabled="bulkDeleting"
+                >
+                    <span x-text="bulkDeleting ? 'Deleting…' : 'Delete selected'"></span>
+                </button>
+            </div>
+
             <div x-show="blocks.length === 0" class="empty-state">
                 No blocked dates are currently set.
             </div>
 
             <div class="blocks-list" x-show="blocks.length > 0">
                 <template x-for="block in sortedBlocks()" :key="block.id">
-                    <article class="block-row">
+                    <article class="block-row" :class="{ 'is-selected': selectedBlockIds.includes(block.id), 'is-deleting': deletingId === block.id || deletingId === 'bulk-block' && selectedBlockIds.includes(block.id) }">
+                        <label class="row-select" :aria-label="`Select ${formatRange(block)} for deletion`">
+                            <input type="checkbox" :value="block.id" x-model="selectedBlockIds" :disabled="bulkDeleting" />
+                        </label>
                         <div class="block-row__text">
                             <strong x-text="formatRange(block)"></strong>
                             <span x-show="block.reason" x-text="block.reason"></span>
                         </div>
                         <button
                             type="button"
-                            class="danger-btn"
-                            @click="openRemoveConfirmation(block)"
-                            :disabled="deletingId === block.id"
+                            class="danger-btn delete-item-btn"
+                            @click="removeBlock(block)"
+                            :disabled="bulkDeleting || deletingId === block.id"
                         >
-                            <span x-text="deletingId === block.id ? 'Removing…' : 'Unblock'"></span>
+                            <span x-text="deletingId === block.id ? 'Deleting…' : 'Delete'"></span>
                         </button>
                     </article>
                 </template>
             </div>
         </section>
 
+        <section class="blocks-card">
+            <div class="section-heading">
+                <div>
+                    <h2>Blocked time slots</h2>
+                    <p class="hint">These individual time blocks are unavailable on the booking calendar. They can be created after a booking is confirmed.</p>
+                </div>
+                <span class="count-pill" x-text="`${timeBlocks.length} slot${timeBlocks.length === 1 ? '' : 's'}`"></span>
+            </div>
+
+            <div class="selection-toolbar" x-show="timeBlocks.length > 0" x-cloak>
+                <label class="selection-check selection-check--master">
+                    <input
+                        type="checkbox"
+                        :checked="allTimeBlocksSelected"
+                        :indeterminate="selectedTimeBlockIds.length > 0 && !allTimeBlocksSelected"
+                        @change="toggleAllTimeBlocks($event.target.checked)"
+                        aria-label="Select all blocked time slots"
+                    />
+                    <span>Select all</span>
+                </label>
+                <span class="selection-count" x-text="selectedTimeBlockIds.length ? `${selectedTimeBlockIds.length} selected` : 'Select slots to delete'" aria-live="polite"></span>
+                <button
+                    type="button"
+                    class="bulk-delete-btn"
+                    x-show="selectedTimeBlockIds.length > 0"
+                    @click="deleteSelectedTimeBlocks()"
+                    :disabled="bulkDeleting"
+                >
+                    <span x-text="bulkDeleting ? 'Deleting…' : 'Delete selected'"></span>
+                </button>
+            </div>
+
+            <div x-show="timeBlocks.length === 0" class="empty-state">
+                No individual time slots are currently blocked.
+            </div>
+
+            <div class="blocks-list" x-show="timeBlocks.length > 0">
+                <template x-for="block in sortedTimeBlocks()" :key="block.id">
+                    <article class="block-row block-row--time" :class="{ 'is-selected': selectedTimeBlockIds.includes(block.id), 'is-deleting': deletingId === `time-${block.id}` || deletingId === 'bulk-time' && selectedTimeBlockIds.includes(block.id) }">
+                        <label class="row-select" :aria-label="`Select ${formatDate(block.block_date)} ${block.start_time.slice(0,5)} to ${block.end_time.slice(0,5)} for deletion`">
+                            <input type="checkbox" :value="block.id" x-model="selectedTimeBlockIds" :disabled="bulkDeleting" />
+                        </label>
+                        <div class="block-row__text">
+                            <strong x-text="`${formatDate(block.block_date)} · ${block.start_time.slice(0,5)}–${block.end_time.slice(0,5)}`"></strong>
+                            <span x-show="block.reason" x-text="block.reason"></span>
+                        </div>
+                        <button
+                            type="button"
+                            class="danger-btn delete-item-btn"
+                            @click="removeTimeBlock(block)"
+                            :disabled="bulkDeleting || deletingId === `time-${block.id}`"
+                        >
+                            <span x-text="deletingId === `time-${block.id}` ? 'Deleting…' : 'Delete'"></span>
+                        </button>
+                    </article>
+                </template>
+            </div>
+        </section>
+
+        <section class="blocks-card confirmed-bookings-card" x-show="confirmedBookings.length > 0" x-cloak>
+            <div class="section-heading">
+                <div>
+                    <h2>Already booked</h2>
+                    <p class="hint">Confirmed group bookings from the booking form. Add any booking to your Google Calendar without using a Google API.</p>
+                </div>
+                <span class="count-pill" x-text="`${confirmedBookings.length} booking${confirmedBookings.length === 1 ? '' : 's'}`"></span>
+            </div>
+
+            <div class="selection-toolbar" x-show="confirmedBookings.length > 0" x-cloak>
+                <label class="selection-check selection-check--master">
+                    <input
+                        type="checkbox"
+                        :checked="allConfirmedBookingsSelected"
+                        :indeterminate="selectedConfirmedBookingIds.length > 0 && !allConfirmedBookingsSelected"
+                        @change="toggleAllConfirmedBookings($event.target.checked)"
+                        aria-label="Select all confirmed bookings"
+                    />
+                    <span>Select all</span>
+                </label>
+                <span class="selection-count" x-text="selectedConfirmedBookingIds.length ? `${selectedConfirmedBookingIds.length} selected` : 'Select bookings to delete'" aria-live="polite"></span>
+                <button
+                    type="button"
+                    class="bulk-delete-btn"
+                    x-show="selectedConfirmedBookingIds.length > 0"
+                    @click="deleteSelectedConfirmedBookings()"
+                    :disabled="bulkDeleting"
+                >
+                    <span x-text="bulkDeleting ? 'Deleting…' : 'Delete selected'"></span>
+                </button>
+            </div>
+
+            <div class="confirmed-bookings-list">
+                <template x-for="booking in sortedConfirmedBookings()" :key="booking.id">
+                    <article class="confirmed-booking-row" :class="{ 'is-selected': selectedConfirmedBookingIds.includes(booking.id), 'is-deleting': deletingId === `booking-${booking.id}` || deletingId === 'bulk-booking' && selectedConfirmedBookingIds.includes(booking.id) }">
+                        <label class="row-select" :aria-label="`Select LL-B${booking.booking_no} for deletion`">
+                            <input type="checkbox" :value="booking.id" x-model="selectedConfirmedBookingIds" :disabled="bulkDeleting" />
+                        </label>
+                        <div class="confirmed-booking-row__text">
+                            <span class="booking-ref" x-text="`LL-B${booking.booking_no}`"></span>
+                            <strong x-text="booking.booking_name || booking.contact_name"></strong>
+                            <span x-text="`${booking.people_count} people · ${formatDate(booking.booking_date)} · ${booking.booking_time || 'Time not recorded'}`"></span>
+                        </div>
+                        <div class="confirmed-booking-row__actions">
+                            <a
+                                class="calendar-btn"
+                                :class="{ 'is-disabled': !canAddToCalendar(booking) }"
+                                :href="canAddToCalendar(booking) ? booking.calendarUrl : undefined"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                @click="if (!canAddToCalendar(booking)) $event.preventDefault()"
+                                :aria-disabled="canAddToCalendar(booking) ? 'false' : 'true'"
+                            >
+                                <span aria-hidden="true">&#128197;</span>
+                                Add to Google Calendar
+                            </a>
+                            <button
+                                type="button"
+                                class="danger-btn delete-item-btn"
+                                @click="deleteConfirmedBooking(booking)"
+                                :disabled="bulkDeleting || deletingId === `booking-${booking.id}`"
+                            >
+                                <span x-text="deletingId === `booking-${booking.id}` ? 'Deleting…' : 'Delete'"></span>
+                            </button>
+                        </div>
+                    </article>
+                </template>
+            </div>
+        </section>
+
+        <!-- Pending booking review panel. It is only rendered/activated when there is a pending request. -->
         <div
-            class="booking-confirm-overlay"
-            x-show="confirmOpen"
+            class="pending-booking-overlay"
+            x-show="reviewOpen"
             x-cloak
-            @click.self="closeConfirm()"
-            @keydown.escape.window="closeConfirm()"
+            @click.self="closeReviewPanel()"
+            role="presentation"
         >
-            <div
-                class="booking-confirm-dialog"
+            <section
+                class="pending-booking-panel"
                 role="dialog"
                 aria-modal="true"
-                aria-labelledby="booking-confirm-title"
-                aria-describedby="booking-confirm-message"
+                aria-labelledby="pending-booking-title"
+                @click.stop
+                tabindex="-1"
+                x-ref="reviewPanel"
             >
-                <div class="booking-confirm-icon" aria-hidden="true" x-text="confirmAction === 'remove' ? '!' : '✓'"></div>
-                <h2 id="booking-confirm-title" x-text="confirmTitle"></h2>
-                <p id="booking-confirm-message" x-text="confirmMessage"></p>
-                <div class="booking-confirm-actions">
-                    <button type="button" class="booking-confirm-cancel" @click="closeConfirm()">Cancel</button>
-                    <button
-                        type="button"
-                        class="booking-confirm-primary"
-                        :class="confirmAction === 'remove' ? 'is-danger' : ''"
-                        @click="confirmAction === 'remove' ? performRemoveBlock() : performAddBlock()"
-                        :disabled="confirmBusy"
-                    >
-                        <span x-text="confirmBusy ? (confirmAction === 'remove' ? 'Unblocking…' : 'Blocking…') : confirmAction === 'remove' ? 'Unblock dates' : 'Block dates'"></span>
-                    </button>
-                </div>
-            </div>
+                <template x-if="reviewStep === 'list'">
+                    <div>
+                        <div class="pending-panel-header">
+                            <div>
+                                <p class="panel-kicker">Booking requests</p>
+                                <h2 id="pending-booking-title">Pending confirmations</h2>
+                                <p x-text="`${pendingBookings.length} request${pendingBookings.length === 1 ? '' : 's'} waiting for review.`"></p>
+                            </div>
+                            <button
+                                type="button"
+                                class="panel-close"
+                                @click="closeReviewPanel()"
+                                aria-label="Close booking requests"
+                            >&times;</button>
+                        </div>
+
+                        <div class="pending-booking-list">
+                            <template x-for="booking in pendingBookings" :key="booking.id">
+                                <article class="pending-booking-card">
+                                    <div class="pending-booking-card__top">
+                                        <div>
+                                            <span class="booking-ref" x-text="`LL-B${booking.booking_no}`"></span>
+                                            <h3 x-text="booking.booking_name || booking.contact_name"></h3>
+                                        </div>
+                                        <span class="pending-pill">Pending</span>
+                                    </div>
+
+                                    <dl class="booking-summary">
+                                        <div><dt>People</dt><dd x-text="booking.people_count"></dd></div>
+                                        <div><dt>Contact</dt><dd x-text="booking.contact_name"></dd></div>
+                                        <div><dt>Phone</dt><dd x-text="booking.contact_phone"></dd></div>
+                                        <div><dt>Date</dt><dd x-text="formatDate(booking.booking_date)"></dd></div>
+                                        <div><dt>Time</dt><dd x-text="booking.booking_time || '—'"></dd></div>
+                                    </dl>
+
+                                    <div class="pending-booking-actions">
+                                        <button
+                                            type="button"
+                                            class="danger-btn"
+                                            @click="denyBooking(booking)"
+                                            :disabled="reviewSavingId === booking.id"
+                                        >
+                                            <span x-text="reviewSavingId === booking.id ? 'Saving…' : 'Deny Booking'"></span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="save-btn pending-confirm-btn"
+                                            @click="confirmBooking(booking)"
+                                            :disabled="reviewSavingId === booking.id"
+                                        >
+                                            <span x-text="reviewSavingId === booking.id ? 'Confirming…' : 'Confirm Booking'"></span>
+                                        </button>
+                                    </div>
+                                </article>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <template x-if="reviewStep === 'blocks' && activeBooking">
+                    <div>
+                        <div class="pending-panel-header">
+                            <div>
+                                <p class="panel-kicker">Booking confirmed</p>
+                                <h2>Block availability</h2>
+                                <p>
+                                    <strong x-text="`LL-B${activeBooking.booking_no}`"></strong>
+                                    is confirmed. You can now block the booking time, the entire day, or add multiple time/day blocks.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                class="panel-close"
+                                @click="finishReviewWithoutBlocks()"
+                                aria-label="Close availability options"
+                            >&times;</button>
+                        </div>
+
+                        <div class="confirmed-booking-summary">
+                            <strong x-text="activeBooking.booking_name || activeBooking.contact_name"></strong>
+                            <span x-text="`${activeBooking.people_count} people · ${formatDate(activeBooking.booking_date)} · ${activeBooking.booking_time}`"></span>
+                        </div>
+
+                        <div class="calendar-action-row" x-show="canAddToCalendar(activeBooking)">
+                            <a
+                                class="calendar-btn calendar-btn--large"
+                                :href="activeBooking.calendarUrl || undefined"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <span aria-hidden="true">&#128197;</span>
+                                Add to Google Calendar
+                            </a>
+                            <p class="calendar-helper-text">Opens a pre-filled 2-hour event at the configured booking location. Nothing is sent to Google until you save it there.</p>
+                        </div>
+
+                        <div class="block-presets">
+                            <button type="button" class="preset-btn" @click="setBookingTimePreset()">
+                                <strong>Block booking time</strong>
+                                <span x-text="`${activeBooking.booking_date} · ${activeBooking.booking_time}`"></span>
+                            </button>
+                            <button type="button" class="preset-btn" @click="setBookingDayPreset()">
+                                <strong>Block full day</strong>
+                                <span x-text="formatDate(activeBooking.booking_date)"></span>
+                            </button>
+                            <button type="button" class="preset-btn" @click="startCustomBlocks()">
+                                <strong>Custom / multiple blocks</strong>
+                                <span>Add different days and times</span>
+                            </button>
+                        </div>
+
+                        <div class="custom-block-editor">
+                            <div class="custom-block-editor__head">
+                                <div>
+                                    <h3>Selected blocks</h3>
+                                    <p>Full-day blocks use the Day option. Time blocks should cover the period you want unavailable.</p>
+                                </div>
+                                <button type="button" class="secondary-btn" @click="addBlockRow()">+ Add block</button>
+                            </div>
+
+                            <div class="custom-block-list">
+                                <template x-for="(row, index) in blockRows" :key="row.key">
+                                    <div class="custom-block-row">
+                                        <label>
+                                            Type
+                                            <select x-model="row.type">
+                                                <option value="time">Time</option>
+                                                <option value="day">Full day</option>
+                                            </select>
+                                        </label>
+                                        <label>
+                                            Date
+                                            <input type="date" x-model="row.date" />
+                                        </label>
+                                        <template x-if="row.type === 'time'">
+                                            <div class="time-range-fields">
+                                                <label>
+                                                    Start
+                                                    <select x-model="row.startTime">
+                                                        <option value="">Start</option>
+                                                        <template x-for="time in timeChoices('start')" :key="time">
+                                                            <option :value="time" x-text="time"></option>
+                                                        </template>
+                                                    </select>
+                                                </label>
+                                                <label>
+                                                    End
+                                                    <select x-model="row.endTime">
+                                                        <option value="">End</option>
+                                                        <template x-for="time in timeChoices('end')" :key="time">
+                                                            <option :value="time" x-text="time"></option>
+                                                        </template>
+                                                    </select>
+                                                </label>
+                                            </div>
+                                        </template>
+                                        <button
+                                            type="button"
+                                            class="row-remove-btn"
+                                            @click="removeBlockRow(index)"
+                                            :disabled="blockRows.length === 1"
+                                            aria-label="Remove block row"
+                                        >&times;</button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <p class="block-save-error" x-show="blockError" x-text="blockError" role="alert"></p>
+
+                        <div class="pending-panel-actions">
+                            <button type="button" class="secondary-btn" @click="finishReviewWithoutBlocks()">
+                                Don't block anything
+                            </button>
+                            <button type="button" class="save-btn" @click="saveBookingBlocks()" :disabled="blockSaving">
+                                <span x-text="blockSaving ? 'Saving blocks…' : 'Save availability blocks'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </section>
         </div>
     </main>
 </Layout>
 
 <script is:inline>
     document.addEventListener("alpine:init", () => {
-        Alpine.data("blockedDatesManager", (initialBlocks) => ({
+        Alpine.data("bookingDatesManager", (initialBlocks, initialPendingBookings, initialTimeBlocks, initialConfirmedBookings, initialCalendarLocation) => ({
             blocks: initialBlocks || [],
+            pendingBookings: initialPendingBookings || [],
+            timeBlocks: initialTimeBlocks || [],
+            confirmedBookings: initialConfirmedBookings || [],
+            calendarLocation: initialCalendarLocation || "Lords & Legends",
             startDate: "",
             endDate: "",
             reason: "",
@@ -177,15 +582,44 @@ const role = getUserRole(user);
             deletingId: "",
             statusMessage: "",
             statusIsError: false,
-            confirmOpen: false,
-            confirmAction: "",
-            confirmTitle: "",
-            confirmMessage: "",
-            confirmBlock: null,
-            confirmBusy: false,
+            reviewOpen: false,
+            reviewStep: "list",
+            reviewSavingId: "",
+            activeBooking: null,
+            blockSaving: false,
+            blockError: "",
+            blockRows: [],
+            nextRowId: 1,
+
+            // Selection state is intentionally kept separate for each data set so
+            // an Admin can delete multiple entries without mixing entity types.
+            selectedBlockIds: [],
+            selectedTimeBlockIds: [],
+            selectedConfirmedBookingIds: [],
+            bulkDeleting: false,
+
+            get allBlocksSelected() {
+                return this.blocks.length > 0 && this.selectedBlockIds.length === this.blocks.length;
+            },
+
+            get allTimeBlocksSelected() {
+                return this.timeBlocks.length > 0 && this.selectedTimeBlockIds.length === this.timeBlocks.length;
+            },
+
+            get allConfirmedBookingsSelected() {
+                return this.confirmedBookings.length > 0 && this.selectedConfirmedBookingIds.length === this.confirmedBookings.length;
+            },
+
+            init() {
+                if (this.pendingBookings.length > 0) {
+                    this.reviewOpen = true;
+                    this.$nextTick(() => this.$refs.reviewPanel?.focus());
+                }
+            },
 
             formatDate(iso) {
                 return new Intl.DateTimeFormat("en-ZA", {
+                    weekday: "short",
                     day: "numeric",
                     month: "long",
                     year: "numeric",
@@ -204,7 +638,199 @@ const role = getUserRole(user);
                 );
             },
 
-            openAddConfirmation() {
+            sortedTimeBlocks() {
+                return [...this.timeBlocks].sort((a, b) =>
+                    `${a.block_date}-${a.start_time}`.localeCompare(`${b.block_date}-${b.start_time}`),
+                );
+            },
+
+            sortedConfirmedBookings() {
+                return [...this.confirmedBookings].sort((a, b) =>
+                    `${a.booking_date}-${a.booking_time || ""}`.localeCompare(`${b.booking_date}-${b.booking_time || ""}`),
+                );
+            },
+
+            canAddToCalendar(booking) {
+                return Boolean(booking?.calendarUrl);
+            },
+
+
+            openReviewPanel() {
+                this.reviewOpen = true;
+                this.reviewStep = this.activeBooking ? "blocks" : "list";
+                this.$nextTick(() => this.$refs.reviewPanel?.focus());
+            },
+
+            closeReviewPanel() {
+                if (this.activeBooking && this.reviewStep === "blocks" && this.pendingBookings.length === 0) {
+                    this.finishReviewWithoutBlocks();
+                    return;
+                }
+                this.reviewOpen = false;
+                this.reviewStep = "list";
+            },
+
+            toggleAllBlocks(checked) {
+                this.selectedBlockIds = checked ? this.blocks.map((block) => block.id) : [];
+            },
+
+            toggleAllTimeBlocks(checked) {
+                this.selectedTimeBlockIds = checked ? this.timeBlocks.map((block) => block.id) : [];
+            },
+
+            toggleAllConfirmedBookings(checked) {
+                this.selectedConfirmedBookingIds = checked ? this.confirmedBookings.map((booking) => booking.id) : [];
+            },
+
+            async confirmDeletion({ title, message }) {
+                // Deletion is destructive; fail closed when the shared dialog system
+                // is not available rather than silently approving the action.
+                if (!window.siteDialog) return false;
+                return window.siteDialog.confirm({
+                    title,
+                    message,
+                    confirmText: "Delete",
+                    cancelText: "Cancel",
+                    tone: "danger",
+                });
+            },
+
+            async deleteSelectedBlocks() {
+                const ids = [...new Set(this.selectedBlockIds)].filter(Boolean);
+                if (!ids.length || this.bulkDeleting) return;
+                const confirmed = await this.confirmDeletion({
+                    title: `Delete ${ids.length} blocked date${ids.length === 1 ? "" : "s"}?`,
+                    message: "The selected date blocks will be removed and those dates will become available for booking again.",
+                });
+                if (!confirmed) return;
+
+                this.bulkDeleting = true;
+                this.deletingId = "bulk-block";
+                try {
+                    const res = await fetch("/admin/blocked-dates", {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify({ ids }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || "Could not delete the selected date blocks.");
+                    const deleted = new Set(data.deletedIds || ids);
+                    this.blocks = this.blocks.filter((item) => !deleted.has(item.id));
+                    this.selectedBlockIds = [];
+                    this.statusMessage = `${ids.length} blocked date${ids.length === 1 ? "" : "s"} deleted.`;
+                    this.statusIsError = false;
+                } catch (error) {
+                    this.statusMessage = error instanceof Error ? error.message : "Could not delete the selected date blocks.";
+                    this.statusIsError = true;
+                } finally {
+                    this.deletingId = "";
+                    this.bulkDeleting = false;
+                }
+            },
+
+            async deleteSelectedTimeBlocks() {
+                const ids = [...new Set(this.selectedTimeBlockIds)].filter(Boolean);
+                if (!ids.length || this.bulkDeleting) return;
+                const confirmed = await this.confirmDeletion({
+                    title: `Delete ${ids.length} blocked time slot${ids.length === 1 ? "" : "s"}?`,
+                    message: "The selected time slots will become available for group bookings again.",
+                });
+                if (!confirmed) return;
+
+                this.bulkDeleting = true;
+                this.deletingId = "bulk-time";
+                try {
+                    const res = await fetch("/admin/booking-blocks", {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify({ ids, type: "time" }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || "Could not delete the selected time slots.");
+                    const deleted = new Set(data.deletedIds || ids);
+                    this.timeBlocks = this.timeBlocks.filter((item) => !deleted.has(item.id));
+                    this.selectedTimeBlockIds = [];
+                    this.statusMessage = `${ids.length} blocked time slot${ids.length === 1 ? "" : "s"} deleted.`;
+                    this.statusIsError = false;
+                } catch (error) {
+                    this.statusMessage = error instanceof Error ? error.message : "Could not delete the selected time slots.";
+                    this.statusIsError = true;
+                } finally {
+                    this.deletingId = "";
+                    this.bulkDeleting = false;
+                }
+            },
+
+            async deleteConfirmedBooking(booking) {
+                if (!booking || this.bulkDeleting) return;
+                const id = booking.id;
+                const confirmed = await this.confirmDeletion({
+                    title: `Delete LL-B${booking.booking_no}?`,
+                    message: "This permanently removes the confirmed booking record. Any availability blocks created from it are not removed automatically.",
+                });
+                if (!confirmed) return;
+
+                this.bulkDeleting = true;
+                this.deletingId = `booking-${id}`;
+                try {
+                    const res = await fetch("/admin/booking-requests", {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify({ ids: [id] }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || "Could not delete the booking.");
+                    this.confirmedBookings = this.confirmedBookings.filter((item) => item.id !== id);
+                    this.selectedConfirmedBookingIds = this.selectedConfirmedBookingIds.filter((selectedId) => selectedId !== id);
+                    this.statusMessage = `LL-B${booking.booking_no} deleted.`;
+                    this.statusIsError = false;
+                } catch (error) {
+                    this.statusMessage = error instanceof Error ? error.message : "Could not delete the booking.";
+                    this.statusIsError = true;
+                } finally {
+                    this.deletingId = "";
+                    this.bulkDeleting = false;
+                }
+            },
+
+            async deleteSelectedConfirmedBookings() {
+                const ids = [...new Set(this.selectedConfirmedBookingIds)].filter(Boolean);
+                if (!ids.length || this.bulkDeleting) return;
+                const confirmed = await this.confirmDeletion({
+                    title: `Delete ${ids.length} confirmed booking${ids.length === 1 ? "" : "s"}?`,
+                    message: "This permanently removes the selected confirmed booking records. Availability blocks created from them are not removed automatically.",
+                });
+                if (!confirmed) return;
+
+                this.bulkDeleting = true;
+                this.deletingId = "bulk-booking";
+                try {
+                    const res = await fetch("/admin/booking-requests", {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify({ ids }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || "Could not delete the selected bookings.");
+                    const deleted = new Set(data.deletedIds || ids);
+                    this.confirmedBookings = this.confirmedBookings.filter((item) => !deleted.has(item.id));
+                    this.selectedConfirmedBookingIds = [];
+                    this.statusMessage = `${ids.length} confirmed booking${ids.length === 1 ? "" : "s"} deleted.`;
+                    this.statusIsError = false;
+                } catch (error) {
+                    this.statusMessage = error instanceof Error ? error.message : "Could not delete the selected bookings.";
+                    this.statusIsError = true;
+                } finally {
+                    this.deletingId = "";
+                    this.bulkDeleting = false;
+                }
+            },
+
+            async addBlock() {
                 this.statusMessage = "";
                 this.statusIsError = false;
 
@@ -219,40 +845,7 @@ const role = getUserRole(user);
                     return;
                 }
 
-                const range = this.startDate === this.endDate
-                    ? this.formatDate(this.startDate)
-                    : `${this.formatDate(this.startDate)} – ${this.formatDate(this.endDate)}`;
-                const reasonText = this.reason.trim() ? ` Reason: ${this.reason.trim()}` : "";
-
-                this.confirmAction = "add";
-                this.confirmTitle = "Block these dates?";
-                this.confirmMessage = `${range}.${reasonText}`;
-                this.confirmBlock = null;
-                this.confirmOpen = true;
-            },
-
-            openRemoveConfirmation(block) {
-                this.statusMessage = "";
-                this.statusIsError = false;
-                this.confirmAction = "remove";
-                this.confirmTitle = "Unblock these dates?";
-                this.confirmMessage = `This will make ${this.formatRange(block)} available for group bookings again.`;
-                this.confirmBlock = block;
-                this.confirmOpen = true;
-            },
-
-            closeConfirm() {
-                this.confirmOpen = false;
-                this.confirmAction = "";
-                this.confirmBlock = null;
-            },
-
-            async performAddBlock() {
-                if (this.confirmBusy) return;
-                this.confirmBusy = true;
                 this.saving = true;
-                this.statusMessage = "";
-                this.statusIsError = false;
                 try {
                     const res = await fetch("/admin/blocked-dates", {
                         method: "POST",
@@ -268,17 +861,12 @@ const role = getUserRole(user);
                     if (!res.ok) throw new Error(data.error || "Could not block dates.");
 
                     this.blocks.push(data.block);
-                    this.blocks.sort((a, b) => a.start_date.localeCompare(b.start_date));
                     this.startDate = "";
                     this.endDate = "";
                     this.reason = "";
-                    this.statusMessage = "Dates blocked successfully.";
+                    this.statusMessage = "Dates blocked.";
                     this.statusIsError = false;
-                    this.confirmBusy = false;
-                    this.closeConfirm();
                 } catch (error) {
-                    this.confirmBusy = false;
-                    this.closeConfirm();
                     this.statusMessage = error instanceof Error ? error.message : "Could not block dates.";
                     this.statusIsError = true;
                 } finally {
@@ -286,35 +874,204 @@ const role = getUserRole(user);
                 }
             },
 
-            async performRemoveBlock() {
-                if (this.confirmBusy || !this.confirmBlock) return;
-                const block = this.confirmBlock;
-                this.confirmBusy = true;
-                this.deletingId = block.id;
-                this.statusMessage = "";
-                this.statusIsError = false;
+            async removeBlock(block) {
+                if (!block || this.bulkDeleting) return;
+                this.selectedBlockIds = [block.id];
+                await this.deleteSelectedBlocks();
+            },
+
+            async removeTimeBlock(block) {
+                if (!block || this.bulkDeleting) return;
+                this.selectedTimeBlockIds = [block.id];
+                await this.deleteSelectedTimeBlocks();
+            },
+
+            async confirmBooking(booking) {
+                this.reviewSavingId = booking.id;
+                this.blockError = "";
                 try {
-                    const res = await fetch("/admin/blocked-dates", {
-                        method: "DELETE",
+                    const res = await fetch("/admin/booking-requests", {
+                        method: "POST",
                         headers: { "Content-Type": "application/json" },
                         credentials: "same-origin",
-                        body: JSON.stringify({ id: block.id }),
+                        body: JSON.stringify({ id: booking.id, action: "confirm" }),
                     });
                     const data = await res.json().catch(() => ({}));
-                    if (!res.ok) throw new Error(data.error || "Could not unblock dates.");
+                    if (!res.ok) throw new Error(data.error || "Could not confirm the booking.");
 
-                    this.blocks = this.blocks.filter((item) => item.id !== block.id);
-                    this.statusMessage = "Dates unblocked successfully.";
-                    this.statusIsError = false;
-                    this.confirmBusy = false;
-                    this.closeConfirm();
+                    this.pendingBookings = this.pendingBookings.filter((item) => item.id !== booking.id);
+                    this.activeBooking = data.booking;
+                    this.confirmedBookings = [
+                        { ...data.booking, calendarUrl: data.calendarUrl || null },
+                        ...this.confirmedBookings.filter((item) => item.id !== data.booking.id),
+                    ];
+                    this.reviewStep = "blocks";
+                    this.blockRows = [];
+                    this.addBlockRow(this.activeBooking.booking_date, this.activeBooking.booking_time || "", "time");
+                    this.$nextTick(() => this.$refs.reviewPanel?.focus());
                 } catch (error) {
-                    this.confirmBusy = false;
-                    this.closeConfirm();
-                    this.statusMessage = error instanceof Error ? error.message : "Could not unblock dates.";
-                    this.statusIsError = true;
+                    this.blockError = error instanceof Error ? error.message : "Could not confirm the booking.";
                 } finally {
-                    this.deletingId = "";
+                    this.reviewSavingId = "";
+                }
+            },
+
+            async denyBooking(booking) {
+                const confirmed = window.siteDialog
+                    ? await window.siteDialog.confirm({
+                        title: "Deny booking request?",
+                        message: `Deny LL-B${booking.booking_no} for ${booking.people_count} people on ${this.formatDate(booking.booking_date)} at ${booking.booking_time}?`,
+                        confirmText: "Deny booking",
+                        cancelText: "Cancel",
+                        tone: "danger",
+                    })
+                    : true;
+                if (!confirmed) return;
+
+                this.reviewSavingId = booking.id;
+                try {
+                    const res = await fetch("/admin/booking-requests", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify({ id: booking.id, action: "deny" }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || "Could not deny the booking.");
+                    this.pendingBookings = this.pendingBookings.filter((item) => item.id !== booking.id);
+                    this.statusMessage = `LL-B${booking.booking_no} denied.`;
+                    this.statusIsError = false;
+                    if (this.pendingBookings.length === 0) this.reviewOpen = false;
+                } catch (error) {
+                    this.blockError = error instanceof Error ? error.message : "Could not deny the booking.";
+                } finally {
+                    this.reviewSavingId = "";
+                }
+            },
+
+            addBlockRow(date = "", startTime = "", type = "time") {
+                this.blockRows.push({
+                    key: this.nextRowId++,
+                    type,
+                    date,
+                    startTime,
+                    endTime: startTime ? this.addThirtyMinutes(startTime) : "",
+                });
+            },
+
+            removeBlockRow(index) {
+                if (this.blockRows.length === 1) return;
+                this.blockRows.splice(index, 1);
+            },
+
+            addThirtyMinutes(time) {
+                if (!/^\d{2}:\d{2}$/.test(time)) return "";
+                const [hours, minutes] = time.split(":").map(Number);
+                const total = hours * 60 + minutes + 30;
+                const hh = String(Math.floor(total / 60)).padStart(2, "0");
+                const mm = String(total % 60).padStart(2, "0");
+                return `${hh}:${mm}`;
+            },
+
+            timeChoices(kind) {
+                const values = [];
+                const start = kind === "start" ? 10 * 60 + 30 : 11 * 60;
+                const end = kind === "start" ? 19 * 60 + 30 : 20 * 60;
+                for (let total = start; total <= end; total += 30) {
+                    values.push(`${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`);
+                }
+                return values;
+            },
+
+            setBookingTimePreset() {
+                this.blockRows = [];
+                this.addBlockRow(
+                    this.activeBooking?.booking_date || "",
+                    this.activeBooking?.booking_time || "",
+                    "time",
+                );
+                this.blockError = "";
+            },
+
+            setBookingDayPreset() {
+                this.blockRows = [];
+                this.addBlockRow(this.activeBooking?.booking_date || "", "", "day");
+                this.blockError = "";
+            },
+
+            startCustomBlocks() {
+                this.blockRows = [];
+                this.addBlockRow(this.activeBooking?.booking_date || "", this.activeBooking?.booking_time || "", "time");
+                this.addBlockRow("", "", "day");
+                this.blockError = "";
+            },
+
+            validateBlockRows() {
+                const valid = [];
+                for (const row of this.blockRows) {
+                    if (!row.date) return "Every block needs a date.";
+                    if (row.type === "time") {
+                        if (!row.startTime || !row.endTime) return "Every time block needs a start and end time.";
+                        if (row.endTime <= row.startTime) return "A time block must end after it starts.";
+                    }
+                    valid.push({
+                        type: row.type,
+                        date: row.date,
+                        startTime: row.type === "time" ? row.startTime : "",
+                        endTime: row.type === "time" ? row.endTime : "",
+                    });
+                }
+                return valid;
+            },
+
+            async saveBookingBlocks() {
+                this.blockError = "";
+                const blocks = this.validateBlockRows();
+                if (typeof blocks === "string") {
+                    this.blockError = blocks;
+                    return;
+                }
+                if (!blocks.length) {
+                    this.finishReviewWithoutBlocks();
+                    return;
+                }
+
+                this.blockSaving = true;
+                try {
+                    const res = await fetch("/admin/booking-blocks", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify({
+                            bookingId: this.activeBooking?.id || null,
+                            blocks,
+                        }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || "Could not create availability blocks.");
+
+                    this.blocks.push(...(data.dayBlocks || []));
+                    this.timeBlocks.push(...(data.timeBlocks || []));
+                    this.statusMessage = `Availability updated for LL-B${this.activeBooking.booking_no}.`;
+                    this.statusIsError = false;
+                    this.finishReviewWithoutBlocks();
+                } catch (error) {
+                    this.blockError = error instanceof Error ? error.message : "Could not create availability blocks.";
+                } finally {
+                    this.blockSaving = false;
+                }
+            },
+
+            finishReviewWithoutBlocks() {
+                this.activeBooking = null;
+                this.reviewStep = "list";
+                this.blockRows = [];
+                this.blockError = "";
+                if (this.pendingBookings.length > 0) {
+                    this.reviewOpen = true;
+                    this.$nextTick(() => this.$refs.reviewPanel?.focus());
+                } else {
+                    this.reviewOpen = false;
                 }
             },
         }));
@@ -322,6 +1079,8 @@ const role = getUserRole(user);
 </script>
 
 <style lang="scss">
+    [x-cloak] { display: none !important; }
+
     .booking-dates-container {
         max-width: 900px;
         margin: 5rem auto 2rem;
@@ -334,14 +1093,8 @@ const role = getUserRole(user);
         padding-bottom: 1rem;
         margin-bottom: 1.5rem;
 
-        h1 {
-            margin: 0 0 0.25rem;
-        }
-
-        p {
-            margin: 0 0 0.5rem;
-            opacity: 0.78;
-        }
+        h1 { margin: 0 0 0.25rem; }
+        p { margin: 0 0 0.5rem; opacity: 0.78; }
     }
 
     .back-link {
@@ -380,10 +1133,7 @@ const role = getUserRole(user);
         margin-bottom: 1.25rem;
     }
 
-    h2 {
-        margin: 0 0 0.35rem;
-        font-size: 1.15rem;
-    }
+    h2 { margin: 0 0 0.35rem; font-size: 1.15rem; }
 
     .hint {
         margin: 0 0 1rem;
@@ -392,10 +1142,7 @@ const role = getUserRole(user);
         line-height: 1.55;
     }
 
-    .block-form {
-        display: grid;
-        gap: 1rem;
-    }
+    .block-form { display: grid; gap: 1rem; }
 
     .date-grid {
         display: grid;
@@ -409,7 +1156,8 @@ const role = getUserRole(user);
         margin-bottom: 0.4rem;
     }
 
-    input {
+    input,
+    select {
         width: 100%;
         box-sizing: border-box;
         padding: 0.65rem 0.8rem;
@@ -420,17 +1168,18 @@ const role = getUserRole(user);
         background: #fff;
     }
 
-    input:focus {
+    input:focus,
+    select:focus {
         outline: none;
         border-color: var(--MenuColor);
         box-shadow: 0 0 0 3px color-mix(in srgb, var(--MenuColor) 18%, transparent);
     }
 
     .save-btn,
-    .danger-btn {
+    .danger-btn,
+    .secondary-btn {
         min-height: 44px;
         padding: 0.6rem 1rem;
-        border: none;
         border-radius: 8px;
         font: inherit;
         font-weight: 700;
@@ -438,14 +1187,12 @@ const role = getUserRole(user);
     }
 
     .save-btn {
-        justify-self: start;
+        border: none;
         background: var(--bg-color-btn);
         color: var(--text-color-dark);
     }
 
-    .save-btn:hover:not(:disabled) {
-        background: var(--text-color-hover);
-    }
+    .save-btn:hover:not(:disabled) { background: var(--text-color-hover); }
 
     .danger-btn {
         background: #fff5f5;
@@ -453,15 +1200,17 @@ const role = getUserRole(user);
         border: 1px solid #e8b4ad;
     }
 
-    .danger-btn:hover:not(:disabled) {
-        background: #ffe8e5;
+    .danger-btn:hover:not(:disabled) { background: #ffe8e5; }
+
+    .secondary-btn {
+        border: 1px solid var(--nav-bg);
+        background: var(--text-color-dark);
+        color: var(--txt-color);
     }
 
     .save-btn:disabled,
-    .danger-btn:disabled {
-        cursor: wait;
-        opacity: 0.65;
-    }
+    .danger-btn:disabled,
+    .secondary-btn:disabled { cursor: wait; opacity: 0.65; }
 
     .section-heading {
         display: flex;
@@ -487,11 +1236,7 @@ const role = getUserRole(user);
         opacity: 0.75;
     }
 
-    .blocks-list {
-        display: grid;
-        gap: 0.75rem;
-        margin-top: 1rem;
-    }
+    .blocks-list { display: grid; gap: 0.75rem; margin-top: 1rem; }
 
     .block-row {
         display: flex;
@@ -507,129 +1252,536 @@ const role = getUserRole(user);
         display: grid;
         gap: 0.2rem;
         min-width: 0;
-
-        strong {
-            font-size: 0.95rem;
-        }
-
-        span {
-            font-size: 0.82rem;
-            opacity: 0.72;
-        }
+        strong { font-size: 0.95rem; }
+        span { font-size: 0.82rem; opacity: 0.72; }
     }
 
-    .booking-confirm-overlay {
+    .pending-booking-launcher-wrap {
+        margin: 0 0 1.25rem;
+        position: sticky;
+        top: 1rem;
+        z-index: 20;
+    }
+
+    .pending-booking-launcher {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        width: 100%;
+        padding: 0.9rem 1rem;
+        border: 1px solid var(--MenuColor);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--bg-color-btn) 12%, white);
+        color: var(--txt-color);
+        text-align: left;
+        font: inherit;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+        cursor: pointer;
+    }
+
+    .pending-booking-launcher strong { font-size: 1.1rem; }
+    .pending-booking-launcher-arrow { margin-left: auto; font-size: 1.3rem; }
+
+    .pending-booking-dot {
+        width: 0.7rem;
+        height: 0.7rem;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--text-color-hover);
+        box-shadow: 0 0 0 5px color-mix(in srgb, var(--text-color-hover) 15%, transparent);
+    }
+
+    .pending-booking-overlay {
         position: fixed;
         inset: 0;
-        z-index: 3000;
+        z-index: 1000;
         display: grid;
         place-items: center;
-        padding: 1.25rem;
-        background: rgb(33 24 24 / 72%);
-        backdrop-filter: blur(4px);
+        padding: 1rem;
+        background: rgb(22 31 31 / 68%);
+        backdrop-filter: blur(3px);
     }
 
-    .booking-confirm-dialog {
-        width: min(480px, 100%);
-        box-sizing: border-box;
-        padding: 1.5rem;
-        border: 1px solid var(--nav-bg);
+    .pending-booking-panel {
+        width: min(760px, 100%);
+        max-height: min(90vh, 900px);
+        overflow: auto;
+        background: var(--nav-bg, #f4e5df);
+        border: 1px solid color-mix(in srgb, var(--bg-color-btn) 35%, transparent);
         border-radius: 18px;
-        background: var(--body-bg, #f8efec);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.28);
+        padding: 1.25rem;
         color: var(--txt-color);
-        box-shadow: 0 18px 50px rgb(33 24 24 / 28%);
-        text-align: center;
     }
 
-    .booking-confirm-icon {
-        width: 48px;
-        height: 48px;
-        margin: 0 auto 0.9rem;
-        display: grid;
-        place-items: center;
-        border-radius: 50%;
-        border: 2px solid var(--bg-color-btn);
-        color: var(--bg-color-btn);
+    .pending-panel-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: flex-start;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid color-mix(in srgb, var(--txt-color) 12%, transparent);
+
+        h2 { color: var(--bg-color-btn); }
+        p { margin: 0.2rem 0 0; line-height: 1.5; }
+    }
+
+    .panel-kicker {
+        font-size: 0.75rem;
         font-weight: 800;
-        font-size: 1.1rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-color-hover);
     }
 
-    .booking-confirm-dialog h2 {
-        margin-bottom: 0.55rem;
+    .panel-close {
+        width: 2.3rem;
+        height: 2.3rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 50%;
+        background: #fff;
         color: var(--txt-color);
-        font-size: 1.25rem;
+        font-size: 1.3rem;
+        cursor: pointer;
     }
 
-    .booking-confirm-dialog p {
-        margin: 0;
-        color: var(--txt-color);
-        opacity: 0.78;
-        line-height: 1.55;
+    .pending-booking-list { display: grid; gap: 0.85rem; padding-top: 1rem; }
+
+    .pending-booking-card {
+        background: #fff;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+        padding: 1rem;
     }
 
-    .booking-confirm-actions {
+    .pending-booking-card__top {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+
+        h3 { margin: 0.2rem 0 0; }
+    }
+
+    .booking-ref {
+        color: var(--bg-color-btn);
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+    }
+
+    .pending-pill {
+        align-self: flex-start;
+        padding: 0.3rem 0.55rem;
+        border-radius: 999px;
+        background: #fff6d8;
+        color: #7a5b08;
+        font-size: 0.75rem;
+        font-weight: 800;
+    }
+
+    .booking-summary {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.75rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+        margin: 0;
+
+        div { display: grid; gap: 0.1rem; }
+        dt { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; opacity: 0.6; }
+        dd { margin: 0; font-weight: 650; }
+    }
+
+    .pending-booking-actions,
+    .pending-panel-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.65rem;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .pending-confirm-btn { margin-left: auto; }
+
+    .confirmed-bookings-card {
         margin-top: 1.25rem;
     }
 
-    .booking-confirm-cancel,
-    .booking-confirm-primary {
-        min-height: 44px;
-        padding: 0.65rem 1rem;
-        border-radius: 9px;
+    .confirmed-bookings-list {
+        display: grid;
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+
+    .confirmed-booking-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.85rem 0.9rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 10px;
+        background: #fff;
+    }
+
+    .confirmed-booking-row__text {
+        display: grid;
+        gap: 0.2rem;
+        min-width: 0;
+    }
+
+    .confirmed-booking-row__text > span:last-child {
+        font-size: 0.82rem;
+        opacity: 0.72;
+    }
+
+    .calendar-action-row {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        gap: 0.85rem;
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        border: 1px solid color-mix(in srgb, var(--MenuColor) 28%, var(--nav-bg));
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--MenuColor) 8%, white);
+    }
+
+    .calendar-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        min-height: 42px;
+        padding: 0.6rem 0.85rem;
+        border: 1px solid var(--MenuColor);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--bg-color-btn);
+        text-decoration: none;
         font: inherit;
+        font-weight: 800;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    .calendar-btn:hover:not(.is-disabled) {
+        background: color-mix(in srgb, var(--MenuColor) 10%, white);
+    }
+
+    .calendar-btn--large {
+        min-height: 44px;
+    }
+
+    .calendar-btn.is-disabled {
+        opacity: 0.45;
+        pointer-events: none;
+        cursor: not-allowed;
+    }
+
+    .calendar-helper-text {
+        margin: 0;
+        font-size: 0.78rem;
+        line-height: 1.45;
+        opacity: 0.72;
+    }
+
+    .confirmed-booking-summary {
+        display: grid;
+        gap: 0.15rem;
+        margin: 1rem 0;
+        padding: 0.9rem 1rem;
+        border-left: 4px solid var(--MenuColor);
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    .confirmed-booking-summary span { opacity: 0.75; }
+
+    .block-presets {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.7rem;
+    }
+
+    .preset-btn {
+        display: grid;
+        gap: 0.3rem;
+        min-height: 82px;
+        padding: 0.8rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 10px;
+        background: #fff;
+        color: var(--txt-color);
+        text-align: left;
+        font: inherit;
+        cursor: pointer;
+    }
+
+    .preset-btn:hover { border-color: var(--MenuColor); }
+    .preset-btn span { font-size: 0.78rem; opacity: 0.7; }
+
+    .custom-block-editor {
+        margin-top: 1rem;
+        padding: 1rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 12px;
+        background: color-mix(in srgb, #fff 72%, transparent);
+    }
+
+    .custom-block-editor__head {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: flex-start;
+        margin-bottom: 0.8rem;
+
+        h3 { margin: 0; }
+        p { margin: 0.2rem 0 0; font-size: 0.78rem; opacity: 0.7; }
+    }
+
+    .custom-block-list { display: grid; gap: 0.7rem; }
+
+    .custom-block-row {
+        display: grid;
+        grid-template-columns: 0.8fr 1fr 1.6fr auto;
+        gap: 0.65rem;
+        align-items: end;
+        padding: 0.7rem;
+        border: 1px solid color-mix(in srgb, var(--nav-bg) 80%, transparent);
+        border-radius: 10px;
+        background: #fff;
+    }
+
+    .time-range-fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.65rem;
+    }
+
+    .row-remove-btn {
+        width: 40px;
+        height: 40px;
+        border: 1px solid #e8b4ad;
+        border-radius: 8px;
+        background: #fff5f5;
+        color: #a33a30;
+        font-size: 1.2rem;
+        cursor: pointer;
+    }
+
+    .row-remove-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .block-save-error {
+        margin: 0.8rem 0 0;
+        padding: 0.65rem 0.8rem;
+        border: 1px solid #feb2b2;
+        border-radius: 8px;
+        background: #fff5f5;
+        color: #a33a30;
+        font-weight: 650;
+    }
+
+    /*
+     * Selection / bulk actions UX
+     * ---------------------------------
+     * Checkboxes are deliberately placed at the start of each row so the
+     * destructive action remains visually associated with the selected item.
+     * The toolbar only exposes the bulk delete control when at least one row
+     * is selected, reducing accidental destructive clicks.
+     */
+    .selection-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin: 0.9rem 0 0.25rem;
+        padding: 0.65rem 0.75rem;
+        border: 1px solid color-mix(in srgb, var(--MenuColor) 22%, var(--nav-bg));
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--MenuColor) 5%, #fff);
+    }
+
+    .selection-check,
+    .row-select {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .selection-check input,
+    .row-select input {
+        width: 1rem;
+        height: 1rem;
+        margin: 0;
+        accent-color: var(--bg-color-btn);
+        cursor: pointer;
+    }
+
+    .selection-check--master {
+        gap: 0.45rem;
+        font-size: 0.82rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .selection-count {
+        font-size: 0.8rem;
+        opacity: 0.72;
+        flex: 1 1 auto;
+    }
+
+    .bulk-delete-btn {
+        min-height: 38px;
+        padding: 0.45rem 0.75rem;
+        border: 1px solid #d79a92;
+        border-radius: 8px;
+        background: #fff4f2;
+        color: #8f3027;
+        font: inherit;
+        font-size: 0.82rem;
         font-weight: 800;
         cursor: pointer;
     }
 
-    .booking-confirm-cancel {
-        background: transparent;
-        color: var(--txt-color);
-        border: 2px solid var(--nav-bg);
+    .bulk-delete-btn:hover:not(:disabled) {
+        border-color: #b86a60;
+        background: #ffe7e3;
     }
 
-    .booking-confirm-primary {
-        background: var(--bg-color-btn);
-        color: var(--text-color-dark);
-        border: 2px solid var(--bg-color-btn);
-    }
-
-    .booking-confirm-primary.is-danger {
-        background: transparent;
-        color: #8c3d34;
-        border-color: #cf9a91;
-    }
-
-    .booking-confirm-cancel:hover:not(:disabled),
-    .booking-confirm-primary:hover:not(:disabled) {
-        filter: brightness(0.97);
-    }
-
-    .booking-confirm-cancel:disabled,
-    .booking-confirm-primary:disabled {
+    .bulk-delete-btn:disabled,
+    .delete-item-btn:disabled {
         cursor: wait;
-        opacity: 0.6;
+        opacity: 0.55;
+    }
+
+    .delete-item-btn {
+        min-width: 82px;
+    }
+
+    .block-row.is-selected,
+    .confirmed-booking-row.is-selected {
+        border-color: color-mix(in srgb, var(--MenuColor) 58%, var(--nav-bg));
+        background: color-mix(in srgb, var(--MenuColor) 6%, #fff);
+    }
+
+    .block-row,
+    .confirmed-booking-row {
+        /* State transitions are opt-in below under prefers-reduced-motion. */
+        transition: none;
+    }
+
+    .confirmed-booking-row__actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+        flex: 0 0 auto;
+    }
+
+    /*
+     * Motion policy:
+     * Animations are enabled only when the user has explicitly expressed no
+     * reduced-motion preference. The base styles above remain fully static.
+     */
+    @media (prefers-reduced-motion: no-preference) {
+        .block-row,
+        .confirmed-booking-row,
+        .selection-toolbar,
+        .pending-booking-launcher,
+        .bulk-delete-btn,
+        .danger-btn,
+        .calendar-btn,
+        .preset-btn {
+            transition:
+                transform 160ms ease,
+                box-shadow 160ms ease,
+                border-color 160ms ease,
+                background-color 160ms ease,
+                opacity 160ms ease;
+        }
+
+        .block-row:hover,
+        .confirmed-booking-row:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgb(33 24 24 / 8%);
+        }
+
+        .selection-toolbar {
+            animation: adminBulkToolbarIn 180ms ease-out both;
+        }
+
+        .block-row.is-selected,
+        .confirmed-booking-row.is-selected {
+            animation: adminSelectionPulse 180ms ease-out both;
+        }
+
+        /* During a destructive request, lightly communicate which rows are being processed. */
+        .block-row.is-deleting,
+        .confirmed-booking-row.is-deleting {
+            animation: adminDeletePending 220ms ease-in-out infinite alternate;
+        }
+
+        @keyframes adminBulkToolbarIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes adminSelectionPulse {
+            from { transform: scale(0.995); }
+            to { transform: scale(1); }
+        }
+
+        @keyframes adminDeletePending {
+            from { opacity: 0.72; }
+            to { opacity: 1; }
+        }
     }
 
     @media (max-width: 768px) {
-        .booking-dates-container {
-            margin-top: 1rem;
-            padding: 12px;
-        }
-
-        .date-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .block-row {
+        .booking-dates-container { margin-top: 1rem; padding: 12px; }
+        .date-grid { grid-template-columns: 1fr; }
+        .block-row { align-items: stretch; flex-direction: column; }
+        .danger-btn { width: 100%; }
+        .pending-booking-overlay { place-items: end center; padding: 0.5rem; }
+        .pending-booking-panel { max-height: 94vh; border-radius: 16px 16px 0 0; padding: 1rem; }
+        .booking-summary { grid-template-columns: 1fr; }
+        .block-presets { grid-template-columns: 1fr; }
+        .custom-block-row { grid-template-columns: 1fr 1fr; }
+        .time-range-fields { grid-column: 1 / -1; }
+        .row-remove-btn { width: 100%; }
+        .pending-booking-actions > button,
+        .pending-panel-actions > button { flex: 1 1 100%; }
+        .pending-confirm-btn { margin-left: 0; }
+        .block-row,
+        .confirmed-booking-row {
             align-items: stretch;
-            flex-direction: column;
+            grid-template-columns: auto 1fr;
         }
-
-        .danger-btn {
+        .block-row {
+            display: grid;
+        }
+        .delete-item-btn {
+            grid-column: 2;
             width: 100%;
         }
+        .confirmed-booking-row {
+            display: grid;
+        }
+        .confirmed-booking-row__actions {
+            grid-column: 2;
+            align-items: stretch;
+        }
+        .confirmed-booking-row__actions > * {
+            flex: 1 1 100%;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .calendar-btn { width: 100%; box-sizing: border-box; }
+        .calendar-action-row { grid-template-columns: 1fr; }
+        .selection-toolbar { align-items: stretch; }
+        .selection-count { flex-basis: 100%; }
     }
 </style>

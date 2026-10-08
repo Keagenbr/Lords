@@ -51,6 +51,11 @@ const ALLOWED_TABLES: Record<string, { pk: string[]; columns: string[] }> = {
     pk: ["category_id", "group_id"],
     columns: ["category_id", "group_id"],
   },
+  // composite primary key — item-specific modifier assignments
+  menu_item_modifier_groups: {
+    pk: ["item_id", "group_id"],
+    columns: ["item_id", "group_id"],
+  },
 };
 
 const json = (body: unknown, status = 200) =>

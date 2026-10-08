@@ -2,33 +2,38 @@
 import Layout from "../layouts/Layout.astro";
 import InquiryForm from "../components/Form/InquiryForm.astro";
 import BookingForm from "../components/Form/BookingForm.astro";
+import { getWhatsAppNumber } from "../lib/siteInfo";
+import { getBlockedDates, getBookingTimeBlocks } from "../lib/blockedDates";
+
+export const prerender = false;
+
+const { title = "Contact Us" } = Astro.props;
+const whatsappNumber = await getWhatsAppNumber();
+const [blockedDates, bookingTimeBlocks] = await Promise.all([
+    getBlockedDates(),
+    getBookingTimeBlocks(),
+]);
 ---
 
-<Layout title="Contact Us | Lords and Legends">
-    <main class="contact-wrapper">
-        <h1 class="text-center">Contact & Bookings</h1>
-        <div class="form-grid">
-            <InquiryForm />
-            <BookingForm />
+<Layout title={title}>
+    <main class="contact contact-page">
+        <header class="contact-hero">
+            <p class="contact-kicker">Lords &amp; Legends</p>
+            <h1>Contact Us</h1>
+            <p>
+                Have a question or planning a group visit? Send us an enquiry
+                or request a booking and we’ll continue the conversation on
+                WhatsApp.
+            </p>
+        </header>
+
+        <div class="contact-forms">
+            <InquiryForm whatsappNumber={whatsappNumber} />
+            <BookingForm
+                whatsappNumber={whatsappNumber}
+                blockedDates={blockedDates}
+                bookingTimeBlocks={bookingTimeBlocks}
+            />
         </div>
     </main>
 </Layout>
-
-<style lang="scss">
-    .contact-wrapper {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 6rem 2rem 2rem 2rem; /* Account for var(--nav-header) */
-    }
-    .form-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 2rem;
-        margin-top: 2rem;
-    }
-    @media (min-width: 768px) {
-        .form-grid {
-            grid-template-columns: 1fr 1fr;
-        }
-    }
-</style>

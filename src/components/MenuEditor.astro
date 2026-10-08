@@ -6,26 +6,32 @@
 // admin presses "Save Menu", one row at a time, through /admin/menu-crud
 // (admin-only, allow-listed columns). Pictures are uploaded through
 // /admin/upload-image (admin-only).
-import { getMenu, type MenuType } from "../lib/menu";
+import { getMenu, getModifierGroups, type MenuType } from "../lib/menu";
 import { STORAGE_PUBLIC_BASE } from "../lib/supabaseStorage";
 
 let menuData: MenuType[] = [];
+let modifierGroups: Awaited<ReturnType<typeof getModifierGroups>> = [];
 let loadError = "";
 
 try {
-    menuData = await getMenu();
+    [menuData, modifierGroups] = await Promise.all([
+        getMenu(),
+        getModifierGroups(),
+    ]);
 } catch (e) {
     console.error("Failed to load menu data for editor:", e);
-    loadError = "Could not load the menu from Supabase. Please refresh.";
+    loadError = "Could not load the menu or modifier options from Supabase. Please refresh.";
 }
 
 const menuJson = JSON.stringify(menuData);
+const modifierGroupsJson = JSON.stringify(modifierGroups);
 ---
 
 <section
     class="menu-editor-container"
     x-data="menuEditorApp"
     data-menu={menuJson}
+    data-modifier-groups={modifierGroupsJson}
     data-storage-base={STORAGE_PUBLIC_BASE}
     data-load-error={loadError}
 >
@@ -344,6 +350,30 @@ const menuJson = JSON.stringify(menuData);
                                                 </div>
                                                 <p class="takeaway-schedule-hint" x-show="item.takeaway_days.length === 0">Select at least one day for takeaway ordering.</p>
                                             </div>
+
+                                            <div class="modifier-assignment" x-show="modifierGroupsCatalog.length > 0" x-cloak>
+                                                <div class="modifier-assignment-head">
+                                                    <div>
+                                                        <span class="field-label">Item selections</span>
+                                                        <p class="modifier-assignment-hint">Attach options to this item only. Category-linked modifiers are inherited automatically.</p>
+                                                    </div>
+                                                </div>
+                                                <div class="modifier-assignment-list">
+                                                    <template x-for="group in modifierGroupsCatalog" :key="group.id">
+                                                        <label class="modifier-assignment-option" :class="{ 'is-active': item.item_modifier_group_ids.includes(group.id) }">
+                                                            <input
+                                                                type="checkbox"
+                                                                :checked="item.item_modifier_group_ids.includes(group.id)"
+                                                                @change="toggleModifierGroup(item, group.id)"
+                                                            />
+                                                            <span class="modifier-assignment-copy">
+                                                                <strong x-text="group.name"></strong>
+                                                                <small x-text="group.options.length + (group.options.length === 1 ? ' option' : ' options') + ' · ' + (group.selection_type === 'multiple' ? 'multiple choice' : 'single choice')"></small>
+                                                            </span>
+                                                        </label>
+                                                    </template>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <!-- Item Controls -->
@@ -431,6 +461,7 @@ const menuJson = JSON.stringify(menuData);
         Alpine.data("menuEditorApp", () => ({
             menu: [],
             storageBase: "",
+            modifierGroupsCatalog: [],
 
             // What the database currently holds, used to find unsaved edits.
             baseline: {}, // item id -> JSON snapshot
@@ -455,6 +486,13 @@ const menuJson = JSON.stringify(menuData);
             init() {
                 const el = this.$el;
                 this.storageBase = el.dataset.storageBase || "";
+
+                try {
+                    this.modifierGroupsCatalog = JSON.parse(el.dataset.modifierGroups || "[]");
+                } catch (err) {
+                    console.error("Modifier groups could not be read:", err);
+                    this.modifierGroupsCatalog = [];
+                }
 
                 if (el.dataset.loadError) {
                     this.status = {
@@ -486,6 +524,9 @@ const menuJson = JSON.stringify(menuData);
                             i.takeaway_days = Array.isArray(i.takeaway_days)
                                 ? i.takeaway_days.map(Number).filter((day) => day >= 0 && day <= 6)
                                 : [1, 2, 3, 4, 5, 6, 0];
+                            i.item_modifier_group_ids = Array.isArray(i.item_modifier_group_ids)
+                                ? [...new Set(i.item_modifier_group_ids.map(String))]
+                                : [];
                         });
                     });
                 });
@@ -554,6 +595,9 @@ const menuJson = JSON.stringify(menuData);
                     takeaway_days: Array.isArray(item.takeaway_days)
                         ? [...new Set(item.takeaway_days.map(Number).filter((day) => day >= 0 && day <= 6))].sort((a, b) => a - b)
                         : [0, 1, 2, 3, 4, 5, 6],
+                    item_modifier_group_ids: Array.isArray(item.item_modifier_group_ids)
+                        ? [...new Set(item.item_modifier_group_ids.map(String))].sort()
+                        : [],
                 };
             },
 
@@ -627,6 +671,17 @@ const menuJson = JSON.stringify(menuData);
                 item.takeaway_days = [0, 1, 2, 3, 4, 5, 6];
             },
 
+            toggleModifierGroup(item, groupId) {
+                const ids = Array.isArray(item.item_modifier_group_ids)
+                    ? [...item.item_modifier_group_ids.map(String)]
+                    : [];
+                const id = String(groupId);
+                const index = ids.indexOf(id);
+                if (index === -1) ids.push(id);
+                else ids.splice(index, 1);
+                item.item_modifier_group_ids = [...new Set(ids)].sort();
+            },
+
             // ── UI helpers ─────────────────────────────────────────
             toggleCategory(catId) {
                 this.openCategories[catId] = !this.openCategories[catId];
@@ -673,6 +728,7 @@ const menuJson = JSON.stringify(menuData);
                     serves: "",
                     takeaway: true,
                     takeaway_days: [0, 1, 2, 3, 4, 5, 6],
+                    item_modifier_group_ids: [],
                     image_url: "",
                     sort_order: last + 1,
                 });
@@ -836,12 +892,49 @@ const menuJson = JSON.stringify(menuData);
                 return body;
             },
 
+            baselineModifierIds(item) {
+                if (this.isNewItem(item)) return [];
+                try {
+                    const saved = JSON.parse(this.baseline[item.id] || "{}");
+                    return Array.isArray(saved.item_modifier_group_ids)
+                        ? [...new Set(saved.item_modifier_group_ids.map(String))]
+                        : [];
+                } catch {
+                    return [];
+                }
+            },
+
+            async syncItemModifierGroups(item) {
+                const previous = this.baselineModifierIds(item);
+                const current = Array.isArray(item.item_modifier_group_ids)
+                    ? [...new Set(item.item_modifier_group_ids.map(String))]
+                    : [];
+                const currentSet = new Set(current);
+                const previousSet = new Set(previous);
+
+                for (const groupId of previous) {
+                    if (!currentSet.has(groupId)) {
+                        await this.callCrud("delete", "menu_item_modifier_groups", {
+                            item_id: item.id,
+                            group_id: groupId,
+                        });
+                    }
+                }
+
+                for (const groupId of current) {
+                    if (!previousSet.has(groupId)) {
+                        await this.callCrud("create", "menu_item_modifier_groups", {
+                            item_id: item.id,
+                            group_id: groupId,
+                        });
+                    }
+                }
+            },
+
             async saveAllChanges() {
                 if (this.isSaving || this.dirtyCount === 0) return;
 
-                // Every changed or new item needs a name.
-                for (const type of this.menu) {
-                    for (const cat of type.categories) {
+                // Every changed or new item needs a name and a valid takeaway schedule.
                 for (const type of this.menu) {
                     for (const cat of type.categories) {
                         const invalidSchedule = cat.items.find(
@@ -854,8 +947,6 @@ const menuJson = JSON.stringify(menuData);
                             };
                             return;
                         }
-                    }
-                }
 
                         const unnamed = cat.items.find(
                             (i) =>
@@ -919,6 +1010,9 @@ const menuJson = JSON.stringify(menuData);
                             const payload = this.itemPayload(item);
                             try {
                                 if (this.isNewItem(item)) {
+                                    const desiredModifierIds = Array.isArray(item.item_modifier_group_ids)
+                                        ? [...item.item_modifier_group_ids]
+                                        : [];
                                     const { row } = await this.callCrud(
                                         "create",
                                         "menu_items",
@@ -929,6 +1023,7 @@ const menuJson = JSON.stringify(menuData);
                                         },
                                     );
                                     item.id = row.id;
+                                    item.item_modifier_group_ids = desiredModifierIds;
                                 } else {
                                     await this.callCrud(
                                         "update",
@@ -939,6 +1034,9 @@ const menuJson = JSON.stringify(menuData);
                                         },
                                     );
                                 }
+
+                                await this.syncItemModifierGroups(item);
+
                                 this.baseline[item.id] = JSON.stringify(
                                     this.itemPayload(item),
                                 );
@@ -1535,6 +1633,80 @@ const menuJson = JSON.stringify(menuData);
             width: 22px;
             height: 22px;
             accent-color: var(--bg-color-btn);
+        }
+    }
+
+    .modifier-assignment {
+        margin-top: 0.25rem;
+        padding: 0.75rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 8px;
+        background: var(--bg-color-light);
+    }
+
+    .modifier-assignment-head {
+        margin-bottom: 0.6rem;
+    }
+
+    .modifier-assignment-hint {
+        margin: 0.25rem 0 0;
+        font-size: 0.75rem;
+        line-height: 1.35;
+        color: #718096;
+    }
+
+    .modifier-assignment-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
+    }
+
+    .modifier-assignment-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.55rem;
+        padding: 0.6rem 0.65rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+        transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .modifier-assignment-option.is-active {
+        border-color: var(--bg-color-btn);
+        background: rgba(119, 63, 44, 0.08);
+    }
+
+    .modifier-assignment-option input {
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+        flex: none;
+        accent-color: var(--bg-color-btn);
+    }
+
+    .modifier-assignment-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        min-width: 0;
+    }
+
+    .modifier-assignment-copy strong {
+        font-size: 0.82rem;
+        color: var(--txt-color);
+    }
+
+    .modifier-assignment-copy small {
+        font-size: 0.7rem;
+        line-height: 1.2;
+        color: #718096;
+    }
+
+    @media (max-width: 768px) {
+        .modifier-assignment-list {
+            grid-template-columns: 1fr;
         }
     }
 
