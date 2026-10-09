@@ -471,6 +471,9 @@ const platterNotice = {
 
                         <p
                             class="two-for-one-choice-error"
+                            :class="{ 'is-attempted': twoForOneAttempted }"
+                            x-ref="twoForOneError"
+                            role="alert"
                             x-show="activeItem.two_for_one && !twoForOneChoicesValid"
                             x-cloak
                         >
@@ -512,7 +515,6 @@ const platterNotice = {
                         <button
                             class="confirm-btn"
                             @click="confirmAddToCart"
-                            :disabled="activeItem?.two_for_one && !twoForOneChoicesValid"
                         >
                             Add to order
                         </button>
@@ -889,6 +891,8 @@ const platterNotice = {
 
             // Item modal state
             showItemModal: false,
+            // true once "Add to order" was pressed with 2-for-1 choices missing
+            twoForOneAttempted: false,
             activeItem: null,
             modalChoices: {},
             twoForOneSelections: {},
@@ -1216,13 +1220,21 @@ const platterNotice = {
             },
 
             closeItemModal() {
+                this.twoForOneAttempted = false;
                 this.showItemModal = false;
                 this.activeItem = null;
             },
 
             confirmAddToCart() {
                 if (!this.activeItem) return;
-                if (this.activeItem.two_for_one && !this.twoForOneChoicesValid) return;
+                // The button stays enabled so the customer always gets an answer:
+                // if the 2-for-1 choices are incomplete we highlight the message
+                // and scroll to it instead of silently doing nothing.
+                if (this.activeItem.two_for_one && !this.twoForOneChoicesValid) {
+                    this.twoForOneAttempted = true;
+                    this.$nextTick(() => this.$refs.twoForOneError?.scrollIntoView({ behavior: "smooth", block: "center" }));
+                    return;
+                }
 
                 const options = [];
                 (this.activeItem.modifier_groups || []).forEach((group) => {

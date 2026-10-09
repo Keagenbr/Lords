@@ -20,7 +20,7 @@ const { endpoint = "/api/update-sales" } = Astro.props;
     <div class="row">
         <label for="cashup-key">Upload key</label>
         <input id="cashup-key" type="password" autocomplete="off" />
-        <button type="button" data-submit disabled>
+        <button type="button" data-submit>
             Save to dashboard
         </button>
     </div>
@@ -40,7 +40,8 @@ const { endpoint = "/api/update-sales" } = Astro.props;
         const status = root.querySelector<HTMLElement>("[data-status]")!;
         let files: File[] = [];
 
-        keyInput.value = sessionStorage.getItem("cashUpKey") ?? "";
+        // The upload key is deliberately NOT kept in sessionStorage/localStorage:
+        // anything stored there can be read by injected scripts (XSS).
 
         // Same rule as the server: day-first date in the file name.
         const dateOf = (name: string) => {
@@ -72,9 +73,10 @@ const { endpoint = "/api/update-sales" } = Astro.props;
                     return li;
                 }),
             );
-            button.disabled =
-                !files.length || files.some((f) => !dateOf(f.name));
-            if (files.length && button.disabled)
+            // The button stays enabled; clicking it explains what is missing
+            // (see the click handler). It is only disabled while uploading.
+            const hasBadName = files.some((f) => !dateOf(f.name));
+            if (files.length && hasBadName)
                 say(
                     'Rename the highlighted file, for example "CASH UP 04.08.2026.xlsx".',
                     true,
@@ -113,9 +115,17 @@ const { endpoint = "/api/update-sales" } = Astro.props;
         });
 
         button.addEventListener("click", async () => {
-            button.disabled = true;
+            // Explain what is missing instead of leaving a dead, greyed-out button.
+            if (!files.length) return say("Choose or drop at least one Excel file first.", true);
+            if (files.some((f) => !dateOf(f.name)))
+                return say('Rename the highlighted file, for example "CASH UP 04.08.2026.xlsx".', true);
+            if (!keyInput.value.trim()) {
+                keyInput.focus();
+                return say("Enter the upload key first.", true);
+            }
+
+            button.disabled = true; // only while the upload is running
             say("Reading and saving…");
-            sessionStorage.setItem("cashUpKey", keyInput.value);
             const body = new FormData();
             files.forEach((f) => body.append("file", f));
             try {
@@ -151,6 +161,7 @@ const { endpoint = "/api/update-sales" } = Astro.props;
                     err instanceof Error ? err.message : "Upload failed.",
                     true,
                 );
+                button.disabled = false; // let the person fix the problem and retry
                 render();
             }
         });

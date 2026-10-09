@@ -3,6 +3,13 @@ import Layout from "../../layouts/Layout.astro";
 import { supabase } from "../../lib/supabase";
 import { getSessionUser, isAdminUser } from "../../lib/adminAuth";
 import "../../styles/password-toggle.css";
+import {
+    checkLoginAllowed,
+    recordLoginFailure,
+    clearLoginFailures,
+    getClientIp,
+    describeLoginFailure,
+} from "../../lib/authFailure";
 
 export const prerender = false;
 
@@ -43,8 +50,22 @@ if (Astro.request.method === "POST") {
         const email = formData.get("email")?.toString();
         const password = formData.get("password")?.toString();
 
+        // Same brute-force protection and generic wording as the admin
+        // sign-in route (src/lib/authFailure.ts).
+        const ip = getClientIp(Astro.request, Astro.clientAddress);
+
         if (!email || !password) {
-            errorMessage = "Please enter both email and password.";
+            errorMessage = describeLoginFailure("missing");
+        } else if (!checkLoginAllowed(ip, email).allowed) {
+            const gate = checkLoginAllowed(ip, email);
+            Astro.response.status = 429;
+            Astro.response.headers.set(
+                "Retry-After",
+                String(gate.retryAfterSeconds),
+            );
+            errorMessage = describeLoginFailure("locked", {
+                retryAfterSeconds: gate.retryAfterSeconds,
+            });
         } else {
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
@@ -52,8 +73,21 @@ if (Astro.request.method === "POST") {
             });
 
             if (error || !data.session) {
-                errorMessage = error?.message || "Invalid login credentials.";
+                if (error && (error.status ?? 0) >= 500) {
+                    // Server fault: not the person's mistake, so don't count it.
+                    errorMessage = describeLoginFailure("error");
+                } else {
+                    const result = recordLoginFailure(ip, email);
+                    errorMessage = describeLoginFailure(
+                        result.locked ? "locked" : "invalid",
+                        {
+                            attemptsLeft: result.attemptsLeft,
+                            retryAfterSeconds: result.retryAfterSeconds,
+                        },
+                    );
+                }
             } else {
+                clearLoginFailures(ip, email);
                 Astro.cookies.set(
                     "sb-access-token",
                     data.session.access_token,
@@ -85,10 +119,9 @@ if (Astro.request.method === "POST") {
             }
         }
     } catch (err) {
-        errorMessage =
-            err instanceof Error
-                ? err.message
-                : "An unexpected error occurred.";
+        // Never show raw internal error text to the visitor.
+        console.error("Staff login failed:", err);
+        errorMessage = describeLoginFailure("error");
     }
 }
 ---
@@ -103,7 +136,7 @@ if (Astro.request.method === "POST") {
 
             {errorMessage && <div class="error-banner">{errorMessage}</div>}
 
-            <form method="POST" class="login-form">
+            <form method="POST" class="login-form" data-login-form>
                 <div class="form-group">
                     <label for="email" data-icon="email">
                         Email Address
@@ -149,7 +182,7 @@ if (Astro.request.method === "POST") {
                     </div>
                 </div>
 
-                <button type="submit" class="submit-btn">
+                <button type="submit" class="submit-btn" data-submit-label="Signing in...">
                     Sign In
                 </button>
             </form>
@@ -159,6 +192,7 @@ if (Astro.request.method === "POST") {
 
 <script>
     import "../../scripts/passwordToggle";
+    import "../../scripts/submitGuard";
 </script>
 
 <style>

@@ -1,18 +1,16 @@
 import type { APIRoute } from "astro";
+import type { AstroCookies } from "astro";
+import { getAdminUser } from "../../../lib/adminAuth";
 import { supabase } from "../../../lib/supabase";
 
 export const prerender = false;
 
-async function isAuthenticated(cookies: any) {
-  const accessToken = cookies.get("sb-access-token")?.value;
-  const refreshToken = cookies.get("sb-refresh-token")?.value;
-  if (!accessToken || !refreshToken) return false;
-
-  const { data, error } = await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
-  });
-  return !error && !!data.user;
+// SERVER-SIDE admin check. Previously this accepted ANY signed-in account
+// (e.g. a staff member) and called setSession() on the shared client.
+// getAdminUser() validates the token with Supabase Auth and requires the
+// admin role stored in app_metadata, which users cannot edit themselves.
+async function isAuthenticated(cookies: AstroCookies) {
+  return (await getAdminUser(cookies)) !== null;
 }
 
 async function parseRequestBody(
