@@ -305,12 +305,13 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
         return json({ ok: false, error: "invalid_two_for_one" }, 400);
       }
 
-      // A 2-for-1 item gets two different selections within every eligible
-      // choice group assigned to that item. For example: two different sides
-      // AND two different sauces when both groups are present.
+      // A 2-for-1 item has two portions. For every eligible choice group the
+      // customer sends two entries, either two DIFFERENT options, or the same
+      // option twice (one choice used for both items). Anything else is rejected.
       for (const groupId of eligibleGroups) {
-        const uniqueSelections = [...new Set(twoForOneSelectionsByGroup.get(groupId) ?? [])];
-        if (uniqueSelections.length !== 2) {
+        const selections = twoForOneSelectionsByGroup.get(groupId) ?? [];
+        const uniqueSelections = new Set(selections);
+        if (selections.length !== 2 || uniqueSelections.size < 1 || uniqueSelections.size > 2) {
           return json({ ok: false, error: "invalid_two_for_one" }, 400);
         }
       }

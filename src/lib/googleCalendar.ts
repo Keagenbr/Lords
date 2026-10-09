@@ -12,6 +12,8 @@ export interface GoogleCalendarTemplateInput {
   title: string;
   date: string;
   startTime: string;
+  /** Optional finish time (HH:MM). When valid and after startTime it replaces the default duration. */
+  endTime?: string | null;
   details?: string;
   location?: string;
   durationMinutes?: number;
@@ -34,6 +36,7 @@ export function buildGoogleCalendarTemplateUrl({
   title,
   date,
   startTime,
+  endTime = null,
   details = "",
   location = "",
   durationMinutes = GROUP_BOOKING_DURATION_MINUTES,
@@ -41,7 +44,15 @@ export function buildGoogleCalendarTemplateUrl({
   if (!DATE_RE.test(date)) throw new Error("Invalid calendar date.");
   if (!TIME_RE.test(startTime)) throw new Error("Invalid calendar start time.");
 
-  const duration = Number(durationMinutes);
+  // A real finish time wins over the default 2-hour duration.
+  let minutes = durationMinutes;
+  if (endTime && TIME_RE.test(endTime) && endTime > startTime) {
+    const [sh, sm] = startTime.split(":").map(Number);
+    const [eh, em] = endTime.split(":").map(Number);
+    minutes = Math.max(30, eh * 60 + em - (sh * 60 + sm));
+  }
+
+  const duration = Number(minutes);
   if (!Number.isFinite(duration) || duration < 30 || duration > 24 * 60) {
     throw new Error("Invalid calendar duration.");
   }

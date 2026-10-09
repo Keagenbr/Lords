@@ -12,6 +12,9 @@ const MAX_BOOKING_PER_IP_PER_10_MIN = 5;
 const MAX_BOOKING_PER_PHONE_PER_10_MIN = 3;
 const BOOKING_TIME_MIN = "10:30";
 const BOOKING_TIME_MAX = "19:30";
+// A finish time may run half an hour past the last start time.
+const BOOKING_END_TIME_MAX = "20:00";
+const TIME_RE = /^\d{2}:\d{2}$/;
 
 const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), {
@@ -93,9 +96,21 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
         return json({ ok: false, error: "past_date" }, 400);
     }
 
-    const bookingTime = clean(body?.bookingTime, 20);
-    if (!/^\d{2}:\d{2}$/.test(bookingTime)) {
-        return json({ ok: false, error: "invalid_time", latest: BOOKING_TIME_MAX }, 400);
+    // Start and finish times are both OPTIONAL. Empty string / missing = not given.
+    let bookingTime: string | null = clean(body?.bookingTime, 20) || null;
+    let bookingEndTime: string | null = clean(body?.bookingEndTime, 20) || null;
+
+    if (bookingTime && !TIME_RE.test(bookingTime)) {
+        return json({ ok: false, error: "invalid_time", earliest: BOOKING_TIME_MIN, latest: BOOKING_TIME_MAX }, 400);
+    }
+    if (bookingEndTime && !TIME_RE.test(bookingEndTime)) {
+        return json({ ok: false, error: "invalid_end_time" }, 400);
+    }
+
+    // Only a finish time was given: it becomes the booking (start) time.
+    if (!bookingTime && bookingEndTime) {
+        bookingTime = bookingEndTime;
+        bookingEndTime = null;
     }
 
     const bookingWeekday = new Date(`${bookingDate}T12:00:00+02:00`).getUTCDay();
@@ -103,13 +118,20 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
         return json({ ok: false, error: "sunday_unavailable" }, 400);
     }
 
-    if (bookingTime < BOOKING_TIME_MIN || bookingTime > BOOKING_TIME_MAX) {
+    if (bookingTime && (bookingTime < BOOKING_TIME_MIN || bookingTime > BOOKING_TIME_MAX)) {
         return json({
             ok: false,
             error: "invalid_time",
             earliest: BOOKING_TIME_MIN,
             latest: BOOKING_TIME_MAX,
         }, 400);
+    }
+
+    // A finish time must come after the start time and stay within opening hours.
+    if (bookingTime && bookingEndTime) {
+        if (bookingEndTime <= bookingTime || bookingEndTime > BOOKING_END_TIME_MAX) {
+            return json({ ok: false, error: "invalid_end_time" }, 400);
+        }
     }
 
     const { data: matchingBlocks, error: blockError } = await supabaseAdmin
@@ -139,11 +161,17 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
         return json({ ok: false, error: "availability_check_failed" }, 500);
     }
 
-    const timeBlock = (matchingTimeBlocks ?? []).find((block) => {
-        const startTime = String(block.start_time || "").slice(0, 5);
-        const endTime = String(block.end_time || "").slice(0, 5);
-        return startTime <= bookingTime && endTime > bookingTime;
-    });
+    // With a start time only, that moment must not be blocked. With a finish
+    // time too, no blocked slot may overlap the whole period.
+    const timeBlock = bookingTime
+        ? (matchingTimeBlocks ?? []).find((block) => {
+              const startTime = String(block.start_time || "").slice(0, 5);
+              const endTime = String(block.end_time || "").slice(0, 5);
+              return bookingEndTime
+                  ? startTime < bookingEndTime && endTime > bookingTime!
+                  : startTime <= bookingTime! && endTime > bookingTime!;
+          })
+        : undefined;
 
     if (timeBlock) {
         return json(
@@ -188,6 +216,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
             contact_phone: contactPhone,
             booking_date: bookingDate,
             booking_time: bookingTime,
+            booking_end_time: bookingEndTime,
             ip_hash: ipHash,
         })
         .select("id, booking_no")
@@ -218,7 +247,13 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
         `Booking name: ${bookingLabel}`,
         `Phone: ${formatWhatsAppNumber(contactPhone)}`,
         `Date: ${dateLabel}`,
-        `Time: ${bookingTime}`,
+        `Time: ${
+            bookingTime
+                ? bookingEndTime
+                    ? `${bookingTime} - ${bookingEndTime}`
+                    : bookingTime
+                : "Not specified"
+        }`,
         "",
         "Please confirm availability and booking details.",
     ].join("\n");

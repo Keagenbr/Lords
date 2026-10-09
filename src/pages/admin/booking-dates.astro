@@ -10,6 +10,7 @@ import {
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
 import { getBookingCalendarLocation } from "../../lib/siteInfo";
 import { buildGoogleCalendarTemplateUrl } from "../../lib/googleCalendar";
+import { buildBookingConfirmationUrl } from "../../lib/bookingMessages";
 
 export const prerender = false;
 
@@ -32,7 +33,7 @@ const [blockedResult, pendingResult, timeBlockResult, confirmedResult] = await P
     supabaseAdmin
         .from("booking_requests")
         .select(
-            "id,booking_no,created_at,people_count,contact_name,booking_name,contact_phone,booking_date,booking_time,status,decided_at,decided_by,decision_note",
+            "id,booking_no,created_at,people_count,contact_name,booking_name,contact_phone,booking_date,booking_time,booking_end_time,status,decided_at,decided_by,decision_note",
         )
         .eq("status", "requested")
         .order("created_at", { ascending: true }),
@@ -44,7 +45,7 @@ const [blockedResult, pendingResult, timeBlockResult, confirmedResult] = await P
     supabaseAdmin
         .from("booking_requests")
         .select(
-            "id,booking_no,created_at,people_count,contact_name,booking_name,contact_phone,booking_date,booking_time,status,decided_at,decided_by,decision_note",
+            "id,booking_no,created_at,people_count,contact_name,booking_name,contact_phone,booking_date,booking_time,booking_end_time,status,decided_at,decided_by,decision_note",
         )
         .eq("status", "confirmed")
         .gte("booking_date", southAfricaToday)
@@ -58,8 +59,12 @@ const pendingBookings = pendingResult.data ?? [];
 const timeBlockRows = timeBlockResult.data ?? [];
 const bookingCalendarLocation = await getBookingCalendarLocation();
 const confirmedBookings = (confirmedResult.data ?? []).map((booking) => {
+    // WhatsApp message that confirms the booking to the customer (nothing is sent automatically).
+    const whatsappUrl = buildBookingConfirmationUrl(booking, { location: bookingCalendarLocation });
+
+    // Bookings made without a time have no calendar entry.
     if (!booking.booking_date || !booking.booking_time) {
-        return { ...booking, calendarUrl: null };
+        return { ...booking, calendarUrl: null, whatsappUrl };
     }
 
     let calendarUrl: string | null = null;
@@ -67,7 +72,8 @@ const confirmedBookings = (confirmedResult.data ?? []).map((booking) => {
         calendarUrl = buildGoogleCalendarTemplateUrl({
             title: `Lords & Legends - Group Booking - ${booking.booking_name || booking.contact_name || `LL-B${booking.booking_no}`}`,
             date: booking.booking_date,
-            startTime: booking.booking_time,
+            startTime: String(booking.booking_time).slice(0, 5),
+            endTime: booking.booking_end_time ? String(booking.booking_end_time).slice(0, 5) : null,
             details: [
                 "Lords & Legends group booking",
                 `Booking Ref: LL-B${booking.booking_no}`,
@@ -80,7 +86,7 @@ const confirmedBookings = (confirmedResult.data ?? []).map((booking) => {
         console.error(`[admin/booking-dates] calendar URL generation failed for ${booking.id}:`, error);
     }
 
-    return { ...booking, calendarUrl };
+    return { ...booking, calendarUrl, whatsappUrl };
 });
 
 const initialBlocks = JSON.stringify(rows);
@@ -336,9 +342,57 @@ const listError = blockedResult.error || pendingResult.error || timeBlockResult.
                         <div class="confirmed-booking-row__text">
                             <span class="booking-ref" x-text="`LL-B${booking.booking_no}`"></span>
                             <strong x-text="booking.booking_name || booking.contact_name"></strong>
-                            <span x-text="`${booking.people_count} people · ${formatDate(booking.booking_date)} · ${booking.booking_time || 'Time not recorded'}`"></span>
+                            <span x-text="`${booking.people_count} people · ${formatDate(booking.booking_date)} · ${timeLabel(booking)}`"></span>
                         </div>
+                        <template x-if="editingId === booking.id">
+                            <form class="edit-booking-form" @submit.prevent="saveEdit(booking)">
+                                <label>
+                                    Date
+                                    <input type="date" x-model="editForm.date" required />
+                                </label>
+                                <label>
+                                    Start time
+                                    <select x-model="editForm.start">
+                                        <option value="">Not specified</option>
+                                        <template x-for="time in timeChoices('start')" :key="time">
+                                            <option :value="time" x-text="time"></option>
+                                        </template>
+                                    </select>
+                                </label>
+                                <label>
+                                    Finish time
+                                    <select x-model="editForm.end">
+                                        <option value="">Not specified</option>
+                                        <template x-for="time in timeChoices('end')" :key="time">
+                                            <option :value="time" x-text="time"></option>
+                                        </template>
+                                    </select>
+                                </label>
+                                <p class="edit-booking-error" x-show="editError" x-text="editError" role="alert"></p>
+                                <div class="edit-booking-actions">
+                                    <button type="button" class="secondary-btn" @click="cancelEdit()" :disabled="editSaving">Cancel</button>
+                                    <button type="submit" class="save-btn" :disabled="editSaving">
+                                        <span x-text="editSaving ? 'Saving…' : 'Save changes'"></span>
+                                    </button>
+                                </div>
+                            </form>
+                        </template>
                         <div class="confirmed-booking-row__actions">
+                            <a
+                                class="whatsapp-confirm-btn"
+                                :class="{ 'is-disabled': !booking.whatsappUrl }"
+                                :href="booking.whatsappUrl || undefined"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                @click="if (!booking.whatsappUrl) $event.preventDefault()"
+                                :aria-disabled="booking.whatsappUrl ? 'false' : 'true'"
+                            >
+                                <span aria-hidden="true">&#128172;</span>
+                                Confirm via WhatsApp
+                            </a>
+                            <button type="button" class="secondary-btn" @click="startEdit(booking)" x-show="editingId !== booking.id">
+                                Change date / time
+                            </button>
                             <a
                                 class="calendar-btn"
                                 :class="{ 'is-disabled': !canAddToCalendar(booking) }"
@@ -414,10 +468,50 @@ const listError = blockedResult.error || pendingResult.error || timeBlockResult.
                                         <div><dt>Contact</dt><dd x-text="booking.contact_name"></dd></div>
                                         <div><dt>Phone</dt><dd x-text="booking.contact_phone"></dd></div>
                                         <div><dt>Date</dt><dd x-text="formatDate(booking.booking_date)"></dd></div>
-                                        <div><dt>Time</dt><dd x-text="booking.booking_time || '—'"></dd></div>
+                                        <div><dt>Time</dt><dd x-text="timeLabel(booking)"></dd></div>
                                     </dl>
 
+                                    <template x-if="editingId === booking.id">
+                                        <form class="edit-booking-form" @submit.prevent="saveEdit(booking)">
+                                            <label>
+                                                Date
+                                                <input type="date" x-model="editForm.date" required />
+                                            </label>
+                                            <label>
+                                                Start time
+                                                <select x-model="editForm.start">
+                                                    <option value="">Not specified</option>
+                                                    <template x-for="time in timeChoices('start')" :key="time">
+                                                        <option :value="time" x-text="time"></option>
+                                                    </template>
+                                                </select>
+                                            </label>
+                                            <label>
+                                                Finish time
+                                                <select x-model="editForm.end">
+                                                    <option value="">Not specified</option>
+                                                    <template x-for="time in timeChoices('end')" :key="time">
+                                                        <option :value="time" x-text="time"></option>
+                                                    </template>
+                                                </select>
+                                            </label>
+                                            <p class="edit-booking-error" x-show="editError" x-text="editError" role="alert"></p>
+                                            <div class="edit-booking-actions">
+                                                <button type="button" class="secondary-btn" @click="cancelEdit()" :disabled="editSaving">Cancel</button>
+                                                <button type="submit" class="save-btn" :disabled="editSaving">
+                                                    <span x-text="editSaving ? 'Saving…' : 'Save changes'"></span>
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </template>
+
                                     <div class="pending-booking-actions">
+                                        <button
+                                            type="button"
+                                            class="secondary-btn"
+                                            @click="startEdit(booking)"
+                                            x-show="editingId !== booking.id"
+                                        >Change date / time</button>
                                         <button
                                             type="button"
                                             class="danger-btn"
@@ -462,7 +556,20 @@ const listError = blockedResult.error || pendingResult.error || timeBlockResult.
 
                         <div class="confirmed-booking-summary">
                             <strong x-text="activeBooking.booking_name || activeBooking.contact_name"></strong>
-                            <span x-text="`${activeBooking.people_count} people · ${formatDate(activeBooking.booking_date)} · ${activeBooking.booking_time}`"></span>
+                            <span x-text="`${activeBooking.people_count} people · ${formatDate(activeBooking.booking_date)} · ${timeLabel(activeBooking)}`"></span>
+                        </div>
+
+                        <div class="calendar-action-row" x-show="activeBooking.whatsappUrl">
+                            <a
+                                class="whatsapp-confirm-btn whatsapp-confirm-btn--large"
+                                :href="activeBooking.whatsappUrl"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <span aria-hidden="true">&#128172;</span>
+                                Confirm via WhatsApp
+                            </a>
+                            <p class="calendar-helper-text">Opens a chat with the customer and a ready-made confirmation message. Nothing is sent until you press Send in WhatsApp.</p>
                         </div>
 
                         <div class="calendar-action-row" x-show="canAddToCalendar(activeBooking)">
@@ -481,7 +588,7 @@ const listError = blockedResult.error || pendingResult.error || timeBlockResult.
                         <div class="block-presets">
                             <button type="button" class="preset-btn" @click="setBookingTimePreset()">
                                 <strong>Block booking time</strong>
-                                <span x-text="`${activeBooking.booking_date} · ${activeBooking.booking_time}`"></span>
+                                <span x-text="`${activeBooking.booking_date} · ${timeLabel(activeBooking)}`"></span>
                             </button>
                             <button type="button" class="preset-btn" @click="setBookingDayPreset()">
                                 <strong>Block full day</strong>
@@ -591,6 +698,12 @@ const listError = blockedResult.error || pendingResult.error || timeBlockResult.
             blockRows: [],
             nextRowId: 1,
 
+            // Inline "change date / time" editor (one booking at a time)
+            editingId: "",
+            editForm: { date: "", start: "", end: "" },
+            editSaving: false,
+            editError: "",
+
             // Selection state is intentionally kept separate for each data set so
             // an Admin can delete multiple entries without mixing entity types.
             selectedBlockIds: [],
@@ -648,6 +761,75 @@ const listError = blockedResult.error || pendingResult.error || timeBlockResult.
                 return [...this.confirmedBookings].sort((a, b) =>
                     `${a.booking_date}-${a.booking_time || ""}`.localeCompare(`${b.booking_date}-${b.booking_time || ""}`),
                 );
+            },
+
+            // "18:00 – 20:00", "18:00" or "Time not specified"
+            timeLabel(booking) {
+                const start = booking?.booking_time ? String(booking.booking_time).slice(0, 5) : "";
+                const end = booking?.booking_end_time ? String(booking.booking_end_time).slice(0, 5) : "";
+                if (!start) return "Time not specified";
+                return end ? `${start} – ${end}` : start;
+            },
+
+            startEdit(booking) {
+                this.editingId = booking.id;
+                this.editError = "";
+                this.editForm = {
+                    date: booking.booking_date || "",
+                    start: booking.booking_time ? String(booking.booking_time).slice(0, 5) : "",
+                    end: booking.booking_end_time ? String(booking.booking_end_time).slice(0, 5) : "",
+                };
+            },
+
+            cancelEdit() {
+                this.editingId = "";
+                this.editError = "";
+            },
+
+            // Saves a new date/time through POST /admin/booking-requests (action "reschedule").
+            async saveEdit(booking) {
+                if (this.editSaving) return;
+                this.editError = "";
+                const { date, start, end } = this.editForm;
+                if (!date) { this.editError = "Please choose a date."; return; }
+                if (start && end && end <= start) { this.editError = "The finish time must be after the start time."; return; }
+
+                this.editSaving = true;
+                try {
+                    const res = await fetch("/admin/booking-requests", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify({
+                            id: booking.id,
+                            action: "reschedule",
+                            bookingDate: date,
+                            bookingTime: start,
+                            bookingEndTime: end,
+                        }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || "Could not change the booking.");
+
+                    const updated = data.booking;
+                    // Pending list: swap in the updated row.
+                    this.pendingBookings = this.pendingBookings.map((item) => (item.id === updated.id ? { ...item, ...updated } : item));
+                    // Confirmed list: keep the new calendar + "updated" WhatsApp links.
+                    this.confirmedBookings = this.confirmedBookings.map((item) =>
+                        item.id === updated.id
+                            ? { ...item, ...updated, calendarUrl: data.calendarUrl || null, whatsappUrl: data.whatsappUrl || item.whatsappUrl || null }
+                            : item,
+                    );
+                    this.statusMessage = `LL-B${updated.booking_no} changed to ${this.formatDate(updated.booking_date)} · ${this.timeLabel(updated)}.` +
+                        (data.warnings?.length ? ` Note: ${data.warnings.join(" ")}` : "") +
+                        (data.whatsappUrl ? " Use “Confirm via WhatsApp” to tell the customer." : "");
+                    this.statusIsError = false;
+                    this.editingId = "";
+                } catch (error) {
+                    this.editError = error instanceof Error ? error.message : "Could not change the booking.";
+                } finally {
+                    this.editSaving = false;
+                }
             },
 
             canAddToCalendar(booking) {
@@ -900,14 +1082,14 @@ const listError = blockedResult.error || pendingResult.error || timeBlockResult.
                     if (!res.ok) throw new Error(data.error || "Could not confirm the booking.");
 
                     this.pendingBookings = this.pendingBookings.filter((item) => item.id !== booking.id);
-                    this.activeBooking = data.booking;
+                    this.activeBooking = { ...data.booking, whatsappUrl: data.whatsappUrl || null };
                     this.confirmedBookings = [
-                        { ...data.booking, calendarUrl: data.calendarUrl || null },
+                        { ...data.booking, calendarUrl: data.calendarUrl || null, whatsappUrl: data.whatsappUrl || null },
                         ...this.confirmedBookings.filter((item) => item.id !== data.booking.id),
                     ];
                     this.reviewStep = "blocks";
                     this.blockRows = [];
-                    this.addBlockRow(this.activeBooking.booking_date, this.activeBooking.booking_time || "", "time");
+                    this.addBlockRow(this.activeBooking.booking_date, this.activeBooking.booking_time ? String(this.activeBooking.booking_time).slice(0, 5) : "", "time", this.activeBooking.booking_end_time ? String(this.activeBooking.booking_end_time).slice(0, 5) : "");
                     this.$nextTick(() => this.$refs.reviewPanel?.focus());
                 } catch (error) {
                     this.blockError = error instanceof Error ? error.message : "Could not confirm the booking.";
@@ -920,7 +1102,7 @@ const listError = blockedResult.error || pendingResult.error || timeBlockResult.
                 const confirmed = window.siteDialog
                     ? await window.siteDialog.confirm({
                         title: "Deny booking request?",
-                        message: `Deny LL-B${booking.booking_no} for ${booking.people_count} people on ${this.formatDate(booking.booking_date)} at ${booking.booking_time}?`,
+                        message: `Deny LL-B${booking.booking_no} for ${booking.people_count} people on ${this.formatDate(booking.booking_date)} (${this.timeLabel(booking)})?`,
                         confirmText: "Deny booking",
                         cancelText: "Cancel",
                         tone: "danger",
@@ -949,13 +1131,14 @@ const listError = blockedResult.error || pendingResult.error || timeBlockResult.
                 }
             },
 
-            addBlockRow(date = "", startTime = "", type = "time") {
+            addBlockRow(date = "", startTime = "", type = "time", endTime = "") {
                 this.blockRows.push({
                     key: this.nextRowId++,
                     type,
                     date,
                     startTime,
-                    endTime: startTime ? this.addThirtyMinutes(startTime) : "",
+                    // Use the booking's finish time when it has one, else 30 minutes.
+                    endTime: endTime || (startTime ? this.addThirtyMinutes(startTime) : ""),
                 });
             },
 
@@ -987,8 +1170,9 @@ const listError = blockedResult.error || pendingResult.error || timeBlockResult.
                 this.blockRows = [];
                 this.addBlockRow(
                     this.activeBooking?.booking_date || "",
-                    this.activeBooking?.booking_time || "",
+                    this.activeBooking?.booking_time ? String(this.activeBooking.booking_time).slice(0, 5) : "",
                     "time",
+                    this.activeBooking?.booking_end_time ? String(this.activeBooking.booking_end_time).slice(0, 5) : "",
                 );
                 this.blockError = "";
             },
@@ -1001,7 +1185,7 @@ const listError = blockedResult.error || pendingResult.error || timeBlockResult.
 
             startCustomBlocks() {
                 this.blockRows = [];
-                this.addBlockRow(this.activeBooking?.booking_date || "", this.activeBooking?.booking_time || "", "time");
+                this.addBlockRow(this.activeBooking?.booking_date || "", this.activeBooking?.booking_time ? String(this.activeBooking.booking_time).slice(0, 5) : "", "time", this.activeBooking?.booking_end_time ? String(this.activeBooking.booking_end_time).slice(0, 5) : "");
                 this.addBlockRow("", "", "day");
                 this.blockError = "";
             },
@@ -1414,6 +1598,7 @@ const listError = blockedResult.error || pendingResult.error || timeBlockResult.
 
     .confirmed-booking-row {
         display: flex;
+        flex-wrap: wrap; /* lets the inline date/time editor take its own line */
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
@@ -1466,6 +1651,85 @@ const listError = blockedResult.error || pendingResult.error || timeBlockResult.
 
     .calendar-btn:hover:not(.is-disabled) {
         background: color-mix(in srgb, var(--MenuColor) 10%, white);
+    }
+
+    /* "Confirm via WhatsApp" - same shape as the calendar button, WhatsApp green */
+    .whatsapp-confirm-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        min-height: 42px;
+        padding: 0.6rem 0.85rem;
+        border: 1px solid #25d366;
+        border-radius: 8px;
+        background: #25d366;
+        color: #fff;
+        text-decoration: none;
+        font: inherit;
+        font-weight: 800;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    .whatsapp-confirm-btn:hover:not(.is-disabled) {
+        background: #1ebe5b;
+    }
+
+    .whatsapp-confirm-btn--large {
+        min-height: 44px;
+    }
+
+    .whatsapp-confirm-btn.is-disabled {
+        opacity: 0.45;
+        pointer-events: none;
+        cursor: not-allowed;
+    }
+
+    /* Inline "change date / time" editor */
+    .edit-booking-form {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.75rem;
+        width: 100%;
+        box-sizing: border-box;
+        margin: 0.75rem 0;
+        padding: 0.85rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--MenuColor) 6%, white);
+    }
+
+    .edit-booking-form label {
+        display: grid;
+        gap: 0.3rem;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+
+    .edit-booking-form input,
+    .edit-booking-form select {
+        min-height: 42px;
+        padding: 0.4rem 0.6rem;
+        border: 1px solid var(--nav-bg);
+        border-radius: 8px;
+        font: inherit;
+        background: #fff;
+    }
+
+    .edit-booking-error {
+        grid-column: 1 / -1;
+        margin: 0;
+        color: #a63b2f;
+        font-size: 0.85rem;
+    }
+
+    .edit-booking-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.6rem;
     }
 
     .calendar-btn--large {
@@ -1779,7 +2043,8 @@ const listError = blockedResult.error || pendingResult.error || timeBlockResult.
             width: 100%;
             box-sizing: border-box;
         }
-        .calendar-btn { width: 100%; box-sizing: border-box; }
+        .calendar-btn,
+        .whatsapp-confirm-btn { width: 100%; box-sizing: border-box; }
         .calendar-action-row { grid-template-columns: 1fr; }
         .selection-toolbar { align-items: stretch; }
         .selection-count { flex-basis: 100%; }
