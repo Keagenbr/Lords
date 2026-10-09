@@ -149,7 +149,7 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
 
         <div class="form-field collection-field">
             <label for="booking-time-trigger">
-                Booking time <span aria-hidden="true">*</span>
+                Start time <span class="optional-tag">(optional)</span>
             </label>
             <input type="hidden" name="bookingTime" data-booking-time-input />
             <button
@@ -163,17 +163,51 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
                 aria-disabled="true"
             >
                 <span class="collection-trigger-copy">
-                    <span class="collection-trigger-label">Booking time</span>
+                    <span class="collection-trigger-label">Start time</span>
                     <strong data-booking-time-label>Choose a date first</strong>
                 </span>
                 <span class="collection-trigger-arrow" aria-hidden="true">›</span>
             </button>
-            <p class="field-hint">
-                Monday–Saturday: 10:30–19:30 · Sunday booking times are not currently configured.
-            </p>
+            <button type="button" class="field-clear" data-booking-time-clear hidden>
+                Clear start time
+            </button>
             <p
                 class="field-error"
                 data-error-for="bookingTime"
+                role="alert"
+            ></p>
+        </div>
+
+        <div class="form-field collection-field">
+            <label for="booking-end-trigger">
+                Finish time <span class="optional-tag">(optional)</span>
+            </label>
+            <input type="hidden" name="bookingEndTime" data-booking-end-input />
+            <button
+                id="booking-end-trigger"
+                type="button"
+                class="collection-trigger is-disabled"
+                data-booking-end-trigger
+                aria-haspopup="dialog"
+                aria-controls="booking-date-picker"
+                aria-expanded="false"
+                aria-disabled="true"
+            >
+                <span class="collection-trigger-copy">
+                    <span class="collection-trigger-label">Finish time</span>
+                    <strong data-booking-end-label>Choose a date first</strong>
+                </span>
+                <span class="collection-trigger-arrow" aria-hidden="true">›</span>
+            </button>
+            <button type="button" class="field-clear" data-booking-end-clear hidden>
+                Clear finish time
+            </button>
+            <p class="field-hint">
+                Times are optional. Monday–Saturday, 10:30–19:30. If you only choose a finish time, we'll use it as the booking time.
+            </p>
+            <p
+                class="field-error"
+                data-error-for="bookingEndTime"
                 role="alert"
             ></p>
         </div>
@@ -254,7 +288,7 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
             <div data-booking-picker-time-view hidden>
                 <div class="collection-picker-head collection-picker-head--time">
                     <button type="button" class="picker-back" data-booking-time-back>‹ Date</button>
-                    <strong id="booking-picker-time-title">Booking time</strong>
+                    <strong id="booking-picker-time-title" data-booking-time-title>Start time</strong>
                     <span class="picker-head-spacer" aria-hidden="true"></span>
                 </div>
                 <p class="selected-date-summary" data-booking-time-date></p>
@@ -265,6 +299,46 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
                         Close
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!--
+        "Only a finish time" prompt. Shown on submit when a finish time was
+        entered without a start time. Reuses the picker's overlay/panel classes;
+        its see-through backdrop is controlled by --finish-only-overlay-opacity
+        in the <style> block below.
+    -->
+    <div
+        class="collection-picker-overlay finish-only-overlay"
+        data-finish-only
+        hidden
+        aria-hidden="true"
+    >
+        <div
+            class="collection-picker finish-only-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="finish-only-title"
+            aria-describedby="finish-only-text"
+            tabindex="-1"
+            data-finish-only-panel
+        >
+            <h3 id="finish-only-title" class="finish-only-title">Only a finish time was entered</h3>
+            <p id="finish-only-text" class="finish-only-text">
+                You've chosen a finish time of <strong data-finish-only-time></strong>
+                but no start time. What would you like to do?
+            </p>
+            <div class="finish-only-actions">
+                <button type="button" class="form-submit" data-finish-only-use>
+                    Use <span data-finish-only-time></span> as my start time
+                </button>
+                <button type="button" class="cancel-btn" data-finish-only-both>
+                    Set a start and finish time
+                </button>
+                <button type="button" class="cancel-btn" data-finish-only-start>
+                    Set a start time only
+                </button>
             </div>
         </div>
     </div>
@@ -290,6 +364,12 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
         const dateLabel = form.querySelector<HTMLElement>("[data-booking-date-label]")!;
         const timeLabel = form.querySelector<HTMLElement>("[data-booking-time-label]")!;
         const availabilityHint = form.querySelector<HTMLElement>("[data-availability-hint]")!;
+        // Optional finish time (second hidden input + trigger) and the clear buttons.
+        const endInput = form.querySelector<HTMLInputElement>("[data-booking-end-input]")!;
+        const endTrigger = form.querySelector<HTMLButtonElement>("[data-booking-end-trigger]")!;
+        const endLabel = form.querySelector<HTMLElement>("[data-booking-end-label]")!;
+        const timeClear = form.querySelector<HTMLButtonElement>("[data-booking-time-clear]")!;
+        const endClear = form.querySelector<HTMLButtonElement>("[data-booking-end-clear]")!;
 
         // The picker is rendered alongside the form (not inside the <form>),
         // so picker elements must be queried from the component root.
@@ -302,12 +382,55 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
         const timeOptions = component.querySelector<HTMLElement>("[data-booking-time-options]");
         const timeDate = component.querySelector<HTMLElement>("[data-booking-time-date]");
         const timeNote = component.querySelector<HTMLElement>("[data-booking-time-note]");
+        const timeTitle = component.querySelector<HTMLElement>("[data-booking-time-title]");
 
         if (!picker || !pickerPanel || !dateView || !timeView || !monthLabel || !calendar || !timeOptions || !timeDate || !timeNote) {
             console.error("[BookingForm] Date/time picker markup could not be found.");
             return;
         }
         picker.setAttribute("inert", "");
+
+        // ── "Only a finish time" prompt ───────────────────────────
+        const finishOnly = component.querySelector<HTMLElement>("[data-finish-only]")!;
+        const finishOnlyPanel = component.querySelector<HTMLElement>("[data-finish-only-panel]")!;
+        finishOnly.setAttribute("inert", "");
+
+        type FinishOnlyChoice = "use" | "both" | "start" | "cancel";
+
+        // Opens the prompt and resolves with the button the customer pressed
+        // ("cancel" for Escape or a click on the dimmed backdrop).
+        const askFinishOnly = (time: string) =>
+            new Promise<FinishOnlyChoice>((resolve) => {
+                finishOnly.querySelectorAll<HTMLElement>("[data-finish-only-time]").forEach((el) => {
+                    el.textContent = time;
+                });
+
+                const finish = (choice: FinishOnlyChoice) => {
+                    finishOnly.setAttribute("aria-hidden", "true");
+                    finishOnly.setAttribute("inert", "");
+                    finishOnly.hidden = true;
+                    finishOnly.removeEventListener("click", onClick);
+                    document.removeEventListener("keydown", onKey);
+                    resolve(choice);
+                };
+                const onClick = (event: Event) => {
+                    const target = event.target as HTMLElement;
+                    if (target === finishOnly) return finish("cancel");
+                    if (target.closest("[data-finish-only-use]")) return finish("use");
+                    if (target.closest("[data-finish-only-both]")) return finish("both");
+                    if (target.closest("[data-finish-only-start]")) return finish("start");
+                };
+                const onKey = (event: KeyboardEvent) => {
+                    if (event.key === "Escape") finish("cancel");
+                };
+
+                finishOnly.addEventListener("click", onClick);
+                document.addEventListener("keydown", onKey);
+                finishOnly.hidden = false;
+                finishOnly.removeAttribute("inert");
+                finishOnly.setAttribute("aria-hidden", "false");
+                window.requestAnimationFrame(() => finishOnlyPanel.focus());
+            });
         const blocks = JSON.parse(form.dataset.blockedDates || "[]") as Array<{
             id: string;
             start_date: string;
@@ -326,6 +449,8 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
         let calendarMonth = new Date();
         calendarMonth.setDate(1);
         let pickerMode: "date" | "time" = "date";
+        // Which time the shared time picker is currently choosing.
+        let timeTarget: "start" | "end" = "start";
 
         const todayLocalIso = () => {
             const parts = new Intl.DateTimeFormat("en-CA", {
@@ -405,13 +530,38 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
 
         const hasAvailableTimes = (iso: string) => getTimeOptions(iso).length > 0;
 
+        // A finish time may run to 20:00 when a start time was chosen.
+        const LAST_FINISH = "20:00";
+
+        // True when any blocked slot overlaps the period start -> end.
+        const getRangeBlock = (iso: string, start: string, end: string) =>
+            timeBlocks.find((block) =>
+                block.block_date === iso &&
+                normaliseBlockTime(block.start_time) < end &&
+                normaliseBlockTime(block.end_time) > start,
+            );
+
+        // Candidate finish times for the chosen date (and start time, if any).
+        const getAllEndOptions = (iso: string) => {
+            const start = timeInput.value;
+            const base = getAllTimeOptions(iso);
+            if (!start) return base; // finish becomes the booking time, so keep it <= 19:30
+            return [...base, LAST_FINISH].filter((time) => time > start);
+        };
+
+        // Why a finish time cannot be used (null when it is fine).
+        const endBlock = (iso: string, time: string) =>
+            timeInput.value
+                ? getRangeBlock(iso, timeInput.value, time)
+                : getTimeBlock(iso, time);
+
         const setError = (field: string, message = "") => {
             const target = form.querySelector<HTMLElement>(`[data-error-for="${field}"]`);
             if (target) target.textContent = message;
         };
 
         const clearErrors = () => {
-            ["peopleCount", "contactName", "bookingName", "contactPhone", "bookingDate", "bookingTime"].forEach((field) => setError(field));
+            ["peopleCount", "contactName", "bookingName", "contactPhone", "bookingDate", "bookingTime", "bookingEndTime"].forEach((field) => setError(field));
             status.textContent = "";
             status.className = "form-status";
         };
@@ -447,25 +597,48 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
             return true;
         };
 
+        // Both times are optional. When given they must be inside the opening
+        // hours, not blocked, and the finish must come after the start.
         const validateTime = () => {
-            const value = timeInput.value;
-            const options = getTimeOptions(dateInput.value);
-            if (!value) {
-                setError("bookingTime", "Please select a booking time.");
-                return false;
-            }
-            if (!options.includes(value)) {
-                const blocked = getTimeBlock(dateInput.value, value);
-                setError(
-                    "bookingTime",
-                    blocked
-                        ? `That time is unavailable${blocked.reason ? `: ${blocked.reason}` : "."}`
-                        : "Please choose a time between 10:30 and 19:30, Monday to Saturday.",
-                );
-                return false;
-            }
+            let ok = true;
+            const start = timeInput.value;
+            const end = endInput.value;
             setError("bookingTime");
-            return true;
+            setError("bookingEndTime");
+
+            if (start) {
+                const options = getTimeOptions(dateInput.value);
+                if (!options.includes(start)) {
+                    const blocked = getTimeBlock(dateInput.value, start);
+                    setError(
+                        "bookingTime",
+                        blocked
+                            ? `That time is unavailable${blocked.reason ? `: ${blocked.reason}` : "."}`
+                            : "Please choose a time between 10:30 and 19:30, Monday to Saturday.",
+                    );
+                    ok = false;
+                }
+            }
+
+            if (end) {
+                if (start && end <= start) {
+                    setError("bookingEndTime", "The finish time must be after the start time.");
+                    ok = false;
+                } else if (!getAllEndOptions(dateInput.value).includes(end)) {
+                    setError("bookingEndTime", "Please choose a finish time within opening hours.");
+                    ok = false;
+                } else {
+                    const blocked = endBlock(dateInput.value, end);
+                    if (blocked) {
+                        setError(
+                            "bookingEndTime",
+                            `That period is unavailable${blocked.reason ? `: ${blocked.reason}` : "."}`,
+                        );
+                        ok = false;
+                    }
+                }
+            }
+            return ok;
         };
 
         const renderAvailabilityHint = () => {
@@ -530,7 +703,9 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
 
         const renderTimeOptions = () => {
             timeOptions.replaceChildren();
-            const options = getTimeOptions(dateInput.value);
+            const isEnd = timeTarget === "end";
+            const selectedValue = isEnd ? endInput.value : timeInput.value;
+            if (timeTitle) timeTitle.textContent = isEnd ? "Finish time" : "Start time";
             timeDate.textContent = dateInput.value ? formatDate(dateInput.value) : "Choose a date first";
 
             if (!dateInput.value) {
@@ -543,29 +718,38 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
                 return;
             }
 
-            timeNote.textContent = "Bookings are available every 30 minutes from 10:30 to 19:30.";
-            const allOptions = getAllTimeOptions(dateInput.value);
+            timeNote.textContent = isEnd
+                ? timeInput.value
+                    ? `Choose when you expect to finish (after ${timeInput.value}).`
+                    : "No start time chosen, so the finish time will be used as the booking time."
+                : "Bookings are available every 30 minutes from 10:30 to 19:30. This is optional.";
+
+            const allOptions = isEnd ? getAllEndOptions(dateInput.value) : getAllTimeOptions(dateInput.value);
+            let available = 0;
             allOptions.forEach((time) => {
-                const blocked = getTimeBlock(dateInput.value, time);
+                const blocked = isEnd ? endBlock(dateInput.value, time) : getTimeBlock(dateInput.value, time);
+                if (!blocked) available++;
                 const button = document.createElement("button");
                 button.type = "button";
                 button.className = "time-option";
                 if (blocked) button.classList.add("is-blocked");
-                if (time === timeInput.value) button.classList.add("is-selected");
+                if (time === selectedValue) button.classList.add("is-selected");
                 button.disabled = Boolean(blocked);
                 button.textContent = blocked ? `${time} · Unavailable` : time;
                 if (blocked) button.title = blocked.reason ? `Unavailable: ${blocked.reason}` : "Unavailable";
                 else button.addEventListener("click", () => selectTime(time));
                 timeOptions.append(button);
             });
-            if (allOptions.length && options.length === 0) {
-                timeNote.textContent = "All booking times for this date are currently unavailable.";
+            if (allOptions.length && available === 0) {
+                timeNote.textContent = "No times are available for this date.";
             }
         };
 
-        const openPicker = (mode: "date" | "time") => {
+        const openPicker = (mode: "date" | "time", target: "start" | "end" = "start") => {
             if (mode === "time" && !dateInput.value) mode = "date";
-            if (mode === "time" && !getTimeOptions(dateInput.value).includes(timeInput.value)) {
+            timeTarget = target;
+            // Drop a start time that is no longer available (e.g. a new block was added).
+            if (mode === "time" && timeInput.value && !getTimeOptions(dateInput.value).includes(timeInput.value)) {
                 timeInput.value = "";
             }
             if (dateInput.value && mode === "date") {
@@ -577,7 +761,8 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
             dateView.hidden = mode !== "date";
             timeView.hidden = mode !== "time";
             dateTrigger.setAttribute("aria-expanded", mode === "date" ? "true" : "false");
-            timeTrigger.setAttribute("aria-expanded", mode === "time" ? "true" : "false");
+            timeTrigger.setAttribute("aria-expanded", mode === "time" && target === "start" ? "true" : "false");
+            endTrigger.setAttribute("aria-expanded", mode === "time" && target === "end" ? "true" : "false");
             pickerPanel.setAttribute(
                 "aria-labelledby",
                 mode === "date" ? "booking-picker-title" : "booking-picker-time-title",
@@ -599,7 +784,7 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
             // has focus. Return focus to the trigger first.
             const activeElement = document.activeElement;
             if (picker.contains(activeElement)) {
-                const returnFocus = pickerMode === "time" ? timeTrigger : dateTrigger;
+                const returnFocus = pickerMode === "time" ? (timeTarget === "end" ? endTrigger : timeTrigger) : dateTrigger;
                 returnFocus.focus();
             }
 
@@ -612,34 +797,47 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
             pickerPanel.setAttribute("aria-labelledby", "booking-picker-title");
             dateTrigger.setAttribute("aria-expanded", "false");
             timeTrigger.setAttribute("aria-expanded", "false");
+            endTrigger.setAttribute("aria-expanded", "false");
         };
 
         // Keep the time trigger visibly unavailable until a date exists.
         const updateTimeTrigger = () => {
             const hasDate = !!dateInput.value;
-            timeTrigger.classList.toggle("is-disabled", !hasDate);
-            timeTrigger.setAttribute("aria-disabled", hasDate ? "false" : "true");
-            timeLabel.textContent = hasDate
-                ? timeInput.value || "Choose a booking time"
-                : "Choose a date first";
+            [timeTrigger, endTrigger].forEach((trigger) => {
+                trigger.classList.toggle("is-disabled", !hasDate);
+                trigger.setAttribute("aria-disabled", hasDate ? "false" : "true");
+            });
+            timeLabel.textContent = hasDate ? timeInput.value || "Any time (optional)" : "Choose a date first";
+            endLabel.textContent = hasDate ? endInput.value || "Any time (optional)" : "Choose a date first";
+            // Show the clear buttons only when there is something to clear.
+            timeClear.hidden = !timeInput.value;
+            endClear.hidden = !endInput.value;
         };
 
         const selectDate = (iso: string) => {
             if (isDateUnavailable(iso)) return;
             dateInput.value = iso;
             dateLabel.textContent = formatDate(iso);
+            // A new date means the old times may no longer apply.
             timeInput.value = "";
-            timeLabel.textContent = "Choose a booking time";
+            endInput.value = "";
             updateTimeTrigger();
             validateDate();
+            validateTime();
             renderTimeOptions();
-            openPicker("time");
+            openPicker("time", "start");
         };
 
         const selectTime = (time: string) => {
-            if (!getTimeOptions(dateInput.value).includes(time)) return;
-            timeInput.value = time;
-            timeLabel.textContent = time;
+            if (timeTarget === "end") {
+                if (endBlock(dateInput.value, time) || !getAllEndOptions(dateInput.value).includes(time)) return;
+                endInput.value = time;
+            } else {
+                if (!getTimeOptions(dateInput.value).includes(time)) return;
+                timeInput.value = time;
+                // A finish time that is not after the new start no longer makes sense.
+                if (endInput.value && endInput.value <= time) endInput.value = "";
+            }
             updateTimeTrigger();
             validateTime();
             closePicker();
@@ -659,7 +857,18 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
         updateTimeTrigger();
 
         dateTrigger.addEventListener("click", () => openPicker("date"));
-        timeTrigger.addEventListener("click", () => openPicker("time"));
+        timeTrigger.addEventListener("click", () => openPicker("time", "start"));
+        endTrigger.addEventListener("click", () => openPicker("time", "end"));
+        timeClear.addEventListener("click", () => {
+            timeInput.value = "";
+            updateTimeTrigger();
+            validateTime();
+        });
+        endClear.addEventListener("click", () => {
+            endInput.value = "";
+            updateTimeTrigger();
+            validateTime();
+        });
         component.querySelector<HTMLButtonElement>("[data-booking-prev-month]")?.addEventListener("click", () => changeMonth(-1));
         component.querySelector<HTMLButtonElement>("[data-booking-next-month]")?.addEventListener("click", () => changeMonth(1));
         component.querySelectorAll<HTMLButtonElement>("[data-booking-picker-close]").forEach((button) =>
@@ -677,6 +886,9 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
 
         timeTrigger.addEventListener("click", () => {
             if (!dateInput.value) setError("bookingTime", "Please select a booking date first.");
+        });
+        endTrigger.addEventListener("click", () => {
+            if (!dateInput.value) setError("bookingEndTime", "Please select a booking date first.");
         });
 
         form.querySelector<HTMLInputElement>("[name='contactPhone']")!.addEventListener("blur", (event) => {
@@ -698,7 +910,8 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
             const bookingName = String(data.get("bookingName") ?? "").trim();
             const contactPhone = normaliseWhatsAppNumber(data.get("contactPhone"));
             const bookingDate = String(data.get("bookingDate") ?? "").trim();
-            const bookingTime = String(data.get("bookingTime") ?? "").trim();
+            let bookingTime = String(data.get("bookingTime") ?? "").trim();
+            let bookingEndTime = String(data.get("bookingEndTime") ?? "").trim();
 
             let valid = true;
             if (!Number.isInteger(peopleCount) || peopleCount < 10) {
@@ -717,6 +930,28 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
             if (!validateTime()) valid = false;
             if (!valid) return;
 
+            // Finish time but no start time: ask the customer what they meant
+            // instead of guessing.
+            if (!bookingTime && bookingEndTime) {
+                const choice = await askFinishOnly(bookingEndTime);
+                if (choice === "cancel") return;
+                if (choice === "both") {
+                    // Keep the finish time and let them pick a start time.
+                    openPicker("time", "start");
+                    return;
+                }
+                if (choice === "start") {
+                    // Drop the finish time and let them pick a start time.
+                    endInput.value = "";
+                    updateTimeTrigger();
+                    openPicker("time", "start");
+                    return;
+                }
+                // "use": the finish time becomes the booking (start) time.
+                bookingTime = bookingEndTime;
+                bookingEndTime = "";
+            }
+
             submit.disabled = true;
             submit.setAttribute("aria-busy", "true");
             status.textContent = "Checking availability…";
@@ -733,6 +968,7 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
                         contactPhone,
                         bookingDate,
                         bookingTime,
+                        bookingEndTime,
                     }),
                 });
                 const result = await response.json().catch(() => ({}));
@@ -761,8 +997,12 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
                 if (result.error === "invalid_time") {
                     setError(
                         "bookingTime",
-                        `Please choose a booking time between 10:30 and ${result.latest || "19:30"}.`,
+                        `Please choose a time between 10:30 and ${result.latest || "19:30"}, or leave it blank.`,
                     );
+                    return;
+                }
+                if (result.error === "invalid_end_time") {
+                    setError("bookingEndTime", "The finish time must be after the start time and within opening hours.");
                     return;
                 }
                 if (result.error === "time_blocked") {
@@ -902,6 +1142,66 @@ const bookingTimeBlocksJson = JSON.stringify(bookingTimeBlocks);
     .field-error {
         color: #a63b2f;
         min-height: 1.15em;
+    }
+
+    /* ── "Only a finish time" prompt ──────────────────────────────
+       Easy knobs: change --finish-only-overlay-opacity (0 = clear,
+       1 = solid) and --finish-only-overlay-color to restyle the backdrop. */
+    .finish-only-overlay {
+        --finish-only-overlay-color: 0 0 0; /* r g b */
+        --finish-only-overlay-opacity: 0.55;
+        background: rgb(var(--finish-only-overlay-color) / var(--finish-only-overlay-opacity));
+        z-index: 1300; /* above the date/time picker */
+        animation: finish-only-fade 0.18s ease-out;
+    }
+
+    .finish-only-overlay[hidden] {
+        display: none;
+    }
+
+    .finish-only-dialog {
+        text-align: center;
+    }
+
+    .finish-only-title {
+        margin: 0 0 0.5rem;
+        color: var(--bg-color-btn);
+        font-size: 1.15rem;
+    }
+
+    .finish-only-text {
+        margin: 0 0 1rem;
+        line-height: 1.5;
+    }
+
+    .finish-only-actions {
+        display: grid;
+        gap: 0.6rem;
+    }
+
+    @keyframes finish-only-fade {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    /* "(optional)" marker next to the time labels */
+    .optional-tag {
+        font-weight: 400;
+        font-size: 0.82rem;
+        color: color-mix(in srgb, var(--txt-color) 65%, transparent);
+    }
+
+    /* Small text button that clears an optional time */
+    .field-clear {
+        align-self: flex-start;
+        padding: 0.15rem 0;
+        border: 0;
+        background: none;
+        color: var(--MenuColor);
+        font: inherit;
+        font-size: 0.82rem;
+        text-decoration: underline;
+        cursor: pointer;
     }
 
     .form-status {

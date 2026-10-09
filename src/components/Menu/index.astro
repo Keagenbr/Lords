@@ -374,11 +374,11 @@ const platterNotice = {
                         </div>
                     </template>
 
-                    <!-- 2 for 1 special: choose two different options from each assigned Side choice / Sauce selection group. -->
+                    <!-- 2 for 1 special: choose a side/sauce per group. Choice 1 is required; choice 2 is optional and defaults to choice 1 (same option shown for both items). -->
                     <div class="two-for-one-choice-panel" x-show="activeItem.two_for_one" x-cloak>
                         <div class="two-for-one-choice-head">
                             <strong>2 for 1 special</strong>
-                            <span>Choose two different options from each available side or sauce group.</span>
+                            <span>Pick a side or sauce for each item. Choose just one and it will be used for both.</span>
                         </div>
 
                         <div class="two-for-one-choice-groups">
@@ -386,7 +386,7 @@ const platterNotice = {
                                 <section class="two-for-one-choice-group">
                                     <div class="two-for-one-choice-group-title">
                                         <strong x-text="group.name"></strong>
-                                        <span>Choose 2</span>
+                                        <span>Choice 2 is optional</span>
                                     </div>
 
                                     <div class="two-for-one-choice-grid">
@@ -449,6 +449,15 @@ const platterNotice = {
                                                     x-show="isTwoForOneDropdownOpen(group.id, 1)"
                                                     x-cloak
                                                 >
+                                                    <!-- Clears choice 2 so choice 1 is used for both items -->
+                                                    <button
+                                                        type="button"
+                                                        class="themed-choice-option"
+                                                        :class="{ 'is-selected': !twoForOneSelections[group.id]?.[1] }"
+                                                        @click="chooseTwoForOneOption(group.id, 1, '')"
+                                                    >
+                                                        <span>Use choice 1 for both items</span>
+                                                    </button>
                                                     <template x-for="option in group.options" :key="option.id">
                                                         <button
                                                             type="button"
@@ -477,7 +486,7 @@ const platterNotice = {
                             x-show="activeItem.two_for_one && !twoForOneChoicesValid"
                             x-cloak
                         >
-                            Please choose two different options from every available Side choice or Sauce selection group.
+                            Please choose at least one option from every available Side choice or Sauce selection group. A second, different option is optional; if you skip it, your first choice is used for both items.
                         </p>
                     </div>
 
@@ -1180,7 +1189,13 @@ const platterNotice = {
             twoForOneChoiceLabel(group, slot) {
                 const selectedId = this.twoForOneSelections?.[group.id]?.[slot] || "";
                 const selected = (group.options || []).find((option) => option.id === selectedId);
-                return selected ? selected.name : "Choose an option";
+                if (selected) return selected.name;
+                // Slot 2 stays optional: with no second pick, choice 1 is used for both items.
+                if (slot === 1) {
+                    const first = (group.options || []).find((option) => option.id === this.twoForOneSelections?.[group.id]?.[0]);
+                    return first ? `Same as choice 1 (${first.name})` : "Optional: choose a different option";
+                }
+                return "Choose an option";
             },
 
             isTwoForOneDropdownOpen(groupId, slot) {
@@ -1205,7 +1220,11 @@ const platterNotice = {
             chooseTwoForOneOption(groupId, slot, optionId) {
                 const id = String(groupId);
                 if (!this.twoForOneSelections[id]) this.twoForOneSelections[id] = ["", ""];
-                this.twoForOneSelections[id][slot] = String(optionId);
+                this.twoForOneSelections[id][slot] = optionId === "" ? "" : String(optionId);
+                // Choice 1 changed to match choice 2: clear choice 2 (it would be a duplicate).
+                if (slot === 0 && this.twoForOneSelections[id][1] === this.twoForOneSelections[id][0]) {
+                    this.twoForOneSelections[id][1] = "";
+                }
                 this.closeTwoForOneDropdown(id, slot);
             },
 
@@ -1215,7 +1234,8 @@ const platterNotice = {
                 if (!groups.length) return false;
                 return groups.every((group) => {
                     const choices = this.twoForOneSelections?.[group.id] || ["", ""];
-                    return Boolean(choices[0]) && Boolean(choices[1]) && choices[0] !== choices[1];
+                    // Choice 1 is required. Choice 2 is optional, but if given it must differ.
+                    return Boolean(choices[0]) && (!choices[1] || choices[0] !== choices[1]);
                 });
             },
 
@@ -1262,7 +1282,9 @@ const platterNotice = {
 
                 if (this.activeItem.two_for_one) {
                     this.twoForOneChoiceGroups.forEach((group) => {
-                        const selections = this.twoForOneSelections[group.id] || [];
+                        const picked = this.twoForOneSelections[group.id] || [];
+                        // Only one choice made: use it for BOTH items.
+                        const selections = [picked[0], picked[1] || picked[0]].filter(Boolean);
                         selections.forEach((optionId, index) => {
                             const selected = (group.options || []).find((option) => option.id === optionId);
                             if (selected) {
@@ -1710,7 +1732,7 @@ const platterNotice = {
                     }
                     if (data.error === "invalid_two_for_one") {
                         this.orderError =
-                            "Please choose two different sides or sauces for the 2 for 1 item.";
+                            "Please choose a side or sauce for each 2 for 1 item (one choice is fine; it will be used for both).";
                         return;
                     }
                     if (data.error === "rate_limited") {
