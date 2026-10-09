@@ -63,7 +63,7 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
                 type="button"
                 class="save-btn"
                 @click="saveAllChanges()"
-                :disabled="isSaving"
+                :disabled="isSaving || dirtyCount === 0"
             >
                 <span
                     class="ico-only"
@@ -1119,14 +1119,7 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
             },
 
             async saveAllChanges() {
-                if (this.isSaving) return;
-
-                // The button stays enabled so the admin always gets feedback:
-                // with nothing changed we say so instead of silently greying out.
-                if (this.dirtyCount === 0) {
-                    this.status = { type: "info", message: "No changes to save yet. Edit an item first." };
-                    return;
-                }
+                if (this.isSaving || this.dirtyCount === 0) return;
 
                 // Every changed or new item needs a name and a valid takeaway schedule.
                 for (const type of this.menu) {
@@ -1365,10 +1358,9 @@ const modifierGroupsJson = JSON.stringify(modifierGroups);
         color: var(--bg-color-btn);
     }
 
-    /* Only disabled while a save is actually in progress (prevents double saves). */
     .save-btn:disabled {
-        opacity: 0.6;
-        cursor: progress;
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 
     .status-banner {

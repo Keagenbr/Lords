@@ -7,7 +7,7 @@
 // the right button without being rendered per request.
 import type { APIRoute } from "astro";
 import { supabase } from "../../lib/supabase";
-import { getAdminUser } from "../../lib/adminAuth";
+import { getAdminUser, isOwnerUser } from "../../lib/adminAuth";
 
 export const prerender = false;
 
@@ -66,7 +66,7 @@ export const GET: APIRoute = async ({ cookies }) => {
     getAdminUser(cookies),
   ]);
 
-  return new Response(JSON.stringify({ types, isAdmin: !!admin }), {
+  return new Response(JSON.stringify({ types, isAdmin: !!admin, isOwner: isOwnerUser(admin) }), {
     status: 200,
     headers: {
       "Content-Type": "application/json",

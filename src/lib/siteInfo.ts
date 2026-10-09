@@ -30,17 +30,16 @@ export async function getWhatsAppLink(): Promise<string> {
 export const LOCATIONS = ["Amanzimtoti, South Coast"];
 export const LOCATION_URL = "https://maps.app.goo.gl/unSnpKqqHxfRQySP8";
 
-/**
- * Owner-editable location used specifically for group-booking calendar events.
- * The general site location remains available through `LOCATIONS`; this value
- * can be a full street address or other calendar-friendly location string.
- */
-export async function getBookingCalendarLocation(): Promise<string> {
-  return getSetting("booking_calendar_location", LOCATIONS[0] ?? "Lords & Legends");
-}
-
 /** Orders containing a platter must be made this many days ahead. */
 export const PLATTER_NOTICE_DAYS = 2;
 export const PLATTER_NOTICE_TITLE = "2 Day notice required";
 export const PLATTER_NOTICE_TEXT =
   "Platters must be ordered at least 2 days in advance.";
+
+
+/**
+ * Owner-editable location used by booking confirmation messages and Google Calendar templates.
+ */
+export async function getBookingCalendarLocation(): Promise<string> {
+  return getSetting("booking_calendar_location", "Amanzimtoti, South Coast");
+}

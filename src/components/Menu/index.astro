@@ -6,9 +6,11 @@ import {
     PLATTER_NOTICE_TITLE,
     PLATTER_NOTICE_TEXT,
 } from "../../lib/siteInfo";
+import { getOrderMessageTemplate } from "../../lib/messageTemplates";
 
 // Owner-editable via /admin/settings — see src/lib/siteSettings.ts.
 const whatsappNumber = await getWhatsAppNumber();
+const orderMessageTemplate = await getOrderMessageTemplate();
 
 let menuData: MenuType[] = [];
 
@@ -61,6 +63,7 @@ const platterNotice = {
     x-data="menuApp"
     data-menu={menuJson}
     data-whatsapp={whatsappNumber}
+    data-order-message-template={JSON.stringify(orderMessageTemplate)}
     data-specials-groups={JSON.stringify(SPECIALS_GROUPS)}
     data-platter-notice={JSON.stringify(platterNotice)}
 >
@@ -374,11 +377,11 @@ const platterNotice = {
                         </div>
                     </template>
 
-                    <!-- 2 for 1 special: choose a side/sauce per group. Choice 1 is required; choice 2 is optional and defaults to choice 1 (same option shown for both items). -->
+                    <!-- 2 for 1 special: choose two different options from each assigned Side choice / Sauce selection group. -->
                     <div class="two-for-one-choice-panel" x-show="activeItem.two_for_one" x-cloak>
                         <div class="two-for-one-choice-head">
                             <strong>2 for 1 special</strong>
-                            <span>Pick a side or sauce for each item. Choose just one and it will be used for both.</span>
+                            <span>Choose two different options from each available side or sauce group.</span>
                         </div>
 
                         <div class="two-for-one-choice-groups">
@@ -386,7 +389,7 @@ const platterNotice = {
                                 <section class="two-for-one-choice-group">
                                     <div class="two-for-one-choice-group-title">
                                         <strong x-text="group.name"></strong>
-                                        <span>Choice 2 is optional</span>
+                                        <span>Choose 2</span>
                                     </div>
 
                                     <div class="two-for-one-choice-grid">
@@ -449,15 +452,6 @@ const platterNotice = {
                                                     x-show="isTwoForOneDropdownOpen(group.id, 1)"
                                                     x-cloak
                                                 >
-                                                    <!-- Clears choice 2 so choice 1 is used for both items -->
-                                                    <button
-                                                        type="button"
-                                                        class="themed-choice-option"
-                                                        :class="{ 'is-selected': !twoForOneSelections[group.id]?.[1] }"
-                                                        @click="chooseTwoForOneOption(group.id, 1, '')"
-                                                    >
-                                                        <span>Use choice 1 for both items</span>
-                                                    </button>
                                                     <template x-for="option in group.options" :key="option.id">
                                                         <button
                                                             type="button"
@@ -480,13 +474,10 @@ const platterNotice = {
 
                         <p
                             class="two-for-one-choice-error"
-                            :class="{ 'is-attempted': twoForOneAttempted }"
-                            x-ref="twoForOneError"
-                            role="alert"
                             x-show="activeItem.two_for_one && !twoForOneChoicesValid"
                             x-cloak
                         >
-                            Please choose at least one option from every available Side choice or Sauce selection group. A second, different option is optional; if you skip it, your first choice is used for both items.
+                            Please choose two different options from every available Side choice or Sauce selection group.
                         </p>
                     </div>
 
@@ -524,6 +515,7 @@ const platterNotice = {
                         <button
                             class="confirm-btn"
                             @click="confirmAddToCart"
+                            :disabled="activeItem?.two_for_one && !twoForOneChoicesValid"
                         >
                             Add to order
                         </button>
@@ -884,6 +876,11 @@ const platterNotice = {
 
         Alpine.data("menuApp", () => ({
             menu: prepareMenu(readJson(root.dataset.menu, [])),
+            orderMessageTemplate: readJson(root.dataset.orderMessageTemplate, {
+                header: "*NEW ORDER*",
+                information: "{orderRefLine}\nName: {customerName}\n{collectionDetails}",
+                generalText: "{platterNotice}\n{orderItems}\n\n{estimatedTotal}",
+            }),
             notice,
             whatsappNumber:
                 document.querySelector("[data-whatsapp]").dataset.whatsapp,
@@ -900,8 +897,6 @@ const platterNotice = {
 
             // Item modal state
             showItemModal: false,
-            // true once "Add to order" was pressed with 2-for-1 choices missing
-            twoForOneAttempted: false,
             activeItem: null,
             modalChoices: {},
             twoForOneSelections: {},
@@ -1189,13 +1184,7 @@ const platterNotice = {
             twoForOneChoiceLabel(group, slot) {
                 const selectedId = this.twoForOneSelections?.[group.id]?.[slot] || "";
                 const selected = (group.options || []).find((option) => option.id === selectedId);
-                if (selected) return selected.name;
-                // Slot 2 stays optional: with no second pick, choice 1 is used for both items.
-                if (slot === 1) {
-                    const first = (group.options || []).find((option) => option.id === this.twoForOneSelections?.[group.id]?.[0]);
-                    return first ? `Same as choice 1 (${first.name})` : "Optional: choose a different option";
-                }
-                return "Choose an option";
+                return selected ? selected.name : "Choose an option";
             },
 
             isTwoForOneDropdownOpen(groupId, slot) {
@@ -1220,11 +1209,7 @@ const platterNotice = {
             chooseTwoForOneOption(groupId, slot, optionId) {
                 const id = String(groupId);
                 if (!this.twoForOneSelections[id]) this.twoForOneSelections[id] = ["", ""];
-                this.twoForOneSelections[id][slot] = optionId === "" ? "" : String(optionId);
-                // Choice 1 changed to match choice 2: clear choice 2 (it would be a duplicate).
-                if (slot === 0 && this.twoForOneSelections[id][1] === this.twoForOneSelections[id][0]) {
-                    this.twoForOneSelections[id][1] = "";
-                }
+                this.twoForOneSelections[id][slot] = String(optionId);
                 this.closeTwoForOneDropdown(id, slot);
             },
 
@@ -1234,27 +1219,18 @@ const platterNotice = {
                 if (!groups.length) return false;
                 return groups.every((group) => {
                     const choices = this.twoForOneSelections?.[group.id] || ["", ""];
-                    // Choice 1 is required. Choice 2 is optional, but if given it must differ.
-                    return Boolean(choices[0]) && (!choices[1] || choices[0] !== choices[1]);
+                    return Boolean(choices[0]) && Boolean(choices[1]) && choices[0] !== choices[1];
                 });
             },
 
             closeItemModal() {
-                this.twoForOneAttempted = false;
                 this.showItemModal = false;
                 this.activeItem = null;
             },
 
             confirmAddToCart() {
                 if (!this.activeItem) return;
-                // The button stays enabled so the customer always gets an answer:
-                // if the 2-for-1 choices are incomplete we highlight the message
-                // and scroll to it instead of silently doing nothing.
-                if (this.activeItem.two_for_one && !this.twoForOneChoicesValid) {
-                    this.twoForOneAttempted = true;
-                    this.$nextTick(() => this.$refs.twoForOneError?.scrollIntoView({ behavior: "smooth", block: "center" }));
-                    return;
-                }
+                if (this.activeItem.two_for_one && !this.twoForOneChoicesValid) return;
 
                 const options = [];
                 (this.activeItem.modifier_groups || []).forEach((group) => {
@@ -1282,9 +1258,7 @@ const platterNotice = {
 
                 if (this.activeItem.two_for_one) {
                     this.twoForOneChoiceGroups.forEach((group) => {
-                        const picked = this.twoForOneSelections[group.id] || [];
-                        // Only one choice made: use it for BOTH items.
-                        const selections = [picked[0], picked[1] || picked[0]].filter(Boolean);
+                        const selections = this.twoForOneSelections[group.id] || [];
                         selections.forEach((optionId, index) => {
                             const selected = (group.options || []).find((option) => option.id === optionId);
                             if (selected) {
@@ -1582,50 +1556,61 @@ const platterNotice = {
                 this.collectionPicker = "";
             },
 
+            renderMessageTemplate(template, values) {
+                const render = (section) => String(section || "").replace(
+                    /\{([a-zA-Z][a-zA-Z0-9_]*)\}/g,
+                    (_match, key) => values[key] == null ? "" : String(values[key]),
+                ).trim();
+                return [template?.header, template?.information, template?.generalText]
+                    .map(render)
+                    .filter(Boolean)
+                    .join("\n\n")
+                    .replace(/\n[ \t]*\n[ \t]*\n+/g, "\n\n")
+                    .trim();
+            },
+
             buildOrderMessage(orderRef = "") {
-                const lines = [];
-                lines.push("*NEW ORDER*");
-                if (orderRef) lines.push(`Order Ref: ${orderRef}`);
-                lines.push(`Name: ${this.orderName || "(not given)"}`);
-                if (this.hasPlatter) {
-                    lines.push(`Collection date: ${this.collectionDateLabel}`);
-                }
-                lines.push(`Collection time: ${this.collectTime || "(not selected)"}`);
-                lines.push("");
+                const platterItems = this.cart
+                    .filter((line) => line.platter)
+                    .map((line) => `${line.qty}x ${line.name}`)
+                    .join(", ");
+                const platterNotice = this.hasPlatter && platterItems
+                    ? `⚠️ *${this.notice.title.toUpperCase()}* – ${platterItems}`
+                    : "";
 
-                if (this.hasPlatter) {
-                    const platters = this.cart
-                        .filter((l) => l.platter)
-                        .map((l) => `${l.qty}x ${l.name}`)
-                        .join(", ");
-                    lines.push(
-                        `⚠️ *${this.notice.title.toUpperCase()}* – ${platters}`,
-                    );
-                    lines.push("");
-                }
+                const collectionDetails = [
+                    ...(this.hasPlatter ? [`Collection date: ${this.collectionDateLabel}`] : []),
+                    `Collection time: ${this.collectTime || "(not selected)"}`,
+                ].join("\n");
 
+                const itemLines = [];
                 this.cart.forEach((line) => {
                     let itemLine = `${line.qty}x ${line.name}`;
                     if (line.price) itemLine += ` (${line.price})`;
-                    lines.push(itemLine);
+                    itemLines.push(itemLine);
                     (line.options || []).forEach((opt) => {
-                        const priceSuffix =
-                            opt.price > 0 ? ` (+R${opt.price.toFixed(2)})` : "";
-                        lines.push(
-                            `   • ${opt.label}: ${opt.value}${priceSuffix}`,
-                        );
+                        const priceSuffix = opt.price > 0 ? ` (+R${opt.price.toFixed(2)})` : "";
+                        itemLines.push(`   • ${opt.label}: ${opt.value}${priceSuffix}`);
                     });
-                    if (line.note) lines.push(`   • Note: ${line.note}`);
+                    if (line.note) itemLines.push(`   • Note: ${line.note}`);
                 });
 
-                if (this.cartTotal > 0) {
-                    lines.push("");
-                    lines.push(
-                        `*Estimated Total: R${this.cartTotal.toFixed(2)}*`,
-                    );
-                }
+                const estimatedTotal = this.cartTotal > 0
+                    ? `*Estimated Total: R${this.cartTotal.toFixed(2)}*`
+                    : "";
 
-                return lines.join("\n");
+                return this.renderMessageTemplate(this.orderMessageTemplate, {
+                    restaurantName: "Lords & Legends",
+                    customerName: this.orderName || "(not given)",
+                    orderRef,
+                    orderRefLine: orderRef ? `Order Ref: ${orderRef}` : "",
+                    collectionDate: this.hasPlatter ? this.collectionDateLabel : "",
+                    collectionTime: this.collectTime || "(not selected)",
+                    collectionDetails,
+                    platterNotice,
+                    orderItems: itemLines.join("\n"),
+                    estimatedTotal,
+                });
             },
 
             get nameValid() {
@@ -1732,7 +1717,7 @@ const platterNotice = {
                     }
                     if (data.error === "invalid_two_for_one") {
                         this.orderError =
-                            "Please choose a side or sauce for each 2 for 1 item (one choice is fine; it will be used for both).";
+                            "Please choose two different sides or sauces for the 2 for 1 item.";
                         return;
                     }
                     if (data.error === "rate_limited") {

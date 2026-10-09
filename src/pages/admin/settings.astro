@@ -1,21 +1,30 @@
 ---
-// ->  /admin/settings  (owner only)
+// -> /admin/settings (Owner only)
 import Layout from "../../layouts/Layout.astro";
 import AuthSessionManager from "../../components/AuthSessionManager.astro";
 import { guardOwnerPage, getDisplayName } from "../../lib/adminAuth";
-import { getBookingCalendarLocation, getWhatsAppNumber } from "../../lib/siteInfo";
+import { getWhatsAppNumber, getBookingCalendarLocation } from "../../lib/siteInfo";
+import {
+    getOrderMessageTemplate,
+    getBookingConfirmationTemplate,
+} from "../../lib/messageTemplates";
 
 export const prerender = false;
 
-// Signed out -> /admin/login, signed in but not an owner -> 403.
 const { user, response } = await guardOwnerPage(Astro.cookies, Astro.redirect);
 if (response) return response;
 
-const currentNumber = await getWhatsAppNumber();
-const currentBookingLocation = await getBookingCalendarLocation();
+const [currentNumber, bookingCalendarLocation, orderMessageTemplate, bookingConfirmationTemplate] = await Promise.all([
+    getWhatsAppNumber(),
+    getBookingCalendarLocation(),
+    getOrderMessageTemplate(),
+    getBookingConfirmationTemplate(),
+]);
 const initialData = JSON.stringify({
     whatsappNumber: currentNumber,
-    bookingCalendarLocation: currentBookingLocation,
+    bookingCalendarLocation,
+    orderMessageTemplate,
+    bookingConfirmationTemplate,
 });
 ---
 
@@ -30,10 +39,8 @@ const initialData = JSON.stringify({
 
         <header class="settings-header">
             <h1>Settings</h1>
-            <p>Owner only.</p>
-            <a href="/admin" class="back-link">
-                &larr; Back to Admin Portal
-            </a>
+            <p>Owner only. Changes here affect customer-facing messages.</p>
+            <a href="/admin" class="back-link">&larr; Back to Admin Portal</a>
         </header>
 
         <p
@@ -41,45 +48,127 @@ const initialData = JSON.stringify({
             x-show="statusMessage"
             x-text="statusMessage"
             :class="statusIsError ? 'status-error' : 'status-ok'"
+            role="status"
+            x-cloak
         ></p>
 
         <section class="setting-card">
-            <label for="whatsapp-number">WhatsApp ordering number</label>
+            <h2>WhatsApp ordering number</h2>
             <p class="hint">
-                International format, digits only (e.g. 27825550142). This is
-                the number the "Send via WhatsApp" button on the menu opens, and
-                the number linked from the footer.
+                International format, digits only (e.g. 27825550142). This is the number opened by the menu's Send Order flow and used by the footer.
             </p>
             <div class="setting-row">
                 <input
                     id="whatsapp-number"
+                    aria-label="WhatsApp ordering number"
                     type="text"
                     x-model="whatsappNumber"
                     placeholder="27825550142"
                 />
-                <button class="save-btn" @click="saveWhatsAppNumber()">
-                    Save
+                <button class="save-btn" @click="saveWhatsAppNumber()" :disabled="savingNumber">
+                    <span x-text="savingNumber ? 'Saving…' : 'Save number'"></span>
                 </button>
             </div>
         </section>
 
         <section class="setting-card">
-            <label for="booking-calendar-location">Group booking calendar location</label>
-            <p class="hint">
-                This is the location pre-filled when an Owner/Admin adds a confirmed group booking to Google Calendar.
-                Use the full street address or the location wording you want shown on the event.
-            </p>
+            <h2>Booking location</h2>
+            <p class="hint">Used in Google Calendar booking events and in the {"{location}"} placeholder for customer confirmation messages. For example, “Amanzimtoti, South Coast”.</p>
             <div class="setting-row">
                 <input
                     id="booking-calendar-location"
+                    aria-label="Booking location"
                     type="text"
-                    maxlength="500"
+                    maxlength="200"
                     x-model="bookingCalendarLocation"
-                    placeholder="Lords &amp; Legends, Amanzimtoti, South Coast"
+                    placeholder="Amanzimtoti, South Coast"
                 />
-                <button class="save-btn" @click="saveBookingCalendarLocation()">
-                    Save
+                <button class="save-btn" @click="saveBookingCalendarLocation()" :disabled="savingLocation">
+                    <span x-text="savingLocation ? 'Saving…' : 'Save location'"></span>
                 </button>
+            </div>
+        </section>
+
+        <section class="setting-card message-template-card">
+            <div class="template-heading">
+                <div>
+                    <h2>Order message</h2>
+                    <p class="hint">This is the pre-filled WhatsApp message created when a customer sends an order from the menu.</p>
+                </div>
+                <button
+                    class="save-btn"
+                    @click="saveMessageTemplate('order')"
+                    :disabled="!!savingTemplate"
+                ><span x-text="savingTemplate === 'order' ? 'Saving…' : 'Save order message'"></span></button>
+            </div>
+
+            <div class="template-fields">
+                <label class="template-field">
+                    <span>Header message</span>
+                    <textarea rows="2" x-model="orderMessageTemplate.header" maxlength="2000"></textarea>
+                </label>
+                <label class="template-field">
+                    <span>Information</span>
+                    <textarea rows="5" x-model="orderMessageTemplate.information" maxlength="4000"></textarea>
+                </label>
+                <label class="template-field">
+                    <span>General Text</span>
+                    <textarea rows="5" x-model="orderMessageTemplate.generalText" maxlength="4000"></textarea>
+                </label>
+            </div>
+            <details class="placeholder-help">
+                <summary>Available order placeholders</summary>
+                <p>Use a placeholder exactly as written; it is replaced with the live order information.</p>
+                <div class="placeholder-list">
+                    <code>{"{customerName}"}</code><code>{"{orderRef}"}</code><code>{"{orderRefLine}"}</code><code>{"{collectionDetails}"}</code>
+                    <code>{"{collectionDate}"}</code><code>{"{collectionTime}"}</code><code>{"{platterNotice}"}</code>
+                    <code>{"{orderItems}"}</code><code>{"{estimatedTotal}"}</code><code>{"{restaurantName}"}</code>
+                </div>
+            </details>
+            <div class="template-preview">
+                <div class="preview-heading"><h3>Live example preview</h3><span>Sample values</span></div>
+                <pre x-text="previewTemplate(orderMessageTemplate, 'order')"></pre>
+            </div>
+        </section>
+
+        <section class="setting-card message-template-card">
+            <div class="template-heading">
+                <div>
+                    <h2>Booking confirmation message</h2>
+                    <p class="hint">This message is pre-filled for the customer when an Admin/Owner confirms a booking. It opens WhatsApp; you still press Send.</p>
+                </div>
+                <button
+                    class="save-btn"
+                    @click="saveMessageTemplate('bookingConfirmation')"
+                    :disabled="!!savingTemplate"
+                ><span x-text="savingTemplate === 'bookingConfirmation' ? 'Saving…' : 'Save confirmation message'"></span></button>
+            </div>
+
+            <div class="template-fields">
+                <label class="template-field">
+                    <span>Header message</span>
+                    <textarea rows="2" x-model="bookingConfirmationTemplate.header" maxlength="2000"></textarea>
+                </label>
+                <label class="template-field">
+                    <span>Information</span>
+                    <textarea rows="5" x-model="bookingConfirmationTemplate.information" maxlength="4000"></textarea>
+                </label>
+                <label class="template-field">
+                    <span>General Text</span>
+                    <textarea rows="3" x-model="bookingConfirmationTemplate.generalText" maxlength="4000"></textarea>
+                </label>
+            </div>
+            <details class="placeholder-help">
+                <summary>Available booking placeholders</summary>
+                <p>Customer details are filled in from the booking record when you generate its confirmation.</p>
+                <div class="placeholder-list">
+                    <code>{"{contactName}"}</code><code>{"{bookingName}"}</code><code>{"{bookingRef}"}</code><code>{"{peopleCount}"}</code>
+                    <code>{"{bookingDate}"}</code><code>{"{bookingTime}"}</code><code>{"{location}"}</code><code>{"{bookingNote}"}</code>
+                </div>
+            </details>
+            <div class="template-preview">
+                <div class="preview-heading"><h3>Live example preview</h3><span>Sample values</span></div>
+                <pre x-text="previewTemplate(bookingConfirmationTemplate, 'bookingConfirmation')"></pre>
             </div>
         </section>
     </main>
@@ -90,56 +179,133 @@ const initialData = JSON.stringify({
         Alpine.data("siteSettings", (initial) => ({
             whatsappNumber: initial.whatsappNumber,
             bookingCalendarLocation: initial.bookingCalendarLocation,
+            orderMessageTemplate: { ...initial.orderMessageTemplate },
+            bookingConfirmationTemplate: { ...initial.bookingConfirmationTemplate },
+            savingNumber: false,
+            savingLocation: false,
+            savingTemplate: "",
             statusMessage: "",
             statusIsError: false,
 
             async saveWhatsAppNumber() {
+                this.savingNumber = true;
+                this.statusMessage = "";
                 try {
                     const res = await fetch("/admin/set-whatsapp-number", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
                         body: JSON.stringify({ number: this.whatsappNumber }),
                     });
                     const data = await res.json();
-                    if (!res.ok)
-                        throw new Error(data.error || "Request failed");
-
+                    if (!res.ok) throw new Error(data.error || "Request failed");
                     this.whatsappNumber = data.number;
-                    this.statusMessage = "Saved.";
+                    this.statusMessage = "WhatsApp number saved.";
                     this.statusIsError = false;
                 } catch (err) {
-                    this.statusMessage = "Error: " + err.message;
+                    this.statusMessage = "Could not save WhatsApp number: " + err.message;
                     this.statusIsError = true;
+                } finally {
+                    this.savingNumber = false;
                 }
             },
 
             async saveBookingCalendarLocation() {
+                this.savingLocation = true;
+                this.statusMessage = "";
                 try {
-                    const res = await fetch("/admin/set-booking-location", {
+                    const res = await fetch("/admin/set-booking-calendar-location", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
                         body: JSON.stringify({ location: this.bookingCalendarLocation }),
                     });
-                    const data = await res.json();
-                    if (!res.ok)
-                        throw new Error(data.error || "Request failed");
-
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || "Request failed");
                     this.bookingCalendarLocation = data.location;
-                    this.statusMessage = "Calendar location saved.";
+                    this.statusMessage = "Booking location saved.";
                     this.statusIsError = false;
                 } catch (err) {
-                    this.statusMessage = "Error: " + err.message;
+                    this.statusMessage = "Could not save booking location: " + err.message;
                     this.statusIsError = true;
+                } finally {
+                    this.savingLocation = false;
+                }
+            },
+
+            previewValues(kind) {
+                if (kind === "order") return {
+                    restaurantName: "Lords & Legends",
+                    customerName: "Keagen Robey",
+                    orderRef: "LL-1042",
+                    orderRef: "LL-1042",
+                    orderRefLine: "Order Ref: LL-1042",
+                    collectionDetails: "Collection time: 18:00",
+                    collectionDate: "Friday, 16 October 2026",
+                    collectionTime: "18:00",
+                    platterNotice: "",
+                    orderItems: "2x Chicken Fingers Full\n   • Side choice: Chips\n1x Sauce Selection\n   • Sauce selection: Creamy peri peri",
+                    estimatedTotal: "Estimated Total: R245.00",
+                };
+                return {
+                    contactName: "Keagen Robey",
+                    bookingName: "Keagen's birthday",
+                    bookingRef: "LL-B6",
+                    peopleCount: "15",
+                    bookingDate: "Friday, 16 October 2026",
+                    bookingTime: "12:00 - 16:00",
+                    location: "Lords & Legends Sports Cafe Amanzimtoti",
+                    bookingNote: "Birthday booking",
+                };
+            },
+
+            previewTemplate(template, kind) {
+                const values = this.previewValues(kind);
+                const render = (value) => String(value || "").replace(
+                    /\{([a-zA-Z][a-zA-Z0-9_]*)\}/g,
+                    (_match, key) => values[key] == null ? "" : String(values[key]),
+                ).trim();
+                return [template?.header, template?.information, template?.generalText]
+                    .map(render)
+                    .filter(Boolean)
+                    .join("\n\n")
+                    .replace(/\n[ \t]*\n[ \t]*\n+/g, "\n\n")
+                    .trim();
+            },
+
+            async saveMessageTemplate(kind) {
+                if (this.savingTemplate) return;
+                const template = kind === "order" ? this.orderMessageTemplate : this.bookingConfirmationTemplate;
+                this.savingTemplate = kind;
+                this.statusMessage = "";
+                try {
+                    const res = await fetch("/admin/set-message-templates", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "same-origin",
+                        body: JSON.stringify({ kind, template }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || "Request failed");
+                    this.statusMessage = kind === "order" ? "Order message template saved." : "Booking confirmation template saved.";
+                    this.statusIsError = false;
+                } catch (err) {
+                    this.statusMessage = "Could not save message template: " + err.message;
+                    this.statusIsError = true;
+                } finally {
+                    this.savingTemplate = "";
                 }
             },
         }));
     });
 </script>
 
-<style>
+<style lang="scss">
+    [x-cloak] { display: none !important; }
+
     .settings-container {
-        max-width: 700px;
-        margin: 5rem auto 2rem auto;
+        max-width: 900px;
+        margin: 5rem auto 2rem;
         padding: 20px;
         color: var(--txt-color);
     }
@@ -147,71 +313,68 @@ const initialData = JSON.stringify({
         border-bottom: 3px solid var(--MenuColor, #00d4aa);
         padding-bottom: 1rem;
         margin-bottom: 1.5rem;
-
-        h1 {
-            margin: 0 0 0.25rem;
-        }
-        p {
-            margin: 0 0 0.5rem;
-            opacity: 0.75;
-        }
+        h1 { margin: 0 0 0.25rem; }
+        p { margin: 0 0 0.5rem; opacity: 0.75; }
     }
-    .back-link {
-        color: var(--bg-color-btn, #00d4aa);
-        text-decoration: none;
-        font-weight: 600;
-    }
+    .back-link { color: var(--bg-color-btn); text-decoration: none; font-weight: 700; }
     .save-status {
-        padding: 0.6rem 1rem;
+        padding: 0.65rem 1rem;
         border-radius: 8px;
         margin-bottom: 1rem;
-        font-weight: 600;
+        font-weight: 700;
     }
-    .status-ok {
-        background: #f0fff4;
-        color: #276749;
-        border: 1px solid #9ae6b4;
-    }
-    .status-error {
-        background: #fff5f5;
-        color: #c53030;
-        border: 1px solid #feb2b2;
-    }
+    .status-ok { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }
+    .status-error { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
     .setting-card {
         background: #fff;
         border: 1px solid var(--nav-bg);
         border-radius: 12px;
         padding: 1.25rem 1.5rem;
-
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 0.4rem;
-        }
+        margin-bottom: 1.25rem;
+        h2 { margin: 0; color: var(--bg-color-btn); font-size: 1.2rem; }
     }
-    .hint {
-        font-size: 0.85rem;
-        opacity: 0.75;
-        margin: 0 0 1rem;
-    }
-    .setting-row {
-        display: flex;
-        gap: 0.75rem;
-    }
-    .setting-row input {
-        flex: 1;
-        padding: 0.6rem 0.8rem;
+    .hint { font-size: 0.88rem; opacity: 0.75; margin: 0.35rem 0 1rem; line-height: 1.5; }
+    .setting-row { display: flex; align-items: stretch; gap: 0.75rem; }
+    input, textarea {
+        box-sizing: border-box;
+        width: 100%;
         border: 2px solid var(--nav-bg);
         border-radius: 8px;
-        font-size: 0.95rem;
+        padding: 0.7rem 0.8rem;
+        font: inherit;
+        color: var(--txt-color);
+        background: #fff;
     }
+    input:focus, textarea:focus { outline: none; border-color: var(--MenuColor); box-shadow: 0 0 0 3px color-mix(in srgb, var(--MenuColor) 18%, transparent); }
+    .setting-row input { flex: 1; min-width: 0; }
     .save-btn {
-        padding: 0.6rem 1.2rem;
-        border: none;
-        border-radius: 8px;
-        background: var(--bg-color-btn, #00d4aa);
-        color: #fff;
-        font-weight: 600;
-        cursor: pointer;
+        display: inline-flex; align-items: center; justify-content: center;
+        min-height: 44px; padding: 0.65rem 1rem; border: none; border-radius: 8px;
+        background: var(--bg-color-btn); color: var(--text-color-dark); font: inherit; font-weight: 700; cursor: pointer;
+    }
+    .save-btn:hover:not(:disabled) { background: var(--text-color-hover); }
+    .save-btn:disabled { opacity: 0.6; cursor: wait; }
+    .template-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+    .template-heading > div { min-width: 0; }
+    .template-fields { display: grid; gap: 0.9rem; }
+    .template-field { display: grid; gap: 0.35rem; font-weight: 700; color: var(--txt-color); }
+    .template-field span { font-size: 0.83rem; }
+    .template-field textarea { resize: vertical; min-height: 3.2rem; font-size: 0.9rem; line-height: 1.5; }
+    .placeholder-help { margin-top: 1rem; border: 1px solid var(--nav-bg); border-radius: 8px; padding: 0.7rem 0.85rem; background: var(--bg-color-light); }
+    .placeholder-help summary { cursor: pointer; color: var(--bg-color-btn); font-weight: 700; }
+    .placeholder-help p { font-size: 0.83rem; opacity: 0.8; margin: 0.6rem 0; }
+    .placeholder-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .placeholder-list code { padding: 0.25rem 0.45rem; border-radius: 5px; background: #fff; border: 1px solid var(--nav-bg); color: var(--text-color-hover); font-size: 0.76rem; }
+    .template-preview { margin-top: 1rem; border-radius: 10px; overflow: hidden; border: 1px solid var(--nav-bg); }
+    .preview-heading { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.7rem 0.9rem; background: var(--nav-bg); }
+    .preview-heading h3 { margin: 0; color: var(--bg-color-btn); font-size: 0.93rem; }
+    .preview-heading span { font-size: 0.75rem; opacity: 0.7; }
+    .template-preview pre { margin: 0; padding: 1rem; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 0.88rem; line-height: 1.6; background: #fff; min-height: 4rem; }
+
+    @media (max-width: 680px) {
+        .settings-container { margin-top: 1rem; padding: 12px; }
+        .setting-row, .template-heading { flex-direction: column; }
+        .setting-row .save-btn, .template-heading .save-btn { width: 100%; }
+        .setting-card { padding: 1rem; }
     }
 </style>

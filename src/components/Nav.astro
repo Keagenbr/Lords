@@ -122,15 +122,63 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                 <span class="nav-link-text">Contact</span>
             </a>
 
-            <!-- Only added to the page for a signed-in admin -->
+            <!-- Admin dropdown is shown only for a signed-in Admin or Owner. -->
             <template x-if="isAdmin">
-                <a
-                    href="/admin/menu-editor"
-                    class="nav-link nav-editor-btn"
-                    data-icon="menu-editor"
+                <div
+                    class="nav-item-wrapper admin-nav-wrapper"
+                    @mouseenter="adminHoverIn()"
+                    @mouseleave="adminHoverOut()"
+                    @focusin="adminOpen = true"
+                    @focusout="if (!$el.contains($event.relatedTarget)) { adminOpen = false; adminMenuEditorOpen = false }"
+                    @click.outside="adminOpen = false; adminMenuEditorOpen = false"
                 >
-                    <span class="nav-link-text">Menu Editor</span>
-                </a>
+                    <button
+                        type="button"
+                        class="nav-link nav-editor-btn"
+                        :aria-expanded="adminOpen"
+                        @click="openAdminMenu()"
+                    >
+                        <span class="nav-link-text">Admin</span>
+                        <span class="dropdown-arrow ico-only" data-icon="chevron-down" aria-hidden="true"></span>
+                    </button>
+                    <div class="nav-dropdown-menu admin-dropdown-menu" x-show="adminOpen" x-cloak>
+                        <a href="/admin" class="dropdown-item" @click="closeAll()">
+                            <span>Admin Home</span>
+                        </a>
+                        <div
+                            class="dropdown-row admin-menu-editor-row"
+                            @mouseenter="adminMenuEditorOpen = true"
+                            @mouseleave="adminMenuEditorOpen = false"
+                        >
+                            <button
+                                type="button"
+                                class="dropdown-item admin-menu-editor-toggle"
+                                :aria-expanded="adminMenuEditorOpen"
+                                @click="openAdminMenuEditor()"
+                            >
+                                <span class="ico-only" data-icon="menu-editor" aria-hidden="true"></span>
+                                <span>Menu Editor</span>
+                                <span class="sub-arrow ico-only" data-icon="chevron-right" aria-hidden="true"></span>
+                            </button>
+                            <div class="nav-submenu admin-menu-editor-submenu" x-show="adminMenuEditorOpen" x-cloak>
+                                <a href="/admin/menu-editor" class="dropdown-item" @click="closeAll()">Menu Items</a>
+                                <a href="/admin/menu-editor/main-menu" class="dropdown-item" @click="closeAll()">Main Menu Pages</a>
+                                <a href="/admin/menu-editor/specials" class="dropdown-item" @click="closeAll()">Specials Slider</a>
+                                <a href="/admin/menu-editor/platter" class="dropdown-item" @click="closeAll()">Platter Menu</a>
+                            </div>
+                        </div>
+                        <a href="/admin/booking-dates" class="dropdown-item" @click="closeAll()">Booking Dates</a>
+                        <a href="/staff" class="dropdown-item" @click="closeAll()">Staff Dashboard</a>
+                        <a href="/menu" class="dropdown-item" @click="closeAll()">View Live Menu</a>
+                        <template x-if="isOwner">
+                            <div>
+                                <div class="dropdown-divider" aria-hidden="true"></div>
+                                <a href="/admin/settings" class="dropdown-item" @click="closeAll()">Settings</a>
+                                <a href="/admin/user" class="dropdown-item" @click="closeAll()">User Roles</a>
+                            </div>
+                        </template>
+                    </div>
+                </div>
             </template>
         </div>
 
@@ -283,16 +331,48 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                 <span>Contact</span>
             </a>
 
-            <!-- Only added to the page for a signed-in admin -->
+            <!-- Admin accordion on mobile; menu image pages stay nested under Menu Editor. -->
             <template x-if="isAdmin">
-                <a
-                    href="/admin/menu-editor"
-                    class="mobile-nav-item mobile-editor-btn"
-                    data-icon="menu-editor"
-                    @click="closeMobileMenu()"
-                >
-                    <span>Menu Editor</span>
-                </a>
+                <div class="mobile-accordion-card admin-mobile-accordion">
+                    <div class="accordion-trigger accordion-trigger-row">
+                        <a href="/admin" class="trigger-title accordion-link" data-icon="user" @click="closeMobileMenu()">Admin</a>
+                        <button
+                            type="button"
+                            class="accordion-toggle"
+                            @click="toggleAccordion('admin')"
+                            :aria-expanded="activeMobileAccordion === 'admin'"
+                            aria-label="Show admin sections"
+                        >
+                            <span class="accordion-arrow ico-only" data-icon="chevron-down" :class="{ 'rotate': activeMobileAccordion === 'admin' }"></span>
+                        </button>
+                    </div>
+                    <div class="accordion-panel" x-show="activeMobileAccordion === 'admin'" x-collapse x-cloak>
+                        <div class="panel-content admin-mobile-links">
+                            <a href="/admin" class="mobile-sub-link" @click="closeMobileMenu()">Admin Home</a>
+                            <div class="mobile-subgroup">
+                                <button type="button" class="mobile-sub-trigger" @click="toggleMobileAdminEditor()" :aria-expanded="mobileAdminEditorOpen">
+                                    <span class="sub-trigger-title" data-icon="menu-editor"><span>Menu Editor</span></span>
+                                    <span class="accordion-arrow ico-only" data-icon="chevron-down" :class="{ 'rotate': mobileAdminEditorOpen }"></span>
+                                </button>
+                                <div class="chip-grid" x-show="mobileAdminEditorOpen" x-collapse x-cloak>
+                                    <a href="/admin/menu-editor" class="mobile-chip" @click="closeMobileMenu()">Menu Items</a>
+                                    <a href="/admin/menu-editor/main-menu" class="mobile-chip" @click="closeMobileMenu()">Main Menu Pages</a>
+                                    <a href="/admin/menu-editor/specials" class="mobile-chip" @click="closeMobileMenu()">Specials Slider</a>
+                                    <a href="/admin/menu-editor/platter" class="mobile-chip" @click="closeMobileMenu()">Platter Menu</a>
+                                </div>
+                            </div>
+                            <a href="/admin/booking-dates" class="mobile-sub-link" @click="closeMobileMenu()">Booking Dates</a>
+                            <a href="/staff" class="mobile-sub-link" @click="closeMobileMenu()">Staff Dashboard</a>
+                            <a href="/menu" class="mobile-sub-link" @click="closeMobileMenu()">View Live Menu</a>
+                            <template x-if="isOwner">
+                                <div>
+                                    <a href="/admin/settings" class="mobile-sub-link" @click="closeMobileMenu()">Settings</a>
+                                    <a href="/admin/user" class="mobile-sub-link" @click="closeMobileMenu()">User Roles</a>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
             </template>
         </div>
     </div>
@@ -335,6 +415,10 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
             mobileType: null,
             types: [],
             isAdmin: false,
+            isOwner: false,
+            adminOpen: false,
+            adminMenuEditorOpen: false,
+            mobileAdminEditorOpen: false,
 
             init() {
                 this.loadNav();
@@ -435,6 +519,7 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                     const data = await res.json();
                     this.types = Array.isArray(data.types) ? data.types : [];
                     this.isAdmin = data.isAdmin === true;
+                    this.isOwner = data.isOwner === true;
                 } catch (err) {
                     // The nav still works (Home / Menu / Contact) without it.
                     console.warn("Navigation data could not be loaded:", err);
@@ -455,6 +540,38 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
                 this.closeMobileMenu();
                 this.menuOpen = false;
                 this.openType = null;
+                this.adminOpen = false;
+                this.adminMenuEditorOpen = false;
+                this.mobileAdminEditorOpen = false;
+            },
+
+            openAdminMenu() {
+                if (this.canHover()) {
+                    this.adminOpen = true;
+                } else {
+                    this.adminOpen = !this.adminOpen;
+                    if (!this.adminOpen) this.adminMenuEditorOpen = false;
+                }
+            },
+
+            adminHoverIn() {
+                if (this.canHover()) this.adminOpen = true;
+            },
+
+            adminHoverOut() {
+                if (this.canHover()) {
+                    this.adminOpen = false;
+                    this.adminMenuEditorOpen = false;
+                }
+            },
+
+            openAdminMenuEditor() {
+                if (this.canHover()) this.adminMenuEditorOpen = true;
+                else this.adminMenuEditorOpen = !this.adminMenuEditorOpen;
+            },
+
+            toggleMobileAdminEditor() {
+                this.mobileAdminEditorOpen = !this.mobileAdminEditorOpen;
             },
 
             toggleAccordion(name) {
@@ -667,6 +784,71 @@ import LogoSrcDesktop from "../assets/LordsLogo.svg";
             background: var(--text-color-hover);
             color: var(--text-color);
         }
+    }
+
+    .admin-nav-wrapper .admin-dropdown-menu {
+        left: auto;
+        right: 0;
+        min-width: 245px;
+    }
+
+    .admin-dropdown-menu .dropdown-row {
+        position: relative;
+    }
+
+    .admin-menu-editor-toggle {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        font: inherit;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .admin-menu-editor-submenu {
+        min-width: 220px;
+        left: auto;
+        right: 100%;
+    }
+
+    .dropdown-divider {
+        height: 1px;
+        margin: 0.35rem 0;
+        background: var(--nav-bg);
+    }
+
+    .admin-mobile-links {
+        display: grid;
+        gap: 0.3rem;
+    }
+
+    .admin-mobile-links .mobile-sub-link {
+        border-radius: 8px;
+        padding: 0.65rem 0.8rem;
+    }
+
+    .admin-mobile-accordion .accordion-trigger-row {
+        padding-left: 0.35rem;
+    }
+
+    .admin-mobile-accordion .trigger-title {
+        flex: 1;
+        padding: 0.75rem 0.65rem;
+        color: var(--text-color);
+        text-decoration: none;
+        font-weight: 700;
+    }
+
+    .admin-mobile-accordion .accordion-toggle {
+        color: var(--text-color);
+    }
+
+    .admin-mobile-links .mobile-sub-trigger {
+        width: 100%;
+    }
+
+    .admin-mobile-links .chip-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .dropdown-header {

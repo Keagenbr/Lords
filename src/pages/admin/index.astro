@@ -17,28 +17,10 @@ if (response) return response;
 // One row per editable page. `icon` is a placeholder slot (src/styles/icons.css).
 const shortcuts = [
     {
-        icon: "menu-items",
-        title: "Menu Items",
-        blurb: "Names, prices, descriptions and pictures of every dish and drink.",
+        icon: "menu-editor",
+        title: "Menu Editor",
+        blurb: "Edit menu items, Main Menu Pages, Specials Slider and Platter Menu from the Menu Editor navigation.",
         href: "/admin/menu-editor",
-    },
-    {
-        icon: "main-menu",
-        title: "Main Menu Pages",
-        blurb: "The multi-page menu slider images.",
-        href: "/admin/menu-editor/main-menu",
-    },
-    {
-        icon: "specials-slider",
-        title: "Specials Slider",
-        blurb: "The weekly specials pictures.",
-        href: "/admin/menu-editor/specials",
-    },
-    {
-        icon: "platter",
-        title: "Platter Menu",
-        blurb: "The platter menu picture.",
-        href: "/admin/menu-editor/platter",
     },
     {
         icon: "staff",
@@ -52,12 +34,6 @@ const shortcuts = [
         blurb: "See the menu the way customers do.",
         href: "/menu",
     },
-    {
-        icon: "clock",
-        title: "Booking Dates",
-        blurb: "Block or unblock dates for group booking requests.",
-        href: "/admin/booking-dates",
-    },
     // Owner only — hidden entirely for Admin/Manager, same as not existing.
     ...(isOwnerUser(user)
         ? [
@@ -65,12 +41,12 @@ const shortcuts = [
                   icon: "user",
                   title: "User Roles",
                   blurb: "Set who is an Owner, Admin/Manager, or Staff.",
-                  href: "/admin/users",
+                  href: "/admin/user",
               },
               {
                   icon: "settings",
                   title: "Settings",
-                  blurb: "Change the WhatsApp ordering number.",
+                  blurb: "Change the WhatsApp number, booking location and order / booking confirmation messages.",
                   href: "/admin/settings",
               },
           ]
