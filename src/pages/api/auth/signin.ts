@@ -1,9 +1,16 @@
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
+import {
+  checkLoginAllowed,
+  recordLoginFailure,
+  clearLoginFailures,
+  getClientIp,
+  failureQuery,
+} from "../../../lib/authFailure";
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request, cookies, redirect }) => {
+export const POST: APIRoute = async ({ request, cookies, redirect, clientAddress }) => {
   let email = "";
   let password = "";
 
@@ -33,8 +40,24 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     }
   }
 
+  // Every failure sends the person back to the login page with a short
+  // error code (see src/lib/authFailure.ts), instead of a bare text response.
   if (!email || !password) {
-    return new Response("Email and password are required.", { status: 400 });
+    return redirect(`/admin/login${failureQuery("missing")}`);
+  }
+
+  // 1. Brute-force protection: refuse BEFORE contacting Supabase when this
+  //    IP or email is locked out. 429 + Retry-After is the standard signal.
+  const ip = getClientIp(request, clientAddress);
+  const gate = checkLoginAllowed(ip, email);
+  if (!gate.allowed) {
+    return new Response(null, {
+      status: 303,
+      headers: {
+        Location: `/admin/login${failureQuery("locked", { retryAfterSeconds: gate.retryAfterSeconds })}`,
+        "Retry-After": String(gate.retryAfterSeconds),
+      },
+    });
   }
 
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -42,9 +65,24 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     password,
   });
 
-  if (error) {
-    return new Response(error.message, { status: 400 });
+  // 2. Wrong email OR wrong password (Supabase reports both the same way):
+  //    count it and show ONE generic message so accounts cannot be probed.
+  if (error || !data?.session) {
+    // A network/server fault is not the user's fault, so do not count it.
+    if (error && (error.status ?? 0) >= 500) {
+      return redirect(`/admin/login${failureQuery("error")}`);
+    }
+    const result = recordLoginFailure(ip, email);
+    return redirect(
+      `/admin/login${failureQuery(result.locked ? "locked" : "invalid", {
+        attemptsLeft: result.attemptsLeft,
+        retryAfterSeconds: result.retryAfterSeconds,
+      })}`,
+    );
   }
+
+  // 3. Success: reset the counters for this IP and email.
+  clearLoginFailures(ip, email);
 
   const { access_token, refresh_token } = data.session;
 
